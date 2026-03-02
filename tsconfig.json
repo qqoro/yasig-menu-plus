@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true
+  },
+  "references": [
+    { "path": "./src/main" },
+    { "path": "./src/renderer" }
+  ],
+  "files": []
+}

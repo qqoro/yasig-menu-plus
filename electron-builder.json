@@ -1,0 +1,57 @@
+{
+  "appId": "com.yasig.menu.plus.app",
+  "productName": "야식메뉴판 Plus",
+  "directories": {
+    "output": "dist",
+    "buildResources": "src/main/static"
+  },
+  "win": {
+    "target": ["nsis", "portable"]
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "artifactName": "yasig-menu-plus-setup-${version}.${ext}",
+    "shortcutName": "야식메뉴판 Plus"
+  },
+  "portable": {
+    "artifactName": "yasig-menu-plus-portable-${version}.${ext}"
+  },
+  "linux": {
+    "target": ["snap"]
+  },
+  "asar": true,
+  "publish": {
+    "provider": "github",
+    "owner": "qqoro",
+    "repo": "yasig-menu-plus"
+  },
+  "files": [
+    {
+      "from": "build/main",
+      "to": "main",
+      "filter": ["**/*"]
+    },
+    {
+      "from": "build/renderer",
+      "to": "renderer",
+      "filter": ["**/*"]
+    },
+    {
+      "from": "src/main/static",
+      "to": "static",
+      "filter": ["**/*"]
+    },
+    "!build",
+    "!dist",
+    "!scripts"
+  ],
+  "extraResources": [
+    {
+      "from": "build/main/migrations",
+      "to": "migrations",
+      "filter": ["**/*"]
+    }
+  ]
+}

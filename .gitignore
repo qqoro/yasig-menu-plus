@@ -1,0 +1,12 @@
+node_modules
+dist
+build
+dev.sqlite3
+*.tsbuildinfo
+
+.vscode
+.idea
+.claude/settings.local.json
+
+TODO.md
+CLAUDE.md

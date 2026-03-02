@@ -1,0 +1,527 @@
+/**
+ * IPC 이벤트 타입 정의
+ *
+ * Main Process ↔ Renderer Process 간 통신을 위한 타입 안전성 제공
+ */
+
+// StoreSchema 타입 import (순환 참조 방지를 위해 type import 사용)
+import type { LibraryScanInfo, StoreSchema } from "./store.js";
+
+// ========== Renderer → Main 이벤트 ==========
+export const enum IpcRendererSend {
+  // 게임 목록 관련
+  LoadList = "loadList",
+  RefreshList = "refreshList", // 폴더 재스캔
+
+  // 게임 실행 관련
+  PlayGame = "playGame",
+  OpenFolder = "openFolder",
+
+  // 윈도우 제어
+  MinimizeWindow = "minimizeWindow",
+  MaximizeWindow = "maximizeWindow",
+  CloseWindow = "closeWindow",
+
+  // 다이얼로그
+  SelectFolder = "selectFolder",
+  SelectFile = "selectFile",
+
+  // 컬렉터 관련
+  RunCollector = "runCollector", // 단일 게임 컬렉터 실행
+  RunAllCollectors = "runAllCollectors", // 전체 게임 컬렉터 실행
+  GetNewCookie = "getNewCookie", // Google 세이프서치 해제 쿠키 획득
+
+  // 썸네일 관련
+  DownloadThumbnail = "downloadThumbnail", // 썸네일 다운로드
+  DeleteThumbnail = "deleteThumbnail", // 썸네일 삭제
+  CleanUnusedThumbnails = "cleanUnusedThumbnails", // 사용하지 않는 썸네일 삭제
+  GetGameImages = "getGameImages", // 게임 이미지 목록 조회
+
+  // 검색 및 필터링 관련
+  SearchGames = "searchGames", // 게임 검색
+  GetRandomGame = "getRandomGame", // 랜덤 게임 조회
+  ToggleFavorite = "toggleFavorite", // 즐겨찾기 토글
+  ToggleHidden = "toggleHidden", // 숨김 토글
+  ToggleClear = "toggleClear", // 클리어 토글
+  GetAutocompleteSuggestions = "getAutocompleteSuggestions", // 자동완성 제안
+
+  // 게임 상세 정보 관련
+  GetGameDetail = "getGameDetail", // 게임 상세 정보 조회
+  OpenOriginalSite = "openOriginalSite", // 원본 사이트 열기
+
+  // 메타데이터 수정
+  UpdateGameMetadata = "updateGameMetadata", // 메타데이터 수정
+  UpdateRating = "updateRating", // 별점 수정
+
+  // 관계 데이터 관리
+  AddMaker = "addMaker", // 제작사 추가
+  RemoveMaker = "removeMaker", // 제작사 제거
+  AddCategory = "addCategory", // 카테고리 추가
+  RemoveCategory = "removeCategory", // 카테고리 제거
+  AddTag = "addTag", // 태그 추가
+  RemoveTag = "removeTag", // 태그 제거
+
+  // 썸네일 관리
+  SetThumbnailFromUrl = "setThumbnailFromUrl", // URL에서 썸네일 설정
+  SetThumbnailFromFile = "setThumbnailFromFile", // 로컬 파일에서 썸네일 설정
+  HideThumbnail = "hideThumbnail", // 썸네일 숨김
+
+  // 실행 파일 관리
+  SetExecutablePath = "setExecutablePath", // 실행 파일 경로 직접 지정
+  SelectExecutableFile = "selectExecutableFile", // 실행 파일 선택 다이얼로그
+
+  // 실행 제외 목록 관리
+  GetExcludedExecutables = "getExcludedExecutables", // 실행 제외 목록 조회
+  AddExcludedExecutable = "addExcludedExecutable", // 실행 제외 목록에 추가
+  RemoveExcludedExecutable = "removeExcludedExecutable", // 실행 제외 목록에서 제거
+
+  // 라이브러리 경로 관리
+  GetLibraryPaths = "getLibraryPaths", // 라이브러리 경로 목록 조회
+  AddLibraryPath = "addLibraryPath", // 라이브러리 경로 추가
+  RemoveLibraryPath = "removeLibraryPath", // 라이브러리 경로 제거
+
+  // 번역 관련
+  TranslateTitle = "translateTitle", // 단일 게임 제목 번역
+  TranslateAllTitles = "translateAllTitles", // 전체 게임 제목 번역
+  GetTranslationSettings = "getTranslationSettings", // 번역 설정 조회
+  SetTranslationSettings = "setTranslationSettings", // 번역 설정 저장
+
+  // 마지막 갱신 시간 관련
+  LastRefreshedSet = "lastRefreshedSet", // 마지막 갱신 시간 저장
+  LastRefreshedGet = "lastRefreshedGet", // 마지막 갱신 시간 조회
+
+  // 라이브러리 스캔 기록 관련
+  GetLibraryScanHistory = "getLibraryScanHistory", // 라이브러리 스캔 기록 조회
+  GetAllLibraryScanHistory = "getAllLibraryScanHistory", // 모든 라이브러리 스캔 기록 조회
+
+  // 통합 설정 관리
+  GetAllSettings = "getAllSettings", // 전체 설정 조회
+  UpdateSettings = "updateSettings", // 부분 설정 업데이트 (deep merge)
+
+  // 플레이 타임 관련
+  GetPlayTime = "getPlayTime", // 게임 플레이 타임 조회
+  GetPlaySessions = "getPlaySessions", // 플레이 세션 목록 조회
+}
+
+// ========== Main → Renderer 이벤트 ==========
+export const enum IpcMainSend {
+  // 게임 목록 응답
+  LoadedList = "loadedList",
+  ListRefreshed = "listRefreshed",
+
+  // 알림 메시지
+  Message = "message",
+
+  // 윈도우 상태 변경
+  WindowMaximized = "windowMaximized",
+  WindowUnmaximized = "windowUnmaximized",
+
+  // 다이얼로그
+  SelectFolder = "selectFolder",
+  SelectFile = "selectFile",
+
+  // 컬렉터 관련
+  CollectorProgress = "collectorProgress", // { current, total, gameTitle }
+  CollectorDone = "collectorDone", // { gamePath, success, error? }
+  AllCollectorsDone = "allCollectorsDone", // { total, success, failed }
+
+  // 썸네일
+  ThumbnailDone = "thumbnailDone", // { gamePath, thumbnailPath }
+  UnusedThumbnailsCleaned = "unusedThumbnailsCleaned", // { deletedCount, freedSpace }
+  GameImagesLoaded = "gameImagesLoaded", // { images: GameImageItem[] }
+
+  // 검색 및 필터링 관련
+  SearchedGames = "searchedGames", // 검색 결과
+  GameToggled = "gameToggled", // 토글 완료
+  AutocompleteSuggestions = "autocompleteSuggestions", // 자동완성 제안
+
+  // 게임 상세 정보 관련
+  GameDetail = "gameDetail", // 게임 상세 정보
+  GameMetadataUpdated = "gameMetadataUpdated", // 메타데이터 수정 완료
+  RatingUpdated = "ratingUpdated", // 별점 수정 완료
+
+  // 관계 데이터 관리
+  MakerAdded = "makerAdded", // 제작사 추가 완료
+  MakerRemoved = "makerRemoved", // 제작사 제거 완료
+  CategoryAdded = "categoryAdded", // 카테고리 추가 완료
+  CategoryRemoved = "categoryRemoved", // 카테고리 제거 완료
+  TagAdded = "tagAdded", // 태그 추가 완료
+  TagRemoved = "tagRemoved", // 태그 제거 완료
+
+  // 썸네일 관리
+  ThumbnailSet = "thumbnailSet", // 썸네일 설정 완료
+  ThumbnailHidden = "thumbnailHidden", // 썸네일 숨김 완료
+
+  // 번역 관련
+  TranslationProgress = "translationProgress", // 번역 진행률
+  TranslationDone = "translationDone", // 번역 완료 (단일)
+  AllTranslationsDone = "allTranslationsDone", // 전체 번역 완료
+
+  // 마지막 갱신 시간 관련
+  LastRefreshedLoaded = "lastRefreshedLoaded", // 마지막 갱신 시간 로드 완료
+
+  // 라이브러리 스캔 기록 관련
+  LibraryScanHistory = "libraryScanHistory", // 라이브러리 스캔 기록
+  AllLibraryScanHistory = "allLibraryScanHistory", // 모든 라이브러리 스캔 기록
+
+  // 자동 스캔 완료
+  AutoScanDone = "autoScanDone", // 자동 스캔 완료 (포커스/시작 시)
+
+  // 통합 설정 관리
+  AllSettings = "allSettings", // 전체 설정 반환
+  SettingsUpdated = "settingsUpdated", // 설정 업데이트 완료
+
+  // 플레이 타임 관련
+  PlayTimeLoaded = "playTimeLoaded", // 플레이 타임 로드 완료
+  PlaySessionsLoaded = "playSessionsLoaded", // 플레이 세션 로드 완료
+  GameSessionEnded = "gameSessionEnded", // 게임 세션 종료
+}
+
+/**
+ * IpcMainSend enum 값 타입 (문자열 리터럴 유니온)
+ * on/once/removeListener 메서드의 channel 파라미터 타입으로 사용
+ *
+ * enum 멤버 타입(IpcMainSend.Message)과 리터럴 타입("message")은 TypeScript에서 다르게 처리됨
+ * 이 타입을 사용하여 리터럴 타입 안전성 제공
+ */
+export type IpcMainSendChannel =
+  | "loadedList"
+  | "listRefreshed"
+  | "message"
+  | "windowMaximized"
+  | "windowUnmaximized"
+  | "selectFolder"
+  | "selectFile"
+  | "collectorProgress"
+  | "collectorDone"
+  | "allCollectorsDone"
+  | "thumbnailDone"
+  | "searchedGames"
+  | "gameToggled"
+  | "autocompleteSuggestions"
+  | "gameDetail"
+  | "gameMetadataUpdated"
+  | "ratingUpdated"
+  | "makerAdded"
+  | "makerRemoved"
+  | "categoryAdded"
+  | "categoryRemoved"
+  | "tagAdded"
+  | "tagRemoved"
+  | "thumbnailSet"
+  | "thumbnailHidden"
+  | "unusedThumbnailsCleaned"
+  | "gameImagesLoaded"
+  | "translationProgress"
+  | "translationDone"
+  | "allTranslationsDone"
+  | "lastRefreshedLoaded"
+  | "libraryScanHistory"
+  | "allLibraryScanHistory"
+  | "autoScanDone"
+  | "allSettings"
+  | "settingsUpdated"
+  | "playTimeLoaded"
+  | "playSessionsLoaded"
+  | "gameSessionEnded";
+
+// ========== 이벤트 페이로드 타입 ==========
+
+// 게임 아이템 (Phase 1: 최소 필드만)
+export interface GameItem {
+  path: string;
+  title: string;
+  originalTitle: string;
+  source: string;
+  thumbnail: string | null;
+  executablePath: string | null; // 직접 지정한 실행 파일 경로
+  isCompressFile: boolean;
+  publishDate: Date | null;
+  isFavorite?: boolean;
+  isHidden?: boolean;
+  isClear?: boolean;
+  provider?: string | null;
+  externalId?: string | null;
+  lastPlayedAt?: Date | null;
+  createdAt?: Date | null;
+  translatedTitle?: string | null; // 번역된 제목
+  translationSource?: string | null; // 번역 출처 (ollama, google)
+  rating?: number | null; // 별점 (1-5)
+  totalPlayTime?: number; // 총 플레이 시간 (초)
+  sessionStartAt?: Date | null; // 현재 세션 시작 시간
+  makers: string[];
+  categories: string[];
+  tags: string[];
+}
+
+// 게임 상세 정보
+export interface GameDetailItem extends GameItem {
+  memo: string | null; // 메모
+}
+
+// 게임 이미지
+export interface GameImageItem {
+  path: string;
+  sortOrder: number;
+}
+
+// 플레이 세션
+export interface PlaySession {
+  id: number;
+  gamePath: string;
+  startedAt: Date;
+  endedAt: Date | null;
+  durationSeconds: number;
+}
+
+// 검색 쿼리 인터페이스
+export interface SearchQuery {
+  query?: string;
+  filters: {
+    showHidden?: boolean;
+    showFavorites?: boolean;
+    showCleared?: boolean;
+    showNotCleared?: boolean;
+    showCompressed?: boolean;
+    showNotCompressed?: boolean;
+    showWithExternalId?: boolean;
+    showWithoutExternalId?: boolean;
+  };
+  sortBy?:
+    | "title"
+    | "publishDate"
+    | "lastPlayedAt"
+    | "createdAt"
+    | "rating"
+    | "playTime";
+  sortOrder?: "asc" | "desc";
+  // 페이지네이션 파라미터
+  offset?: number;
+  limit?: number;
+}
+
+// Renderer → Main 페이로드
+export interface IpcRendererEventMap {
+  loadList: { sourcePaths: string[] };
+  refreshList: { sourcePaths: string[] };
+  playGame: { path: string };
+  openFolder: { path: string };
+  minimizeWindow: undefined;
+  maximizeWindow: undefined;
+  closeWindow: undefined;
+  selectFolder: undefined;
+  selectFile: undefined;
+
+  // 컬렉터 관련
+  runCollector: { gamePath: string; force?: boolean };
+  runAllCollectors: { force?: boolean };
+  getNewCookie: undefined; // 반환값: string | undefined (쿠키 값)
+
+  // 썸네일 관련
+  downloadThumbnail: { gamePath: string; url: string };
+  deleteThumbnail: { gamePath: string };
+  cleanUnusedThumbnails: undefined;
+  getGameImages: { gamePath: string };
+
+  // 검색 및 필터링 관련
+  searchGames: { sourcePaths: string[]; searchQuery: SearchQuery };
+  getRandomGame: { sourcePaths: string[]; searchQuery: SearchQuery };
+  toggleFavorite: { path: string };
+  toggleHidden: { path: string };
+  toggleClear: { path: string };
+  getAutocompleteSuggestions: {
+    prefix:
+      | ""
+      | "tag"
+      | "circle"
+      | "category"
+      | "provider"
+      | "id"
+      | "태그"
+      | "서클"
+      | "카테고리"
+      | "제공자"
+      | "아이디";
+    query: string;
+  };
+
+  // 게임 상세 정보 관련
+  getGameDetail: { path: string };
+  openOriginalSite: { path: string };
+
+  // 메타데이터 수정
+  updateGameMetadata: {
+    path: string;
+    metadata: Partial<
+      Pick<GameItem, "title" | "publishDate"> & { memo: string | null }
+    >;
+  };
+  updateRating: { path: string; rating: number | null };
+
+  // 관계 데이터 관리
+  addMaker: { path: string; name: string };
+  removeMaker: { path: string; name: string };
+  addCategory: { path: string; name: string };
+  removeCategory: { path: string; name: string };
+  addTag: { path: string; name: string };
+  removeTag: { path: string; name: string };
+
+  // 썸네일 관리
+  setThumbnailFromUrl: { path: string; url: string };
+  setThumbnailFromFile: { path: string; filePath: string };
+  hideThumbnail: { path: string };
+
+  // 실행 파일 관리
+  setExecutablePath: { path: string; executablePath: string };
+  selectExecutableFile: { gamePath: string };
+
+  // 실행 제외 목록 관리
+  getExcludedExecutables: undefined;
+  addExcludedExecutable: { executable: string };
+  removeExcludedExecutable: { executable: string };
+
+  // 라이브러리 경로 관리
+  getLibraryPaths: undefined;
+  addLibraryPath: { path: string };
+  removeLibraryPath: { path: string };
+
+  // 번역 관련
+  translateTitle: { path: string; force?: boolean };
+  translateAllTitles: { force?: boolean };
+  getTranslationSettings: undefined;
+  setTranslationSettings: {
+    settings: { showTranslated: boolean; autoTranslate: boolean };
+  };
+
+  // 마지막 갱신 시간 관련
+  lastRefreshedSet: { timestamp: string };
+  lastRefreshedGet: undefined;
+
+  // 라이브러리 스캔 기록 관련
+  getLibraryScanHistory: { path: string };
+  getAllLibraryScanHistory: undefined;
+
+  // 통합 설정 관리
+  getAllSettings: undefined;
+  updateSettings: { settings: Partial<StoreSchema> };
+
+  // 플레이 타임 관련
+  getPlayTime: { path: string };
+  getPlaySessions: { path: string; limit?: number };
+}
+
+// Main → Renderer 페이로드
+export interface IpcMainEventMap {
+  loadedList: { games: GameItem[] };
+  listRefreshed: {
+    games: GameItem[];
+    addedCount: number;
+    deletedCount: number;
+  };
+  message: { type: "info" | "success" | "error" | "warning"; message: string };
+  windowMaximized: undefined;
+  windowUnmaximized: undefined;
+
+  // 컬렉터 관련
+  collectorProgress: { current: number; total: number; gameTitle: string };
+  collectorDone: {
+    gamePath: string;
+    success: boolean;
+    error?: string;
+    alreadyCollected?: boolean;
+  };
+  allCollectorsDone: { total: number; success: number; failed: number };
+
+  // 썸네일 관련
+  thumbnailDone: { gamePath: string; thumbnailPath: string };
+
+  // 검색 및 필터링 관련
+  searchedGames: { games: GameItem[]; totalCount: number; hasMore: boolean };
+  randomGame: { game: GameItem | null };
+  gameToggled: {
+    path: string;
+    field: "is_favorite" | "is_hidden" | "is_clear";
+    value: boolean;
+  };
+  autocompleteSuggestions: {
+    prefix: string;
+    query: string;
+    suggestions: string[];
+  };
+
+  // 다이얼로그
+  selectFolder: { filePaths: string[] | undefined };
+  selectFile: { filePaths: string[] | undefined };
+
+  // 게임 상세 정보 관련
+  gameDetail: { game: GameDetailItem | null };
+
+  // 원본 사이트 열기
+  openOriginalSite: void;
+
+  // 메타데이터 수정
+  gameMetadataUpdated: { path: string };
+  ratingUpdated: { path: string; rating: number | null };
+
+  // 관계 데이터 관리
+  makerAdded: { path: string; name: string };
+  makerRemoved: { path: string; name: string };
+  categoryAdded: { path: string; name: string };
+  categoryRemoved: { path: string; name: string };
+  tagAdded: { path: string; name: string };
+  tagRemoved: { path: string; name: string };
+
+  // 게임 실행
+  gamePlayed: { executablePath: string };
+
+  // 썸네일 관리
+  thumbnailSet: { path: string; thumbnailPath: string };
+  thumbnailHidden: { path: string };
+  unusedThumbnailsCleaned: { deletedCount: number; freedSpace: number };
+  gameImagesLoaded: { images: GameImageItem[] };
+
+  // 실행 파일 관리
+  executablePathSet: { path: string; executablePath: string };
+  executableFileSelected: { filePaths: string[] | undefined };
+
+  // 실행 제외 목록 관리
+  excludedExecutables: { executables: string[] };
+  excludedExecutableAdded: { executable: string };
+  excludedExecutableRemoved: { executable: string };
+
+  // 라이브러리 경로 관리
+  libraryPaths: { paths: string[] };
+  libraryPathAdded: { path: string };
+  libraryPathRemoved: { path: string };
+
+  // 번역 관련
+  translationProgress: { current: number; total: number; gameTitle: string };
+  translationDone: { path: string; translatedTitle: string; source: string };
+  allTranslationsDone: { total: number; success: number; failed: number };
+  translationSettings: {
+    settings: { showTranslated: boolean; autoTranslate: boolean };
+  };
+
+  // 마지막 갱신 시간 관련
+  lastRefreshedLoaded: { timestamp: string | null };
+
+  // 라이브러리 스캔 기록 관련
+  libraryScanHistory: { path: string; history: LibraryScanInfo | null };
+  allLibraryScanHistory: { history: Record<string, LibraryScanInfo> };
+
+  // 자동 스캔 완료
+  autoScanDone: { addedCount: number };
+
+  // 통합 설정 관리
+  allSettings: { settings: StoreSchema };
+  settingsUpdated: { settings: StoreSchema };
+
+  // 플레이 타임 관련
+  playTimeLoaded: { path: string; totalPlayTime: number };
+  playSessionsLoaded: { sessions: PlaySession[] };
+  gameSessionEnded: {
+    path: string;
+    durationSeconds: number;
+    totalPlayTime: number;
+  };
+}

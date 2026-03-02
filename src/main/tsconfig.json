@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "target": "ESNext",
+    "module": "Node16",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "../../build/main",
+    "allowJs": true,
+    "noImplicitAny": false,
+    "moduleResolution": "node16"
+  },
+  "include": ["./**/*.ts"],
+  "exclude": ["static"]
+}

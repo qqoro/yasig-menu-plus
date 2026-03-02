@@ -1,0 +1,1 @@
+pnpm exec tsc --noEmit && pnpm exec tsx ./.husky/hooks/tag-validator.ts
