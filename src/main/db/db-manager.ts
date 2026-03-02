@@ -72,7 +72,7 @@ export class DBManager {
         tableName: "knex_migrations",
         extension: "js",
         directory: migrationsDirectory,
-        loadExtensions: [".js", ".ts"],
+        loadExtensions: [".js"],
       },
     };
 

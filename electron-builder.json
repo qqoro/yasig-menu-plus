@@ -49,7 +49,7 @@
   ],
   "extraResources": [
     {
-      "from": "build/main/migrations",
+      "from": "build/main/db/migrations",
       "to": "migrations",
       "filter": ["**/*"]
     }

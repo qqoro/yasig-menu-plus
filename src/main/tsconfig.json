@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "composite": true,
     "target": "ESNext",
     "module": "Node16",
     "strict": true,
@@ -10,7 +9,8 @@
     "outDir": "../../build/main",
     "allowJs": true,
     "noImplicitAny": false,
-    "moduleResolution": "node16"
+    "moduleResolution": "node16",
+    "declaration": false
   },
   "include": ["./**/*.ts"],
   "exclude": ["static"]
