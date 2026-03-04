@@ -4,7 +4,7 @@
 
 # 야식메뉴판 Plus
 
-**흩어진 게임을 한 곳에, 체계적인 라이브러리 관리**
+**나만의 게임 메뉴판, 기분 따라 골라보세요**
 
 [![Version](https://img.shields.io/github/v/release/qqoro/yasig-menu-plus?style=flat-square&label=Version&color=2ea043)](https://github.com/qqoro/yasig-menu-plus/releases)
 [![Downloads](https://img.shields.io/github/downloads/qqoro/yasig-menu-plus/total?style=flat-square&label=Downloads&color=blue)](https://github.com/qqoro/yasig-menu-plus/releases)
@@ -16,52 +16,18 @@
 
 ---
 
-## 소개
+## 핵심 기능
 
-여러 폴더에 흩어진 게임들을 자동으로 스캔하여 **하나의 라이브러리**에서 관리할 수 있는 데스크톱 애플리케이션입니다.
-Steam, DLSite, Getchu 등 다양한 플랫폼에서 썸네일과 정보를 자동으로 수집하고, 태그·평점·플레이 시간 등을 기록하여 나만의 게임 라이브러리를 완성하세요.
+- 🖼️ **이미지로 한눈에** - 썸네일 갤러리로 게임을 바로 인식
+- 🔍 **찾고 싶은 게 바로** - 고급 검색, 태그/필터, 랜덤 선택
+- ✨ **정보 자동 수집** - Steam, DLSite, Getchu에서 썸네일·메타데이터
+- ⭐ **나만의 정리** - 별점, 태그, 즐겨찾기, 플레이 시간
 
-## 주요 기능
+## 왜 야식메뉴판 Plus인가?
 
-### 라이브러리
-
-- **자동 스캔** - 폴더와 압축파일을 자동으로 감지, 앱 시작 시 변경사항 반영
-- **다중 경로** - 여러 폴더를 라이브러리로 등록하여 통합 관리
-- **실행 파일 관리** - 게임별 실행 파일 지정 또는 제외 설정
-
-### 검색
-
-- `Ctrl+F`로 즉시 검색
-- 고급 검색 문법 (`provider:dlsite`, `tag:RPG`, `circle:서클명`)
-- 한글/영문 prefix 지원 (`태그:`, `tag:`)
-- 태그, 서클, 카테고리 자동완성
-- 필터: 즐겨찾기, 숨김, 클리어, 압축파일, 외부 ID 유무
-- 정렬: 제목, 발매일, 플레이 시간, 별점, 추가일
-- 랜덤 게임 선택
-
-### 정보 수집
-
-- Steam, DLSite, Getchu, Cien, Google에서 썸네일·메타데이터 자동 수집
-- 일괄 수집 및 Google Fallback 지원
-- URL 또는 로컬 파일로 썸네일 직접 설정
-- 추가 이미지 등록 (갤러리)
-- 원본 사이트 바로가기
-
-### 게임 관리
-
-- 별점 (1~5점), 태그, 카테고리, 제작사
-- 즐겨찾기, 숨김, 클리어 표시
-- 제목 번역 (Google 번역)
-- 개인 메모
-
-### 플레이 타임
-
-- 실행 시간 자동 추적 (.exe)
-- 세션별 기록 및 마지막 플레이 시간
-
-### 테마
-
-- 컬러 테마 및 다크 모드 지원
+- **이미지 중심** - 텍스트 목록이 아닌, 썸네일로 어떤 게임인지 바로 알아봐요
+- **동인 게임에 최적화** - Steam, DLSite, Getchu 등에서 정보를 바로 가져와요
+- **가볍고 단순하게** - 복잡한 설정 없이 폴더만 지정하면 바로 시작
 
 ## 설치
 
