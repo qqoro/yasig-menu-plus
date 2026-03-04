@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { Minus, Moon, Square, Sun, X } from "lucide-vue-next";
-import { computed, onMounted } from "vue";
+import { CircleHelp, Minus, Moon, Square, Sun, X } from "lucide-vue-next";
+import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { toast, Toaster } from "vue-sonner";
 import { Button } from "./components/ui/button";
+import HelpDialog from "./components/HelpDialog.vue";
 import { initializeTheme } from "./composables/useTheme";
 import { useWindow } from "./composables/useWindow";
 import { useUIStore } from "./stores/uiStore";
@@ -29,6 +30,9 @@ const showGameCount = computed(() => uiStore.gameCount > 0);
 // 테마 아이콘
 const themeIcon = computed(() => (uiStore.isDark ? Moon : Sun));
 
+// 도움말 다이얼로그 상태
+const showHelpDialog = ref(false);
+
 onMounted(async () => {
   // 컬러 테마 초기화 (설정에서 불러오기)
   try {
@@ -45,6 +49,13 @@ onMounted(async () => {
 
   // ESC 키 전역 리스너 - 모달이 열려있지 않을 때 창 최소화
   const handleKeyDown = (event: KeyboardEvent) => {
+    // F1 키로 도움말 열기
+    if (event.key === "F1") {
+      event.preventDefault();
+      showHelpDialog.value = true;
+      return;
+    }
+
     if (event.key === "Escape") {
       // 열린 다이얼로그가 있는지 확인 (shadcn-vue/reka-ui Dialog)
       const openDialog = document.querySelector(
@@ -120,8 +131,17 @@ onMounted(async () => {
         </span>
       </div>
 
-      <!-- 오른쪽: 테마 토글 + 윈도우 컨트롤 -->
+      <!-- 오른쪽: 도움말 + 테마 토글 + 윈도우 컨트롤 -->
       <div class="no-drag flex items-center">
+        <!-- 도움말 버튼 -->
+        <Button
+          @click="showHelpDialog = true"
+          variant="ghost"
+          size="icon-sm"
+          title="도움말 (F1)"
+        >
+          <CircleHelp :size="14" />
+        </Button>
         <!-- 테마 토글 버튼 -->
         <Button
           @click="uiStore.toggleTheme"
@@ -162,6 +182,9 @@ onMounted(async () => {
 
     <!-- Toaster -->
     <Toaster rich-colors position="top-center" />
+
+    <!-- 도움말 다이얼로그 -->
+    <HelpDialog v-model:open="showHelpDialog" />
   </div>
 </template>
 
