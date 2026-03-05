@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useQueryClient } from "@tanstack/vue-query";
 import {
+  ChevronDown,
+  ChevronUp,
   Clock,
   Cookie,
   Folder,
@@ -12,8 +14,7 @@ import {
   RefreshCw,
   Trash2,
 } from "lucide-vue-next";
-import { computed, onMounted, ref } from "vue";
-import { toast } from "vue-sonner";
+import { computed, ref } from "vue";
 import { Button } from "../components/ui/button";
 import {
   Card,
@@ -59,6 +60,7 @@ import {
   useTranslationProgress,
 } from "../composables/useTranslation";
 import {
+  TitleDisplayMode,
   useSetTranslationSettings,
   useTranslationSettings,
 } from "../composables/useTranslationSettings";
@@ -122,16 +124,72 @@ const getNewCookieMutation = useGetNewCookie();
 // 번역 설정 (Vue Query 기반)
 const { data: translationSettings } = useTranslationSettings();
 
-// 번역 제목 표시 (computed로 설정에서 가져오기)
-const showTranslatedTitle = computed({
-  get: () => translationSettings.value?.showTranslated ?? false,
-  set: (value) => {
+// 제목 표시 우선순위
+const titleDisplayPriority = computed({
+  get: (): TitleDisplayMode[] =>
+    translationSettings.value?.titleDisplayPriority ?? [
+      "translated",
+      "collected",
+      "original",
+    ],
+  set: (value: TitleDisplayMode[]) => {
     setTranslationSettingsMutation.mutate({
-      showTranslated: value,
+      showTranslated: translationSettings.value?.showTranslated ?? false,
       autoTranslate: translationSettings.value?.autoTranslate ?? false,
+      titleDisplayPriority: value,
     });
   },
 });
+
+// 드래그 관련 상태
+const draggedIndex = ref<number | null>(null);
+const dragOverIndex = ref<number | null>(null);
+
+// 드래그 시작
+function handleDragStart(index: number): void {
+  draggedIndex.value = index;
+}
+
+// 드래그 오버
+function handleDragOver(event: DragEvent, index: number): void {
+  event.preventDefault();
+  dragOverIndex.value = index;
+}
+
+// 드롭
+function handleDrop(index: number): void {
+  if (draggedIndex.value === null || draggedIndex.value === index) return;
+
+  movePriorityItem(draggedIndex.value, index);
+
+  // 드래그 상태 초기화
+  draggedIndex.value = null;
+  dragOverIndex.value = null;
+}
+
+// 드래그 종료
+function handleDragEnd(): void {
+  draggedIndex.value = null;
+  dragOverIndex.value = null;
+}
+
+// 드래그 앤 드롭으로 순서 변경
+function movePriorityItem(fromIndex: number, toIndex: number): void {
+  const current = [...titleDisplayPriority.value];
+  const [removed] = current.splice(fromIndex, 1);
+  current.splice(toIndex, 0, removed);
+  titleDisplayPriority.value = current;
+}
+
+// 제목 표시 모드 라벨 반환
+function getTitleDisplayModeLabel(mode: TitleDisplayMode): string {
+  const labels: Record<TitleDisplayMode, string> = {
+    original: "원본 (폴더명)",
+    collected: "원문 (정보 수집)",
+    translated: "번역",
+  };
+  return labels[mode];
+}
 
 // 번역 관련
 const translateAllMutation = useTranslateAllTitlesMutation();
@@ -190,11 +248,6 @@ const currentTheme = computed(
 function handleSetTheme(theme: string) {
   setThemeMutation.mutate(theme);
 }
-
-// 번역 설정 초기화
-onMounted(() => {
-  // 라이브러리 스캔 기록은 자동으로 로드됨 (useLibraryScanHistory 통해)
-});
 
 /**
  * 번역 실행
@@ -729,17 +782,59 @@ function formatBytes(bytes: number): string {
             </CardDescription>
           </CardHeader>
           <CardContent class="space-y-4">
-            <!-- 번역 제목 표시 토글 -->
-            <div class="flex items-center justify-between">
-              <div class="space-y-0.5">
-                <label class="text-sm leading-none font-medium"
-                  >번역된 제목 표시</label
+            <!-- 제목 표시 우선순위 -->
+            <div class="space-y-2">
+              <label class="text-sm leading-none font-medium"
+                >제목 표시 우선순위</label
+              >
+              <p class="text-muted-foreground text-xs">
+                드래그하여 순서를 변경하세요 (위에서부터 우선)
+              </p>
+              <div class="flex flex-col gap-1">
+                <div
+                  v-for="(mode, index) in titleDisplayPriority"
+                  :key="mode"
+                  draggable="true"
+                  class="bg-muted flex cursor-grab items-center justify-between gap-2 rounded-md p-2 transition-colors active:cursor-grabbing"
+                  :class="{
+                    'bg-primary/20':
+                      dragOverIndex === index && draggedIndex !== index,
+                    'opacity-50': draggedIndex === index,
+                  }"
+                  @dragstart="handleDragStart(index)"
+                  @dragover="handleDragOver($event, index)"
+                  @drop="handleDrop(index)"
+                  @dragend="handleDragEnd"
                 >
-                <p class="text-muted-foreground text-xs">
-                  게임 카드에 번역된 제목을 표시합니다
-                </p>
+                  <span class="flex-1 text-sm">{{
+                    getTitleDisplayModeLabel(mode)
+                  }}</span>
+                  <div class="flex gap-0.5">
+                    <button
+                      v-if="index > 0"
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      class="shrink-0 cursor-pointer"
+                      @click.stop="movePriorityItem(index, index - 1)"
+                      title="위로 이동"
+                    >
+                      <ChevronUp :size="14" />
+                    </button>
+                    <button
+                      v-if="index < titleDisplayPriority.length - 1"
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      class="shrink-0 cursor-pointer"
+                      @click.stop="movePriorityItem(index, index + 1)"
+                      title="아래로 이동"
+                    >
+                      <ChevronDown :size="14" />
+                    </button>
+                  </div>
+                </div>
               </div>
-              <Switch v-model="showTranslatedTitle" />
             </div>
 
             <!-- 진행 상태 -->

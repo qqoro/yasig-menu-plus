@@ -17,6 +17,24 @@ export interface LibraryScanInfo {
 }
 
 /**
+ * 제목 표시 우선순위 타입
+ * 배열 순서대로 표시할 제목을 결정 (앞쪽이 우선)
+ * - original: 원본 (폴더명)
+ * - collected: 원문 (정보 수집 제목)
+ * - translated: 번역
+ */
+export type TitleDisplayMode = "original" | "collected" | "translated";
+
+/**
+ * 기본 제목 표시 우선순위 (번역 > 원문 > 원본)
+ */
+export const DEFAULT_TITLE_DISPLAY_PRIORITY: TitleDisplayMode[] = [
+  "translated",
+  "collected",
+  "original",
+];
+
+/**
  * 설정 스토어 타입 정의
  */
 export interface StoreSchema {
@@ -24,8 +42,9 @@ export interface StoreSchema {
   googleCookie?: string; // Google NID 쿠키 (세이프서치 해제용)
   libraryPaths: string[]; // 라이브러리 경로 목록
   translationSettings: {
-    showTranslated: boolean; // 번역 제목 표시 여부
+    showTranslated: boolean; // 번역 제목 표시 여부 (하위 호환성 유지)
     autoTranslate: boolean; // 자동 번역 여부
+    titleDisplayPriority?: TitleDisplayMode[]; // 제목 표시 우선순위
   };
   thumbnailSettings: {
     blurEnabled: boolean; // 썸네일 블러 활성화 여부
@@ -57,6 +76,7 @@ const DEFAULTS: StoreSchema = {
   translationSettings: {
     showTranslated: true,
     autoTranslate: false,
+    titleDisplayPriority: DEFAULT_TITLE_DISPLAY_PRIORITY,
   },
   thumbnailSettings: {
     blurEnabled: false,
@@ -186,7 +206,13 @@ export function getTranslationSettings(): StoreSchema["translationSettings"] {
     return {
       showTranslated: true,
       autoTranslate: false,
+      titleDisplayPriority: DEFAULT_TITLE_DISPLAY_PRIORITY,
     };
+  }
+
+  // titleDisplayPriority가 없으면 기본값 추가
+  if (!settings.titleDisplayPriority) {
+    settings.titleDisplayPriority = DEFAULT_TITLE_DISPLAY_PRIORITY;
   }
 
   return settings;

@@ -96,10 +96,14 @@ const isSettingThumbnail = ref(false);
 const isRunningCollector = ref(false);
 
 // 편집 모드 상태
+const isEditingOriginalTitle = ref(false);
 const isEditingTitle = ref(false);
+const isEditingTranslatedTitle = ref(false);
 const isEditingPublishDate = ref(false);
 const isEditingMemo = ref(false);
+const editedOriginalTitle = ref("");
 const editedTitle = ref("");
+const editedTranslatedTitle = ref("");
 const editedPublishDate = ref("");
 const editedMemo = ref("");
 
@@ -190,10 +194,14 @@ watch(
 );
 
 function resetEditStates() {
+  isEditingOriginalTitle.value = false;
   isEditingTitle.value = false;
+  isEditingTranslatedTitle.value = false;
   isEditingPublishDate.value = false;
   isEditingMemo.value = false;
+  editedOriginalTitle.value = game.value?.originalTitle || "";
   editedTitle.value = game.value?.title || "";
+  editedTranslatedTitle.value = game.value?.translatedTitle || "";
   editedPublishDate.value = formattedPublishDate.value || "";
   editedMemo.value = game.value?.memo || "";
   thumbnailUrlInput.value = "";
@@ -320,7 +328,24 @@ async function handleToggleClear() {
   }
 }
 
-// 제목 저장
+// 원본 제목 저장
+async function saveOriginalTitle() {
+  if (!props.gamePath || !editedOriginalTitle.value.trim()) return;
+
+  try {
+    await updateMetadata.mutateAsync({
+      path: props.gamePath,
+      metadata: { originalTitle: editedOriginalTitle.value.trim() },
+    });
+    isEditingOriginalTitle.value = false;
+    toast.success("원본 제목이 수정되었습니다.");
+    emit("updated");
+  } catch (error) {
+    toast.error("원본 제목 수정에 실패했습니다.");
+  }
+}
+
+// 원문 제목 저장
 async function saveTitle() {
   if (!props.gamePath || !editedTitle.value.trim()) return;
 
@@ -330,10 +355,27 @@ async function saveTitle() {
       metadata: { title: editedTitle.value.trim() },
     });
     isEditingTitle.value = false;
-    toast.success("제목이 수정되었습니다.");
+    toast.success("원문 제목이 수정되었습니다.");
     emit("updated");
   } catch (error) {
-    toast.error("제목 수정에 실패했습니다.");
+    toast.error("원문 제목 수정에 실패했습니다.");
+  }
+}
+
+// 번역 제목 저장
+async function saveTranslatedTitle() {
+  if (!props.gamePath) return;
+
+  try {
+    await updateMetadata.mutateAsync({
+      path: props.gamePath,
+      metadata: { translatedTitle: editedTranslatedTitle.value.trim() || null },
+    });
+    isEditingTranslatedTitle.value = false;
+    toast.success("번역 제목이 수정되었습니다.");
+    emit("updated");
+  } catch (error) {
+    toast.error("번역 제목 수정에 실패했습니다.");
   }
 }
 
@@ -375,10 +417,18 @@ async function saveMemo() {
 }
 
 // 편집 취소
-function cancelEdit(field: "title" | "publishDate" | "memo") {
-  if (field === "title") {
+function cancelEdit(
+  field: "originalTitle" | "title" | "translatedTitle" | "publishDate" | "memo",
+) {
+  if (field === "originalTitle") {
+    isEditingOriginalTitle.value = false;
+    editedOriginalTitle.value = game.value?.originalTitle || "";
+  } else if (field === "title") {
     isEditingTitle.value = false;
     editedTitle.value = game.value?.title || "";
+  } else if (field === "translatedTitle") {
+    isEditingTranslatedTitle.value = false;
+    editedTranslatedTitle.value = game.value?.translatedTitle || "";
   } else if (field === "publishDate") {
     isEditingPublishDate.value = false;
     editedPublishDate.value = formattedPublishDate.value || "";
@@ -790,10 +840,10 @@ async function handleRatingChange(rating: number | null) {
 
           <!-- 정보 영역 -->
           <div class="flex-1 space-y-4">
-            <!-- 제목 -->
+            <!-- 원문 제목 (정보 수집) - 가장 강조 -->
             <div>
               <label class="text-muted-foreground text-sm font-medium"
-                >제목</label
+                >원문 (정보 수집)</label
               >
               <div v-if="isEditingTitle" class="mt-1 flex gap-2">
                 <Input v-model="editedTitle" @keydown.enter="saveTitle" />
@@ -816,16 +866,41 @@ async function handleRatingChange(rating: number | null) {
               </div>
             </div>
 
-            <!-- 원제목 -->
+            <!-- 원본 제목 (폴더명) -->
             <div>
               <label class="text-muted-foreground text-sm font-medium"
-                >원제목</label
+                >원본 (폴더명)</label
               >
-              <p class="mt-1 text-sm">{{ game.originalTitle }}</p>
+              <div v-if="isEditingOriginalTitle" class="mt-1 flex gap-2">
+                <Input
+                  v-model="editedOriginalTitle"
+                  @keydown.enter="saveOriginalTitle"
+                />
+                <Button size="sm" @click="saveOriginalTitle">
+                  <Check :size="14" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  @click="cancelEdit('originalTitle')"
+                >
+                  <XCircle :size="14" />
+                </Button>
+              </div>
+              <div v-else class="mt-1 flex items-center justify-between">
+                <p class="text-sm">{{ game.originalTitle }}</p>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  @click="isEditingOriginalTitle = true"
+                >
+                  <Edit2 :size="16" />
+                </Button>
+              </div>
             </div>
 
             <!-- 번역된 제목 -->
-            <div v-if="game.translatedTitle">
+            <div>
               <label class="text-muted-foreground text-sm font-medium">
                 번역된 제목
                 <span
@@ -837,7 +912,35 @@ async function handleRatingChange(rating: number | null) {
                   }})
                 </span>
               </label>
-              <p class="mt-1 text-sm">{{ game.translatedTitle }}</p>
+              <div v-if="isEditingTranslatedTitle" class="mt-1 flex gap-2">
+                <Input
+                  v-model="editedTranslatedTitle"
+                  placeholder="번역 제목 입력"
+                  @keydown.enter="saveTranslatedTitle"
+                />
+                <Button size="sm" @click="saveTranslatedTitle">
+                  <Check :size="14" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  @click="cancelEdit('translatedTitle')"
+                >
+                  <XCircle :size="14" />
+                </Button>
+              </div>
+              <div v-else class="mt-1 flex items-center justify-between">
+                <p class="text-sm">
+                  {{ game.translatedTitle || "없음" }}
+                </p>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  @click="isEditingTranslatedTitle = true"
+                >
+                  <Edit2 :size="16" />
+                </Button>
+              </div>
             </div>
 
             <!-- 번역 버튼 -->

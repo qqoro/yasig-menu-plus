@@ -83,23 +83,51 @@ function handleImageError(event: Event): void {
   (event.target as HTMLImageElement).style.display = "none";
 }
 
-// 표시할 제목 (번역 제목 또는 원제목)
+// 표시할 제목 (우선순위에 따라 선택)
 const displayTitle = computed(() => {
-  if (translationSettings.value?.showTranslated && props.game.translatedTitle) {
-    return props.game.translatedTitle;
+  const priority = translationSettings.value?.titleDisplayPriority ?? [
+    "translated",
+    "collected",
+    "original",
+  ];
+
+  for (const mode of priority) {
+    if (mode === "translated" && props.game.translatedTitle) {
+      return props.game.translatedTitle;
+    }
+    if (mode === "collected" && props.game.title) {
+      return props.game.title;
+    }
+    if (mode === "original" && props.game.originalTitle) {
+      return props.game.originalTitle;
+    }
   }
-  return props.game.title;
+
+  // 폴백: 모든 제목이 없으면 원본 제목 반환 (항상 존재)
+  return props.game.originalTitle;
 });
 
-// 제목 툴팁 (원제목 + 번역 제목)
+// 제목 툴팁 (모든 제목 표시)
 const titleTooltip = computed(() => {
+  const lines: string[] = [];
+
+  // 원본 (폴더명)
   if (
-    props.game.translatedTitle &&
-    props.game.translatedTitle !== props.game.title
+    props.game.originalTitle &&
+    props.game.originalTitle !== props.game.title
   ) {
-    return `${props.game.title}\n${props.game.translatedTitle}`;
+    lines.push(`원본: ${props.game.originalTitle}`);
   }
-  return props.game.title;
+
+  // 원문 (정보 수집)
+  lines.push(`원문: ${props.game.title}`);
+
+  // 번역
+  if (props.game.translatedTitle) {
+    lines.push(`번역: ${props.game.translatedTitle}`);
+  }
+
+  return lines.join("\n");
 });
 
 // 플레이 핸들러

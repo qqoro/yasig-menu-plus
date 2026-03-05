@@ -5,7 +5,11 @@
  */
 
 // StoreSchema 타입 import (순환 참조 방지를 위해 type import 사용)
-import type { LibraryScanInfo, StoreSchema } from "./store.js";
+import type {
+  LibraryScanInfo,
+  StoreSchema,
+  TitleDisplayMode,
+} from "./store.js";
 
 // ========== Renderer → Main 이벤트 ==========
 export const enum IpcRendererSend {
@@ -353,7 +357,10 @@ export interface IpcRendererEventMap {
   updateGameMetadata: {
     path: string;
     metadata: Partial<
-      Pick<GameItem, "title" | "publishDate"> & { memo: string | null }
+      Pick<
+        GameItem,
+        "title" | "originalTitle" | "translatedTitle" | "publishDate"
+      > & { memo: string | null }
     >;
   };
   updateRating: { path: string; rating: number | null };
@@ -390,7 +397,11 @@ export interface IpcRendererEventMap {
   translateAllTitles: { force?: boolean };
   getTranslationSettings: undefined;
   setTranslationSettings: {
-    settings: { showTranslated: boolean; autoTranslate: boolean };
+    settings: {
+      showTranslated: boolean;
+      autoTranslate: boolean;
+      titleDisplayPriority?: TitleDisplayMode[];
+    };
   };
 
   // 마지막 갱신 시간 관련
@@ -499,7 +510,11 @@ export interface IpcMainEventMap {
   translationDone: { path: string; translatedTitle: string; source: string };
   allTranslationsDone: { total: number; success: number; failed: number };
   translationSettings: {
-    settings: { showTranslated: boolean; autoTranslate: boolean };
+    settings: {
+      showTranslated: boolean;
+      autoTranslate: boolean;
+      titleDisplayPriority?: TitleDisplayMode[];
+    };
   };
 
   // 마지막 갱신 시간 관련

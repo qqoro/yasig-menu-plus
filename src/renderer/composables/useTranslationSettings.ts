@@ -7,9 +7,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { queryKeys } from "../queryKeys";
 
+/**
+ * 제목 표시 우선순위 타입
+ * 배열 순서대로 표시할 제목을 결정 (앞쪽이 우선)
+ * - original: 원본 (폴더명)
+ * - collected: 원문 (정보 수집 제목)
+ * - translated: 번역
+ */
+export type TitleDisplayMode = "original" | "collected" | "translated";
+
 interface TranslationSettings {
   showTranslated: boolean;
   autoTranslate: boolean;
+  titleDisplayPriority: TitleDisplayMode[];
 }
 
 /**

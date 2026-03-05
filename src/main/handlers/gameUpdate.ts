@@ -25,6 +25,8 @@ export async function updateGameMetadata(
   path: string,
   metadata: {
     title?: string;
+    originalTitle?: string;
+    translatedTitle?: string | null;
     publishDate?: Date | string | null;
     memo?: string | null;
   },
@@ -36,6 +38,14 @@ export async function updateGameMetadata(
 
   if (metadata.title !== undefined) {
     updates.title = metadata.title;
+  }
+
+  if (metadata.originalTitle !== undefined) {
+    updates.originalTitle = metadata.originalTitle;
+  }
+
+  if (metadata.translatedTitle !== undefined) {
+    updates.translatedTitle = metadata.translatedTitle;
   }
 
   if (metadata.publishDate !== undefined) {
