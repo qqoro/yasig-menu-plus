@@ -22,7 +22,7 @@
     "postinstall": "electron-builder install-app-deps",
     "lint": "oxlint",
     "format": "prettier src/ --write",
-    "type-check": "tsc --noEmit && vue-tsc --noEmit",
+    "type-check": "tsc --noEmit -p src/main/tsconfig.json && vue-tsc -p src/renderer/tsconfig.json --noEmit",
     "lint-staged": "lint-staged",
     "test": "vitest run",
     "test:watch": "vitest"

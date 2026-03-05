@@ -35,6 +35,8 @@ export function useUpdateMetadata() {
       path: string;
       metadata: {
         title?: string;
+        originalTitle?: string;
+        translatedTitle?: string | null;
         publishDate?: Date | null;
         memo?: string | null;
       };
