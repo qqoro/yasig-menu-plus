@@ -125,8 +125,12 @@ export async function saveInfo(path: string, info: CollectorResult) {
 
   // 썸네일 다운로드 (항상 먼저)
   if (thumbnailUrl) {
-    thumbnailPath = await downloadImage(thumbnailUrl, path, 0);
-    downloadedPaths.push(thumbnailPath);
+    try {
+      thumbnailPath = await downloadImage(thumbnailUrl, path, 0);
+      downloadedPaths.push(thumbnailPath);
+    } catch (error) {
+      console.error(`[saveInfo] 썸네일 다운로드 실패: ${thumbnailUrl}`, error);
+    }
   }
 
   // images 배열 다운로드 (썸네일과 중복되면 건너뜀)
@@ -136,8 +140,12 @@ export async function saveInfo(path: string, info: CollectorResult) {
       continue;
     }
     // 인덱스는 이미 썸네일 하나가 있으므로 +1
-    const filePath = await downloadImage(image, path, downloadedPaths.length);
-    downloadedPaths.push(filePath);
+    try {
+      const filePath = await downloadImage(image, path, downloadedPaths.length);
+      downloadedPaths.push(filePath);
+    } catch (error) {
+      console.error(`[saveInfo] 이미지 다운로드 실패, 스킵: ${image}`, error);
+    }
   }
 
   // 3. 트랜잭션으로 DB 저장
