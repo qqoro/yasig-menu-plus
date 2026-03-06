@@ -7,8 +7,6 @@
 
 import { app, BrowserWindow, shell } from "electron";
 import pkg from "electron-updater";
-import * as fs from "fs";
-import * as path from "path";
 import { IpcMainSend } from "../events.js";
 
 const { autoUpdater } = pkg;
@@ -33,30 +31,10 @@ export class AutoUpdater {
 
   /**
    * 포터블 버전 확인
-   * 방법 1: 실행 파일명에 'portable' 포함
-   * 방법 2: uninstall.exe 없으면 포터블 (NSIS 설치버전은 있음)
+   * electron-builder가 포터블 빌드 시 PORTABLE_EXECUTABLE_DIR 환경 변수 설정
    */
   private checkPortable(): boolean {
-    // 개발 환경에서는 포터블로 간주하지 않음
-    if (!app.isPackaged) {
-      return false;
-    }
-
-    const exePath = process.execPath.toLowerCase();
-
-    // 방법 1: 실행 파일명에 'portable' 포함
-    if (exePath.includes("portable")) {
-      return true;
-    }
-
-    // 방법 2: uninstall.exe 없으면 포터블
-    const appDir = path.dirname(exePath);
-    const uninstallPath = path.join(appDir, "uninstall.exe");
-    if (!fs.existsSync(uninstallPath)) {
-      return true;
-    }
-
-    return false;
+    return !!process.env.PORTABLE_EXECUTABLE_DIR;
   }
 
   /**
