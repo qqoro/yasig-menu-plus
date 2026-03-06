@@ -8,6 +8,7 @@ import { dbManager } from "./db/db-manager.js";
 import { IpcMainSend, IpcRendererSend } from "./events.js";
 
 // 핸들러 임포트
+import * as AutoUpdateHandlers from "./handlers/autoUpdate.js";
 import * as CollectorHandlers from "./handlers/collector.js";
 import {
   selectExecutableFileHandler,
@@ -54,7 +55,8 @@ import {
   minimizeWindowHandler,
 } from "./handlers/windows.js";
 import { processMonitor } from "./services/ProcessMonitor.js";
-import { getAutoScanOnStartup } from "./store.js";
+import { autoUpdaterService } from "./services/AutoUpdater.js";
+import { getAutoScanOnStartup, getAutoUpdateSettings } from "./store.js";
 
 log.initialize();
 export const console = log;
@@ -175,6 +177,9 @@ function createWindow() {
 
   // ProcessMonitor에 메인 윈도우 설정
   processMonitor.setMainWindow(mainWindow);
+
+  // AutoUpdater에 메인 윈도우 설정
+  autoUpdaterService.setMainWindow(mainWindow);
 
   // 윈도우 포커스 시 자동 스캔 (설정된 경우)
   mainWindow.on("focus", async () => {
@@ -336,6 +341,28 @@ function registerIpcHandlers() {
   // ========== 플레이 타임 관련 ==========
   ipcMain.handle(IpcRendererSend.GetPlayTime, getPlayTimeHandler);
   ipcMain.handle(IpcRendererSend.GetPlaySessions, getPlaySessionsHandler);
+
+  // ========== 자동 업데이트 관련 ==========
+  ipcMain.handle(
+    IpcRendererSend.CheckForUpdate,
+    AutoUpdateHandlers.checkForUpdateHandler,
+  );
+  ipcMain.handle(
+    IpcRendererSend.DownloadUpdate,
+    AutoUpdateHandlers.downloadUpdateHandler,
+  );
+  ipcMain.handle(
+    IpcRendererSend.InstallUpdate,
+    AutoUpdateHandlers.installUpdateHandler,
+  );
+  ipcMain.handle(
+    IpcRendererSend.GetAutoUpdateSettings,
+    AutoUpdateHandlers.getAutoUpdateSettingsHandler,
+  );
+  ipcMain.handle(
+    IpcRendererSend.SetAutoUpdateSettings,
+    AutoUpdateHandlers.setAutoUpdateSettingsHandler,
+  );
 }
 
 app.whenReady().then(async () => {
@@ -368,6 +395,18 @@ app.whenReady().then(async () => {
         console.error("자동 스캔 오류:", error);
       }
     }, 1000); // 1초 후 실행
+  }
+
+  // 앱 시작 시 자동 업데이트 확인 (설정된 경우)
+  const autoUpdateSettings = getAutoUpdateSettings();
+  if (autoUpdateSettings.checkOnStartup) {
+    setTimeout(async () => {
+      try {
+        await autoUpdaterService.checkForUpdates();
+      } catch (error) {
+        console.error("자동 업데이트 확인 오류:", error);
+      }
+    }, 2000); // 2초 후 실행
   }
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {

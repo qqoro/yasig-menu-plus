@@ -105,6 +105,13 @@ export const enum IpcRendererSend {
   // 플레이 타임 관련
   GetPlayTime = "getPlayTime", // 게임 플레이 타임 조회
   GetPlaySessions = "getPlaySessions", // 플레이 세션 목록 조회
+
+  // 자동 업데이트 관련
+  CheckForUpdate = "checkForUpdate", // 업데이트 확인
+  DownloadUpdate = "downloadUpdate", // 업데이트 다운로드
+  InstallUpdate = "installUpdate", // 업데이트 설치
+  GetAutoUpdateSettings = "getAutoUpdateSettings", // 자동 업데이트 설정 조회
+  SetAutoUpdateSettings = "setAutoUpdateSettings", // 자동 업데이트 설정 저장
 }
 
 // ========== Main → Renderer 이벤트 ==========
@@ -179,6 +186,14 @@ export const enum IpcMainSend {
   PlayTimeLoaded = "playTimeLoaded", // 플레이 타임 로드 완료
   PlaySessionsLoaded = "playSessionsLoaded", // 플레이 세션 로드 완료
   GameSessionEnded = "gameSessionEnded", // 게임 세션 종료
+
+  // 자동 업데이트 관련
+  UpdateChecking = "updateChecking", // 업데이트 확인 중
+  UpdateAvailable = "updateAvailable", // 업데이트 있음
+  UpdateNotAvailable = "updateNotAvailable", // 업데이트 없음
+  UpdateDownloadProgress = "updateDownloadProgress", // 다운로드 진행률
+  UpdateDownloaded = "updateDownloaded", // 다운로드 완료
+  UpdateError = "updateError", // 업데이트 오류
 }
 
 /**
@@ -227,7 +242,13 @@ export type IpcMainSendChannel =
   | "settingsUpdated"
   | "playTimeLoaded"
   | "playSessionsLoaded"
-  | "gameSessionEnded";
+  | "gameSessionEnded"
+  | "updateChecking"
+  | "updateAvailable"
+  | "updateNotAvailable"
+  | "updateDownloadProgress"
+  | "updateDownloaded"
+  | "updateError";
 
 // ========== 이벤트 페이로드 타입 ==========
 
@@ -419,6 +440,13 @@ export interface IpcRendererEventMap {
   // 플레이 타임 관련
   getPlayTime: { path: string };
   getPlaySessions: { path: string; limit?: number };
+
+  // 자동 업데이트 관련
+  checkForUpdate: undefined;
+  downloadUpdate: undefined;
+  installUpdate: undefined;
+  getAutoUpdateSettings: undefined;
+  setAutoUpdateSettings: { settings: { checkOnStartup: boolean } };
 }
 
 // Main → Renderer 페이로드
@@ -539,4 +567,16 @@ export interface IpcMainEventMap {
     durationSeconds: number;
     totalPlayTime: number;
   };
+
+  // 자동 업데이트 관련
+  updateChecking: undefined;
+  updateAvailable: { version: string; releaseDate: string };
+  updateNotAvailable: undefined;
+  updateDownloadProgress: {
+    percent: number;
+    transferred: number;
+    total: number;
+  };
+  updateDownloaded: { version: string };
+  updateError: { error: string };
 }

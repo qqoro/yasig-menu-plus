@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { useQueryClient } from "@tanstack/vue-query";
+import { version as APP_VERSION } from "../../../package.json";
 import {
   ChevronDown,
   ChevronUp,
   Clock,
   Cookie,
+  Download,
   Folder,
   FolderOpen,
   Home,
@@ -65,6 +67,7 @@ import {
   useSetTranslationSettings,
   useTranslationSettings,
 } from "../composables/useTranslationSettings";
+import { useAutoUpdate } from "../composables/useAutoUpdate";
 import { themeList } from "../lib/themeList";
 
 // 라이브러리 스캔 기록 타입
@@ -239,6 +242,38 @@ const cleanThumbnailsMutation = useCleanThumbnails();
 // 테마 설정
 const { data: themeSettings } = useThemeSettings();
 const setThemeMutation = useSetTheme();
+
+// 자동 업데이트 관련
+const {
+  status: updateStatus,
+  updateInfo,
+  progress: downloadProgress,
+  error: updateError,
+  isPortable,
+  isChecking,
+  isDownloading,
+  isUpdateAvailable,
+  isReadyToInstall,
+  hasError: hasUpdateError,
+  checkForUpdates,
+  downloadUpdate,
+  installUpdate,
+  isCheckPending,
+  isDownloadPending,
+} = useAutoUpdate();
+
+// 자동 업데이트 설정 (computed)
+const checkOnStartup = computed({
+  get: () => settings.value?.autoUpdateSettings?.checkOnStartup ?? true,
+  set: (value) => {
+    updateSettingsMutation.mutate({
+      autoUpdateSettings: {
+        ...settings.value?.autoUpdateSettings,
+        checkOnStartup: value,
+      },
+    });
+  },
+});
 
 // 현재 선택된 테마
 const currentTheme = computed(
@@ -1037,6 +1072,142 @@ function formatBytes(bytes: number): string {
                   ? "설정 중..."
                   : "Google 쿠키 설정"
               }}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <!-- 업데이트 설정 -->
+        <Card>
+          <CardHeader class="pb-4">
+            <CardTitle class="text-lg">업데이트</CardTitle>
+            <CardDescription class="text-sm">
+              앱 업데이트 확인 및 설치
+            </CardDescription>
+          </CardHeader>
+          <CardContent class="space-y-4">
+            <!-- 현재 버전 -->
+            <div class="text-muted-foreground text-sm">
+              현재 버전: {{ APP_VERSION }}
+            </div>
+
+            <!-- 자동 확인 설정 -->
+            <div class="flex items-center justify-between">
+              <div class="space-y-0.5">
+                <label class="text-sm leading-none font-medium"
+                  >시작 시 자동 확인</label
+                >
+                <p class="text-muted-foreground text-xs">
+                  앱 시작 시 업데이트를 자동으로 확인합니다
+                </p>
+              </div>
+              <Switch v-model="checkOnStartup" />
+            </div>
+
+            <!-- 상태 표시 -->
+            <div
+              v-if="isChecking || isCheckPending"
+              class="flex items-center gap-2"
+            >
+              <Loader2 class="h-4 w-4 animate-spin" />
+              <span class="text-sm">업데이트 확인 중...</span>
+            </div>
+
+            <div
+              v-else-if="isDownloading || isDownloadPending"
+              class="space-y-2"
+            >
+              <div class="flex items-center gap-2">
+                <Loader2 class="h-4 w-4 animate-spin" />
+                <span class="text-sm">다운로드 중...</span>
+              </div>
+              <div v-if="downloadProgress" class="space-y-1">
+                <div class="bg-muted h-2 w-full overflow-hidden rounded-full">
+                  <div
+                    class="bg-primary h-full transition-all"
+                    :style="{
+                      width: `${downloadProgress.percent}%`,
+                    }"
+                  ></div>
+                </div>
+                <div class="text-muted-foreground flex justify-between text-xs">
+                  <span>{{ downloadProgress.percent.toFixed(1) }}%</span>
+                  <span>
+                    {{ formatBytes(downloadProgress.transferred) }} /
+                    {{ formatBytes(downloadProgress.total) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div v-else-if="isReadyToInstall" class="space-y-2">
+              <div class="text-sm text-green-500">
+                v{{ updateInfo?.version }} 다운로드 완료
+              </div>
+              <Button @click="installUpdate" variant="default" class="w-full">
+                지금 재시작하여 설치
+              </Button>
+            </div>
+
+            <div
+              v-else-if="updateStatus === 'not-available'"
+              class="text-muted-foreground text-sm"
+            >
+              최신 버전입니다.
+            </div>
+
+            <div v-else-if="hasUpdateError" class="text-destructive text-sm">
+              오류: {{ updateError }}
+            </div>
+
+            <!-- 업데이트 있음 (포터블 안내) -->
+            <div
+              v-if="isPortable && isUpdateAvailable"
+              class="bg-muted/50 rounded-md p-3"
+            >
+              <p class="text-sm">
+                포터블 버전은 자동 업데이트가 지원되지 않습니다.
+              </p>
+              <Button
+                @click="downloadUpdate"
+                variant="outline"
+                class="mt-2 w-full"
+              >
+                <Download :size="16" />
+                다운로드 페이지 열기
+              </Button>
+            </div>
+
+            <!-- 업데이트 있음 (설치 버전) -->
+            <div v-else-if="!isPortable && isUpdateAvailable" class="space-y-2">
+              <div class="text-sm">
+                새 버전 v{{ updateInfo?.version }}을(를) 사용할 수 있습니다.
+              </div>
+              <Button
+                @click="downloadUpdate"
+                :disabled="isDownloading || isDownloadPending"
+                variant="default"
+                class="w-full"
+              >
+                <Download :size="16" />
+                다운로드
+              </Button>
+            </div>
+
+            <!-- 수동 확인 버튼 -->
+            <Button
+              v-if="
+                !isChecking &&
+                !isDownloading &&
+                !isReadyToInstall &&
+                !isCheckPending &&
+                !isDownloadPending
+              "
+              @click="checkForUpdates"
+              variant="secondary"
+              class="w-full"
+            >
+              <RefreshCw class="h-4 w-4" />
+              업데이트 확인
             </Button>
           </CardContent>
         </Card>

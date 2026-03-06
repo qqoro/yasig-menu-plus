@@ -2,32 +2,13 @@
  * 렌더러 공용 타입 정의
  */
 
-/**
- * 라이브러리 스캔 정보
- */
-export interface LibraryScanInfo {
-  lastScannedAt: string;
-  lastGameCount: number;
-}
-
-/**
- * 통합 설정 스키마 (electron-store)
- */
-export interface StoreSchema {
-  excludedExecutables: string[];
-  googleCookie?: string;
-  libraryPaths: string[];
-  translationSettings: {
-    showTranslated: boolean;
-    autoTranslate: boolean;
-  };
-  thumbnailSettings: {
-    blurEnabled: boolean;
-  };
-  lastRefreshedAt?: string;
-  autoScanOnStartup?: boolean;
-  libraryScanHistory?: Record<string, LibraryScanInfo>;
-}
+// Main 프로세스의 타입 재내보내기
+export type {
+  LibraryScanInfo,
+  StoreSchema,
+  TitleDisplayMode,
+  AutoUpdateSettings,
+} from "../main/store.js";
 
 export interface GameItem {
   path: string;

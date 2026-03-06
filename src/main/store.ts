@@ -17,6 +17,13 @@ export interface LibraryScanInfo {
 }
 
 /**
+ * 자동 업데이트 설정
+ */
+export interface AutoUpdateSettings {
+  checkOnStartup: boolean; // 앱 시작 시 자동 업데이트 확인
+}
+
+/**
  * 제목 표시 우선순위 타입
  * 배열 순서대로 표시할 제목을 결정 (앞쪽이 우선)
  * - original: 원본 (폴더명)
@@ -53,6 +60,7 @@ export interface StoreSchema {
   autoScanOnStartup?: boolean; // 앱 시작 시 자동 스캔 여부
   libraryScanHistory?: Record<string, LibraryScanInfo>; // 경로별 스캔 기록
   colorTheme?: string; // 컬러 테마 (예: "default", "catppuccin", "cyberpunk")
+  autoUpdateSettings?: AutoUpdateSettings; // 자동 업데이트 설정
 }
 
 /**
@@ -84,6 +92,9 @@ const DEFAULTS: StoreSchema = {
   autoScanOnStartup: false,
   libraryScanHistory: {},
   colorTheme: "default",
+  autoUpdateSettings: {
+    checkOnStartup: true,
+  },
 };
 
 /**
@@ -261,6 +272,7 @@ export function getAllSettings(): StoreSchema {
     autoScanOnStartup: store.get("autoScanOnStartup"),
     libraryScanHistory: store.get("libraryScanHistory"),
     colorTheme: store.get("colorTheme"),
+    autoUpdateSettings: store.get("autoUpdateSettings"),
   };
 }
 
@@ -356,4 +368,28 @@ export function updateLibraryScanHistory(
 export function getAllLibraryScanHistory(): Record<string, LibraryScanInfo> {
   const store = getStore();
   return store.get("libraryScanHistory") || {};
+}
+
+/**
+ * 자동 업데이트 설정 가져오기
+ */
+export function getAutoUpdateSettings(): AutoUpdateSettings {
+  const store = getStore();
+  const settings = store.get("autoUpdateSettings");
+  if (!settings) {
+    return { checkOnStartup: true };
+  }
+  return settings;
+}
+
+/**
+ * 자동 업데이트 설정 업데이트
+ */
+export function setAutoUpdateSettings(
+  settings: Partial<AutoUpdateSettings>,
+): void {
+  const store = getStore();
+  const current = getAutoUpdateSettings();
+  const newSettings = { ...current, ...settings };
+  store.set("autoUpdateSettings", newSettings);
 }

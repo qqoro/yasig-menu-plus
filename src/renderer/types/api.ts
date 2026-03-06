@@ -79,6 +79,13 @@ type IpcInvokeReturn = {
   getGameImages: IpcMainEventMap["gameImagesLoaded"];
   getPlayTime: IpcMainEventMap["playTimeLoaded"];
   getPlaySessions: IpcMainEventMap["playSessionsLoaded"];
+
+  // 자동 업데이트 관련
+  checkForUpdate: { isPortable: boolean };
+  downloadUpdate: void;
+  installUpdate: void;
+  getAutoUpdateSettings: { settings: { checkOnStartup: boolean } };
+  setAutoUpdateSettings: { settings: { checkOnStartup: boolean } };
 };
 
 /**
