@@ -9,11 +9,13 @@ import {
   Download,
   Folder,
   FolderOpen,
+  Github,
   Home,
   Languages,
   Loader2,
   Plus,
   RefreshCw,
+  Star,
   Trash2,
 } from "lucide-vue-next";
 import { computed, ref } from "vue";
@@ -1209,6 +1211,39 @@ function formatBytes(bytes: number): string {
               <RefreshCw class="h-4 w-4" />
               업데이트 확인
             </Button>
+          </CardContent>
+        </Card>
+
+        <!-- GitHub 링크 -->
+        <Card>
+          <CardHeader class="pb-4">
+            <CardTitle class="text-lg">GitHub</CardTitle>
+            <CardDescription class="text-sm">
+              프로젝트 저장소에서 소스 코드를 확인하거나 이슈를 등록할 수
+              있습니다. 유용하게 사용하셨다면 Star를 눌러 응원해주세요!
+            </CardDescription>
+          </CardHeader>
+          <CardContent class="grid grid-cols-2 gap-2">
+            <a
+              href="https://github.com/qqoro/yasig-menu-plus"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="outline" class="w-full">
+                <Star :size="18" />
+                Star 하기
+              </Button>
+            </a>
+            <a
+              href="https://github.com/qqoro/yasig-menu-plus/issues"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="outline" class="w-full">
+                <Github :size="18" />
+                이슈 제보하기
+              </Button>
+            </a>
           </CardContent>
         </Card>
       </div>
