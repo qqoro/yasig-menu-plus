@@ -83,14 +83,14 @@ const handleWheel = (e: WheelEvent) => {
         <!-- 이전/다음 버튼 -->
         <Button
           v-if="currentIndex > 0"
-          @click="prevImage"
+          @click.stop="prevImage"
           class="bg-primary/30 hover:bg-primary-foreground/20 absolute left-2 aspect-square size-20 backdrop-blur-xs"
         >
           <ChevronLeft class="size-12" />
         </Button>
         <Button
           v-if="currentIndex < images.length - 1"
-          @click="nextImage"
+          @click.stop="nextImage"
           class="bg-primary/30 hover:bg-primary-foreground/20 absolute right-2 aspect-square size-20 backdrop-blur-xs"
         >
           <ChevronRight class="size-12" />
