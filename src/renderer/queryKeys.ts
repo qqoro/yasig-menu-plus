@@ -56,6 +56,13 @@ export const queryKeys = {
   },
 
   /**
+   * 비활성화된 라이브러리 경로 쿼리 키
+   */
+  disabledLibraryPaths: {
+    all: ["disabledLibraryPaths"] as const,
+  },
+
+  /**
    * 통합 설정 쿼리 키
    */
   settings: {

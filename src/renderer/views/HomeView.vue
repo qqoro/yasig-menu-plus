@@ -40,12 +40,26 @@ import {
   useRandomGameMutation,
 } from "../composables/useGames";
 import { useSearch } from "../composables/useSearch";
-import { useLibraryPaths } from "../composables/useSettings";
+import {
+  useLibraryPaths,
+  useDisabledLibraryPaths,
+  useToggleLibraryPathVisibility,
+} from "../composables/useSettings";
 import { useUIStore } from "../stores/uiStore";
 import type { GameItem, SearchQuery } from "../types";
 
 // 라이브러리 경로 관리 (electron-store)
 const { data: libraryPaths } = useLibraryPaths();
+const { data: disabledLibraryPaths } = useDisabledLibraryPaths();
+const toggleLibraryPathMutation = useToggleLibraryPathVisibility();
+
+// 활성화된 라이브러리 경로만 필터링
+const activeLibraryPaths = computed(() => {
+  const all = libraryPaths.value ?? [];
+  const disabled = disabledLibraryPaths.value ?? [];
+  return all.filter((path) => !disabled.includes(path));
+});
+
 const uiStore = useUIStore();
 const addExcludedExecutable = useAddExcludedExecutable();
 const playGameMutation = usePlayGame();
@@ -81,7 +95,7 @@ const carouselGamePath = ref<string>("");
 const { data: gameImages } = useGameImages(carouselGamePath);
 
 // useSearch composable로 검색 상태 관리
-const searchState = useSearch(() => libraryPaths.value ?? []);
+const searchState = useSearch(() => activeLibraryPaths.value);
 
 // 무한 스크롤 트리거용 ref
 const loadMoreTrigger = ref<HTMLElement | null>(null);
@@ -405,10 +419,22 @@ function handleResetFilters(): void {
 }
 
 /**
+ * 라이브러리 경로 표시 토글
+ */
+async function handleToggleLibraryPath(path: string): Promise<void> {
+  try {
+    await toggleLibraryPathMutation.mutateAsync(path);
+  } catch (err) {
+    console.error("라이브러리 경로 토글 실패:", err);
+    toast.error("표시 설정 변경에 실패했습니다.");
+  }
+}
+
+/**
  * 랜덤 선택 핸들러
  */
 async function handleRandomSelect(): Promise<void> {
-  if (!libraryPaths.value || libraryPaths.value.length === 0) {
+  if (!activeLibraryPaths.value || activeLibraryPaths.value.length === 0) {
     toast.warning("라이브러리 경로가 없습니다.");
     return;
   }
@@ -438,7 +464,7 @@ async function handleRandomSelect(): Promise<void> {
       specialFilters.length > 0 ? specialFilters.join(" ") : "";
 
     const result = await randomGameMutation.mutateAsync({
-      sourcePaths: libraryPaths.value,
+      sourcePaths: activeLibraryPaths.value,
       searchQuery: {
         query: randomQuery || undefined,
         filters: filters.value,
@@ -495,12 +521,12 @@ function formatLastRefreshed(date: Date): string {
  * 전체 동기화 핸들러 (폴더 스캔 → 정보 수집 → 번역)
  */
 async function handleAllInOneRefresh(): Promise<void> {
-  if (!libraryPaths.value || libraryPaths.value.length === 0) {
+  if (!activeLibraryPaths.value || activeLibraryPaths.value.length === 0) {
     toast.warning("라이브러리 경로가 없습니다.");
     return;
   }
 
-  await allInOneRefreshMutation.mutateAsync(libraryPaths.value);
+  await allInOneRefreshMutation.mutateAsync(activeLibraryPaths.value);
 }
 
 // 게임 목록 변경 시 store 업데이트
@@ -676,10 +702,13 @@ onUnmounted(() => {
             :filters="filters"
             :sort-by="sortBy"
             :sort-order="sortOrder"
+            :library-paths="libraryPaths"
+            :disabled-library-paths="disabledLibraryPaths"
             @update:filters="updateFilters"
             @update:sort-by="updateSortBy"
             @update:sort-order="updateSortOrder"
             @reset="handleResetFilters"
+            @toggle-library-path="handleToggleLibraryPath"
           />
         </div>
 

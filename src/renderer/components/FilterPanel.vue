@@ -6,6 +6,7 @@ import {
   EyeOff,
   File,
   FileArchive,
+  Folder,
   RotateCcw,
   Star,
   StarOff,
@@ -14,11 +15,14 @@ import {
 import { computed } from "vue";
 import type { SearchQuery } from "../types";
 import { Button } from "./ui/button";
+import { Switch } from "./ui/switch";
 
 interface Props {
   filters: Partial<SearchQuery["filters"]>;
   sortBy?: SearchQuery["sortBy"];
   sortOrder?: SearchQuery["sortOrder"];
+  libraryPaths?: string[];
+  disabledLibraryPaths?: string[];
 }
 
 interface Emits {
@@ -26,6 +30,7 @@ interface Emits {
   (e: "update:sortBy", value: SearchQuery["sortBy"]): void;
   (e: "update:sortOrder", value: SearchQuery["sortOrder"]): void;
   (e: "reset"): void;
+  (e: "toggleLibraryPath", path: string): void;
 }
 
 const props = defineProps<Props>();
@@ -212,6 +217,16 @@ function resetFilters(): void {
   emit("reset");
 }
 
+// 라이브러리 경로가 비활성화되었는지 확인
+function isPathDisabled(path: string): boolean {
+  return props.disabledLibraryPaths?.includes(path) ?? false;
+}
+
+// 라이브러리 경로 토글
+function toggleLibraryPath(path: string): void {
+  emit("toggleLibraryPath", path);
+}
+
 // 활성 필터 개수 계산
 const activeFilterCount = computed(() => {
   let count = 0;
@@ -225,6 +240,10 @@ const activeFilterCount = computed(() => {
   if (!filters.value.showWithExternalId && filters.value.showWithoutExternalId)
     count++;
   if (filters.value.showHidden) count++;
+  // 비활성화된 라이브러리 경로 수 추가
+  if (props.disabledLibraryPaths && props.disabledLibraryPaths.length > 0) {
+    count += props.disabledLibraryPaths.length;
+  }
   return count;
 });
 
@@ -237,32 +256,55 @@ function getSortButtonStyle(sortBy: SearchQuery["sortBy"]) {
 </script>
 
 <template>
-  <div class="bg-card flex flex-col gap-3 rounded-lg border p-4">
-    <!-- 필터 헤더 -->
-    <div class="flex items-center justify-between">
-      <h3 class="text-sm font-medium">필터</h3>
-      <div class="flex items-center gap-2">
-        <span
-          v-if="activeFilterCount > 0"
-          class="text-muted-foreground text-xs"
+  <div class="flex flex-col gap-3">
+    <!-- 라이브러리 카드 (경로가 2개 이상일 때만 표시) -->
+    <div
+      v-if="libraryPaths && libraryPaths.length > 1"
+      class="bg-card flex flex-col gap-2 rounded-lg border p-3"
+    >
+      <h3 class="text-muted-foreground text-xs font-medium">라이브러리</h3>
+      <div class="max-h-40 space-y-1 overflow-y-auto">
+        <label
+          v-for="path in libraryPaths"
+          :key="path"
+          class="hover:bg-muted/50 flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5"
         >
-          {{ activeFilterCount }}개 활성화
-        </span>
-        <Button
-          v-if="activeFilterCount > 0"
-          variant="ghost"
-          size="sm"
-          class="h-7 px-2"
-          @click="resetFilters"
-        >
-          <RotateCcw :size="14" />
-          초기화
-        </Button>
+          <Folder :size="14" class="text-muted-foreground shrink-0" />
+          <span class="min-w-0 flex-1 truncate text-xs" :title="path">
+            {{ path.split(/[/\\]/).pop() || path }}
+          </span>
+          <Switch
+            :model-value="!isPathDisabled(path)"
+            @update:model-value="toggleLibraryPath(path)"
+            class="shrink-0"
+          />
+        </label>
       </div>
     </div>
 
-    <!-- 필터 그룹 -->
-    <div class="flex flex-col gap-2">
+    <!-- 상태 필터 카드 -->
+    <div class="bg-card flex flex-col gap-2 rounded-lg border p-3">
+      <div class="flex items-center justify-between">
+        <h3 class="text-muted-foreground text-xs font-medium">상태</h3>
+        <div class="flex items-center gap-2">
+          <span
+            v-if="activeFilterCount > 0"
+            class="text-muted-foreground text-xs"
+          >
+            {{ activeFilterCount }}개 활성화
+          </span>
+          <Button
+            v-if="activeFilterCount > 0"
+            variant="ghost"
+            size="sm"
+            class="h-6 px-2 text-xs"
+            @click="resetFilters"
+          >
+            <RotateCcw :size="12" />
+            초기화
+          </Button>
+        </div>
+      </div>
       <!-- 즐겨찾기 -->
       <div class="flex gap-1">
         <Button
@@ -376,9 +418,9 @@ function getSortButtonStyle(sortBy: SearchQuery["sortBy"]) {
       </div>
     </div>
 
-    <!-- 정렬 -->
-    <div class="flex flex-col gap-2 border-t pt-2">
-      <h4 class="text-muted-foreground text-xs font-medium">정렬</h4>
+    <!-- 정렬 카드 -->
+    <div class="bg-card flex flex-col gap-2 rounded-lg border p-3">
+      <h3 class="text-muted-foreground text-xs font-medium">정렬</h3>
       <div class="grid grid-cols-2 gap-1">
         <Button
           :class="getSortButtonStyle('title')"

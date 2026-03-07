@@ -61,6 +61,7 @@ export interface StoreSchema {
   libraryScanHistory?: Record<string, LibraryScanInfo>; // 경로별 스캔 기록
   colorTheme?: string; // 컬러 테마 (예: "default", "catppuccin", "cyberpunk")
   autoUpdateSettings?: AutoUpdateSettings; // 자동 업데이트 설정
+  disabledLibraryPaths?: string[]; // 비활성화된 라이브러리 경로 목록
 }
 
 /**
@@ -95,6 +96,7 @@ const DEFAULTS: StoreSchema = {
   autoUpdateSettings: {
     checkOnStartup: true,
   },
+  disabledLibraryPaths: [],
 };
 
 /**
@@ -273,6 +275,7 @@ export function getAllSettings(): StoreSchema {
     libraryScanHistory: store.get("libraryScanHistory"),
     colorTheme: store.get("colorTheme"),
     autoUpdateSettings: store.get("autoUpdateSettings"),
+    disabledLibraryPaths: store.get("disabledLibraryPaths"),
   };
 }
 
@@ -392,4 +395,36 @@ export function setAutoUpdateSettings(
   const current = getAutoUpdateSettings();
   const newSettings = { ...current, ...settings };
   store.set("autoUpdateSettings", newSettings);
+}
+
+/**
+ * 비활성화된 라이브러리 경로 목록 가져오기
+ */
+export function getDisabledLibraryPaths(): string[] {
+  const store = getStore();
+  return store.get("disabledLibraryPaths") || [];
+}
+
+/**
+ * 비활성화된 라이브러리 경로 목록 설정
+ */
+export function setDisabledLibraryPaths(paths: string[]): void {
+  const store = getStore();
+  store.set("disabledLibraryPaths", paths);
+}
+
+/**
+ * 라이브러리 경로 비활성화 토글
+ */
+export function toggleLibraryPathDisabled(path: string): boolean {
+  const current = getDisabledLibraryPaths();
+  const index = current.indexOf(path);
+  if (index === -1) {
+    setDisabledLibraryPaths([...current, path]);
+    return true; // 비활성화됨
+  } else {
+    const filtered = current.filter((p) => p !== path);
+    setDisabledLibraryPaths(filtered);
+    return false; // 활성화됨
+  }
 }

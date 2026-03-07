@@ -84,6 +84,10 @@ export const enum IpcRendererSend {
   AddLibraryPath = "addLibraryPath", // 라이브러리 경로 추가
   RemoveLibraryPath = "removeLibraryPath", // 라이브러리 경로 제거
 
+  // 라이브러리 경로 표시 토글
+  ToggleLibraryPathVisibility = "toggleLibraryPathVisibility",
+  GetDisabledLibraryPaths = "getDisabledLibraryPaths",
+
   // 번역 관련
   TranslateTitle = "translateTitle", // 단일 게임 제목 번역
   TranslateAllTitles = "translateAllTitles", // 전체 게임 제목 번역
@@ -265,7 +269,9 @@ export type IpcMainSendChannel =
   | "updateError"
   | "duplicatesFound"
   | "gamesDeleted"
-  | "changelogResult";
+  | "changelogResult"
+  | "libraryPathVisibilityToggled"
+  | "disabledLibraryPaths";
 
 // ========== 이벤트 페이로드 타입 ==========
 
@@ -438,6 +444,10 @@ export interface IpcRendererEventMap {
   addLibraryPath: { path: string };
   removeLibraryPath: { path: string };
 
+  // 라이브러리 경로 표시 토글
+  toggleLibraryPathVisibility: { path: string };
+  getDisabledLibraryPaths: undefined;
+
   // 번역 관련
   translateTitle: { path: string; force?: boolean };
   translateAllTitles: { force?: boolean };
@@ -567,6 +577,10 @@ export interface IpcMainEventMap {
   libraryPaths: { paths: string[] };
   libraryPathAdded: { path: string };
   libraryPathRemoved: { path: string };
+
+  // 라이브러리 경로 표시 토글
+  libraryPathVisibilityToggled: { path: string; isDisabled: boolean };
+  disabledLibraryPaths: { paths: string[] };
 
   // 번역 관련
   translationProgress: { current: number; total: number; gameTitle: string };

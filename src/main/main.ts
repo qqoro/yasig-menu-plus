@@ -56,6 +56,10 @@ import {
   maximizeWindowHandler,
   minimizeWindowHandler,
 } from "./handlers/windows.js";
+import {
+  getDisabledLibraryPathsHandler,
+  toggleLibraryPathVisibilityHandler,
+} from "./handlers/libraryPathVisibility.js";
 import { processMonitor } from "./services/ProcessMonitor.js";
 import { autoUpdaterService } from "./services/AutoUpdater.js";
 import { getAutoScanOnStartup, getAutoUpdateSettings } from "./store.js";
@@ -307,6 +311,14 @@ function registerIpcHandlers() {
   ipcMain.handle(IpcRendererSend.GetLibraryPaths, getLibraryPathsHandler);
   ipcMain.handle(IpcRendererSend.AddLibraryPath, addLibraryPathHandler);
   ipcMain.handle(IpcRendererSend.RemoveLibraryPath, removeLibraryPathHandler);
+  ipcMain.handle(
+    IpcRendererSend.ToggleLibraryPathVisibility,
+    toggleLibraryPathVisibilityHandler,
+  );
+  ipcMain.handle(
+    IpcRendererSend.GetDisabledLibraryPaths,
+    getDisabledLibraryPathsHandler,
+  );
 
   // ========== 번역 관련 ==========
   ipcMain.handle(
