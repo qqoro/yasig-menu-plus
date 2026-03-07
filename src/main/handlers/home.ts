@@ -113,10 +113,142 @@ function selectBestExecutable(executables: string[]): string | null {
 }
 
 /**
+ * 재귀 스캔 컨텍스트
+ */
+interface ScanContext {
+  sourcePath: string; // 원본 라이브러리 경로
+  existingPaths: Set<string>; // DB에 있는 게임 경로
+  foundPaths: Set<string>; // 이번 스캔에서 발견한 경로
+  maxDepth: number; // 최대 스캔 깊이
+}
+
+/**
+ * 게임 후보 (폴더 또는 압축파일)
+ */
+interface GameCandidate {
+  path: string;
+  name: string;
+  isCompressFile: boolean;
+}
+
+/**
+ * 폴더에 실행 파일이 있는지 확인
+ */
+function hasExecutableFile(folderPath: string): boolean {
+  try {
+    const entries = readdirSync(folderPath, { withFileTypes: true });
+    return entries.some(
+      (entry) =>
+        entry.isFile() &&
+        EXECUTABLE_EXTENSIONS.some((ext) =>
+          entry.name.toLowerCase().endsWith(ext),
+        ),
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 단일 폴더를 스캔하여 게임 후보와 하위 폴더 목록 반환
+ */
+function scanSingleFolder(
+  folderPath: string,
+  _ctx: ScanContext,
+): { candidates: GameCandidate[]; subFolders: string[] } {
+  const candidates: GameCandidate[] = [];
+  const subFolders: string[] = [];
+
+  if (!existsSync(folderPath)) {
+    return { candidates, subFolders };
+  }
+
+  try {
+    const entries = readdirSync(folderPath, { withFileTypes: true });
+
+    for (const entry of entries) {
+      // 숨김 파일/폴더 제외
+      if (entry.name.startsWith(".")) continue;
+
+      const fullPath = join(folderPath, entry.name);
+
+      // 압축파일 확인
+      const isCompressFile = COMPRESS_FILE_TYPE.some((ext) =>
+        entry.name.toLowerCase().endsWith(ext),
+      );
+
+      if (entry.isDirectory()) {
+        // 폴더인 경우: 실행파일 확인
+        const hasExecutable = hasExecutableFile(fullPath);
+
+        if (hasExecutable) {
+          // 실행파일이 있으면 게임 후보
+          candidates.push({
+            path: fullPath,
+            name: entry.name,
+            isCompressFile: false,
+          });
+        } else {
+          // 실행파일이 없으면 하위 폴더로 스캔 예약
+          subFolders.push(fullPath);
+        }
+      } else if (isCompressFile) {
+        // 압축파일은 게임 후보
+        candidates.push({
+          path: fullPath,
+          name: entry.name,
+          isCompressFile: true,
+        });
+      }
+    }
+  } catch (error) {
+    console.error(`폴더 스캔 오류 (${folderPath}):`, error);
+  }
+
+  return { candidates, subFolders };
+}
+
+/**
+ * 폴더를 재귀적으로 스캔하여 모든 게임 후보 수집
+ */
+async function scanFolderRecursive(
+  startPath: string,
+  ctx: ScanContext,
+): Promise<GameCandidate[]> {
+  const allCandidates: GameCandidate[] = [];
+  const queue: Array<{ path: string; depth: number }> = [
+    { path: startPath, depth: 0 },
+  ];
+
+  while (queue.length > 0) {
+    const { path: currentPath, depth } = queue.shift()!;
+
+    // 최대 깊이 초과 시 스킵
+    if (depth > ctx.maxDepth) {
+      console.log(`최대 깊이 초과로 스킵: ${currentPath}`);
+      continue;
+    }
+
+    const { candidates, subFolders } = scanSingleFolder(currentPath, ctx);
+
+    // 게임 후보 수집
+    allCandidates.push(...candidates);
+
+    // 하위 폴더를 큐에 추가
+    for (const subFolder of subFolders) {
+      queue.push({ path: subFolder, depth: depth + 1 });
+    }
+  }
+
+  return allCandidates;
+}
+
+/**
  * 폴더를 스캔하여 게임을 DB에 등록
  * - 새 게임 추가
  * - 기존 게임 정보 업데이트
  * - 존재하지 않는 게임 DB에서 삭제
+ * - 재귀적으로 하위 폴더를 스캔하여 게임 폴더 자동 탐지
  */
 async function scanFolder(
   sourcePath: string,
@@ -131,26 +263,26 @@ async function scanFolder(
       .where("source", sourcePath)
       .select("path");
     const existingPaths = new Set(existingGames.map((g) => g.path));
-
-    const entries = readdirSync(sourcePath, { withFileTypes: true });
     const foundPaths = new Set<string>();
     let addedCount = 0;
 
-    for (const entry of entries) {
-      const fullPath = join(sourcePath, entry.name);
+    // 스캔 컨텍스트 생성
+    const ctx: ScanContext = {
+      sourcePath,
+      existingPaths,
+      foundPaths,
+      maxDepth: 10, // 최대 10단계 깊이까지 스캔
+    };
 
-      // 폴더와 압축파일만 처리 (깊이 1단계만)
-      const isDir = entry.isDirectory();
-      const isCompressFile = COMPRESS_FILE_TYPE.some((ext) =>
-        entry.name.toLowerCase().endsWith(ext),
-      );
+    // 재귀 스캔 실행
+    const candidates = await scanFolderRecursive(sourcePath, ctx);
 
-      if (!isDir && !isCompressFile) continue;
-
-      const entryStat = statSync(fullPath);
+    // 발견한 게임 후보 등록
+    for (const candidate of candidates) {
+      const { path: fullPath, name, isCompressFile } = candidate;
 
       // 압축파일인 경우 제목에서 확장자 제거
-      let title = entry.name;
+      let title = name;
       if (isCompressFile) {
         for (const ext of COMPRESS_FILE_TYPE) {
           if (title.toLowerCase().endsWith(ext)) {
@@ -164,7 +296,7 @@ async function scanFolder(
       const gameData = {
         path: fullPath,
         title: title,
-        originalTitle: entry.name,
+        originalTitle: name,
         source: sourcePath,
         isCompressFile: Boolean(isCompressFile),
       };
@@ -181,7 +313,7 @@ async function scanFolder(
         // 기존 게임 정보 업데이트 (발견한 경우)
         // title은 정보 수집으로 변경된 값을 유지하고, originalTitle만 업데이트
         await db("games").where("path", fullPath).update({
-          originalTitle: entry.name,
+          originalTitle: name,
           source: sourcePath,
           updatedAt: new Date(),
         });
@@ -1344,23 +1476,53 @@ export async function openOriginalSiteHandler(
 /**
  * 폴더의 게임 수를 셈
  */
+/**
+ * 폴더의 게임 수를 셈 (재귀 스캔)
+ * 실행파일이 있는 폴더와 압축파일을 게임으로 간주
+ */
 function countGames(sourcePath: string): number {
   if (!existsSync(sourcePath)) {
     return 0;
   }
 
-  try {
-    const entries = readdirSync(sourcePath, { withFileTypes: true });
-    return entries.filter((entry) => {
-      const isDir = entry.isDirectory();
-      const isCompressFile = COMPRESS_FILE_TYPE.some((ext) =>
-        entry.name.toLowerCase().endsWith(ext),
-      );
-      return isDir || isCompressFile;
-    }).length;
-  } catch {
-    return 0;
+  let count = 0;
+  const queue: Array<{ path: string; depth: number }> = [
+    { path: sourcePath, depth: 0 },
+  ];
+  const maxDepth = 10;
+
+  while (queue.length > 0) {
+    const { path: currentPath, depth } = queue.shift()!;
+
+    if (depth > maxDepth) continue;
+
+    try {
+      const entries = readdirSync(currentPath, { withFileTypes: true });
+
+      for (const entry of entries) {
+        if (entry.name.startsWith(".")) continue;
+
+        const fullPath = join(currentPath, entry.name);
+        const isCompressFile = COMPRESS_FILE_TYPE.some((ext) =>
+          entry.name.toLowerCase().endsWith(ext),
+        );
+
+        if (entry.isDirectory()) {
+          if (hasExecutableFile(fullPath)) {
+            count++;
+          } else {
+            queue.push({ path: fullPath, depth: depth + 1 });
+          }
+        } else if (isCompressFile) {
+          count++;
+        }
+      }
+    } catch {
+      // 권한 등의 문제로 읽기 실패 시 스킵
+    }
   }
+
+  return count;
 }
 
 /**
