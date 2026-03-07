@@ -114,6 +114,67 @@ onMounted(async () => {
       });
     },
   );
+
+  // 업데이트 발견 시 토스트 표시 (포터블/일반 분기)
+  window.api.on(
+    "updateAvailable",
+    (data: { version: string; releaseDate: string; isPortable: boolean }) => {
+      if (data.isPortable) {
+        // 포터블: GitHub Releases 페이지로 안내
+        toast.info(`새 버전 v${data.version}을 사용할 수 있습니다`, {
+          description: "포터블 버전은 자동 업데이트를 지원하지 않습니다",
+          duration: Infinity,
+          action: {
+            label: "다운로드 페이지",
+            onClick: async () => {
+              await window.api.invoke("downloadUpdate"); // AutoUpdater가 shell.openExternal 호출
+            },
+          },
+        });
+      } else {
+        // 일반: 자동 다운로드→설치
+        toast.info(`새 버전 v${data.version}을 사용할 수 있습니다`, {
+          description: "설치하기를 누르면 자동으로 다운로드 후 재시작합니다",
+          duration: Infinity,
+          action: {
+            label: "설치하기",
+            onClick: async () => {
+              await window.api.invoke("downloadUpdate");
+            },
+          },
+        });
+      }
+    },
+  );
+
+  // 다운로드 진행률 표시 (일반 버전만)
+  window.api.on(
+    "updateDownloadProgress",
+    (data: { percent: number; transferred: number; total: number }) => {
+      toast.info(`업데이트 다운로드 중... ${data.percent.toFixed(0)}%`, {
+        id: "update-download",
+        duration: Infinity,
+      });
+    },
+  );
+
+  // 다운로드 완료 시 자동 설치 (일반 버전만)
+  window.api.on("updateDownloaded", (data: { version: string }) => {
+    toast.dismiss("update-download");
+    toast.success(`v${data.version} 다운로드 완료! 앱을 재시작합니다.`, {
+      duration: 2000,
+    });
+    setTimeout(() => {
+      window.api.invoke("installUpdate");
+    }, 2000);
+  });
+
+  // 업데이트 오류
+  window.api.on("updateError", (data: { error: string }) => {
+    toast.error("업데이트 오류", {
+      description: data.error,
+    });
+  });
 });
 </script>
 

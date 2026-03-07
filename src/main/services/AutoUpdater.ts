@@ -51,6 +51,7 @@ export class AutoUpdater {
       this.send(IpcMainSend.UpdateAvailable, {
         version: info.version,
         releaseDate: info.releaseDate,
+        isPortable: this.isPortable,
       });
     });
 

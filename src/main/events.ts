@@ -592,7 +592,11 @@ export interface IpcMainEventMap {
 
   // 자동 업데이트 관련
   updateChecking: undefined;
-  updateAvailable: { version: string; releaseDate: string };
+  updateAvailable: {
+    version: string;
+    releaseDate: string;
+    isPortable: boolean;
+  };
   updateNotAvailable: undefined;
   updateDownloadProgress: {
     percent: number;
