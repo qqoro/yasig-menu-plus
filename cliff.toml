@@ -1,0 +1,53 @@
+# git-cliff 설정 파일
+# https://git-cliff.org/docs/configuration
+
+[changelog]
+# changelog 헤더
+header = """
+"""
+# changelog 본문 템플릿
+body = """
+## {{ version }} ({{ date | date(format="%Y-%m-%d") }})
+
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim }}
+{% for commit in commits %}
+- {% if commit.scope %}{{ commit.scope }}: {% endif %}{{ commit.message | upper_first }}
+{% endfor %}
+{% endfor %}
+
+### 전체 변경사항
+{{ previous.version }}...{{ version }}
+"""
+# changelog 푸터
+footer = ""
+# 템플릿에서 trim 처리
+trim = true
+
+[git]
+# 정규식으로 커밋 파싱
+conventional_commits = true
+# 커밋 필터링 (머지 커밋 제외)
+filter_commits = false
+# 태그 패턴
+tag_pattern = "v[0-9]*"
+
+# 커밋 그룹 정의 (한국어)
+commit_parsers = [
+  { message = "^feat", group = "✨ 새로운 기능" },
+  { message = "^fix", group = "🐛 버그 수정" },
+  { message = "^refactor", group = "🔧 리팩터링" },
+  { message = "^perf", group = "⚡ 성능 개선" },
+  { message = "^docs", group = "📝 문서" },
+  { message = "^test", group = "🧪 테스트" },
+  { message = "^build", group = "📦 빌드" },
+  { message = "^ci", group = "👷 CI/CD" },
+  { message = "^chore", group = "📦 기타" },
+  { message = "^style", group = "🎨 스타일" },
+]
+
+# 링크 생성
+[git.link_parsers]
+# GitHub 이슈/PR 링크
+issue_prefixes = ["#"]
+issue_url = "https://github.com/qqoro/yasig-menu-plus/issues/{{ id }}"

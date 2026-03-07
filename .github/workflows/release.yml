@@ -19,10 +19,12 @@ jobs:
           - name: build_port_win
             cmd: build:port:win
 
-    name: Build on windows (${{ matrix.cmd  }})
+    name: Build on windows (${{ matrix.cmd }})
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -37,12 +39,12 @@ jobs:
         run: pnpm install
 
       - name: Build app
-        run: pnpm run ${{ matrix.cmd  }}
+        run: pnpm run ${{ matrix.cmd }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.name  }}
+          name: ${{ matrix.name }}
           path: |
             dist/
           if-no-files-found: ignore
@@ -52,6 +54,18 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate release notes
+        id: cliff
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: -l
+
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
@@ -62,7 +76,7 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
-          generate_release_notes: true
+          body: ${{ steps.cliff.outputs.content }}
           files: |
             artifacts/build_win/yasig-menu-plus-setup-*.exe
             artifacts/build_win/*.blockmap
