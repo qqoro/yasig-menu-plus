@@ -119,10 +119,6 @@ export const enum IpcRendererSend {
 
   // 체인지로그 관련
   GetChangelog = "getChangelog", // 체인지로그 조회
-
-  // 버전 체크 관련
-  CheckVersionChange = "checkVersionChange", // 버전 변경 확인
-  SetLastVersion = "setLastVersion", // 마지막 버전 설정
 }
 
 // ========== Main → Renderer 이벤트 ==========
@@ -486,10 +482,6 @@ export interface IpcRendererEventMap {
     currentVersion: string;
     mode: "afterVersion" | "recent";
   };
-
-  // 버전 체크 관련
-  checkVersionChange: { currentVersion: string };
-  setLastVersion: { version: string };
 }
 
 // Main → Renderer 페이로드
@@ -641,8 +633,4 @@ export interface IpcMainEventMap {
       htmlUrl: string;
     }>;
   };
-
-  // 버전 체크 관련
-  versionChangeResult: { isVersionChanged: boolean };
-  lastVersionSet: { version: string };
 }

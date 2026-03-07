@@ -205,19 +205,6 @@ onMounted(async () => {
       description: data.error,
     });
   });
-
-  // 버전 변경 확인 및 체인지로그 표시 (첫 실행 시)
-  try {
-    const result = await window.api.invoke("checkVersionChange", {
-      currentVersion: APP_VERSION,
-    });
-    if (result.isVersionChanged) {
-      changelogMode.value = "recent";
-      showChangelogDialog.value = true;
-    }
-  } catch (error) {
-    console.error("버전 확인 실패:", error);
-  }
 });
 </script>
 

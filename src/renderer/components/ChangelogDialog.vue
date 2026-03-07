@@ -27,7 +27,7 @@ const currentVersionRef = toRef(() => props.currentVersion);
 
 const { releases, isLoading, error, hasReleases, refetch } = useChangelog(
   currentVersionRef,
-  props.mode ?? "afterVersion",
+  props.mode ?? "recent",
 );
 
 // 다이얼로그 열릴 때 데이터 다시 불러오기

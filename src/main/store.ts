@@ -61,7 +61,6 @@ export interface StoreSchema {
   libraryScanHistory?: Record<string, LibraryScanInfo>; // 경로별 스캔 기록
   colorTheme?: string; // 컬러 테마 (예: "default", "catppuccin", "cyberpunk")
   autoUpdateSettings?: AutoUpdateSettings; // 자동 업데이트 설정
-  lastVersion?: string; // 마지막으로 실행한 앱 버전 (업데이트 감지용)
 }
 
 /**
@@ -274,7 +273,6 @@ export function getAllSettings(): StoreSchema {
     libraryScanHistory: store.get("libraryScanHistory"),
     colorTheme: store.get("colorTheme"),
     autoUpdateSettings: store.get("autoUpdateSettings"),
-    lastVersion: store.get("lastVersion"),
   };
 }
 
@@ -394,20 +392,4 @@ export function setAutoUpdateSettings(
   const current = getAutoUpdateSettings();
   const newSettings = { ...current, ...settings };
   store.set("autoUpdateSettings", newSettings);
-}
-
-/**
- * 마지막으로 실행한 앱 버전 가져오기
- */
-export function getLastVersion(): string | undefined {
-  const store = getStore();
-  return store.get("lastVersion");
-}
-
-/**
- * 마지막으로 실행한 앱 버전 설정
- */
-export function setLastVersion(version: string): void {
-  const store = getStore();
-  store.set("lastVersion", version);
 }

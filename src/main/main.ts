@@ -51,7 +51,6 @@ import * as ThumbnailHandlers from "./handlers/thumbnail.js";
 import * as TranslationHandlers from "./handlers/translation.js";
 import * as DuplicatesHandlers from "./handlers/duplicates.js";
 import { setupChangelogHandler } from "./handlers/changelog.js";
-import { setupVersionCheckHandler } from "./handlers/versionCheck.js";
 import {
   closeWindowHandler,
   maximizeWindowHandler,
@@ -379,7 +378,6 @@ function registerIpcHandlers() {
 
   // ========== 체인지로그 ==========
   setupChangelogHandler(mainWindow);
-  setupVersionCheckHandler(mainWindow);
 }
 
 app.whenReady().then(async () => {

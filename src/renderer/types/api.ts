@@ -93,10 +93,6 @@ type IpcInvokeReturn = {
 
   // 체인지로그 관련
   getChangelog: IpcMainEventMap["changelogResult"];
-
-  // 버전 체크 관련
-  checkVersionChange: IpcMainEventMap["versionChangeResult"];
-  setLastVersion: IpcMainEventMap["lastVersionSet"];
 };
 
 /**
