@@ -12,3 +12,6 @@ docs/plans/
 
 TODO.md
 CLAUDE.md
+
+# Generated files
+src/renderer/assets/licenses.json
