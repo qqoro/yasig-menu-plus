@@ -628,14 +628,16 @@ onUnmounted(() => {
           <!-- 전체 동기화 버튼 -->
           <Button
             @click="handleAllInOneRefresh"
-            :disabled="allInOneRefreshMutation.isPending || isSearching"
+            :disabled="allInOneRefreshMutation.isPending.value || isSearching"
             variant="default"
             size="sm"
             title="폴더 스캔 + 정보 수집 + 번역"
           >
             <RefreshCw
               :size="14"
-              :class="{ 'animate-spin': allInOneRefreshMutation.isPending }"
+              :class="{
+                'animate-spin': allInOneRefreshMutation.isPending.value,
+              }"
             />
             <span class="hidden sm:inline">전체 동기화</span>
           </Button>
@@ -644,7 +646,8 @@ onUnmounted(() => {
           <Button
             @click="handleRandomSelect"
             :disabled="
-              specialOnlyTotalCount === 0 || allInOneRefreshMutation.isPending
+              specialOnlyTotalCount === 0 ||
+              allInOneRefreshMutation.isPending.value
             "
             variant="secondary"
             size="sm"
@@ -719,7 +722,7 @@ onUnmounted(() => {
               </span>
 
               <!-- 진행 상태 -->
-              <template v-if="allInOneRefreshMutation.isPending">
+              <template v-if="allInOneRefreshMutation.isPending.value">
                 <span class="text-muted-foreground">•</span>
                 <span class="flex items-center gap-1">
                   <Loader2 :size="12" class="animate-spin" />
