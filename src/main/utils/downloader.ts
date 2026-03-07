@@ -1,10 +1,17 @@
 import { createHash } from "crypto";
 import { app } from "electron";
-import { mkdir, unlink, writeFile } from "fs/promises";
+import {
+  access,
+  constants,
+  copyFile,
+  mkdir,
+  unlink,
+  writeFile,
+} from "fs/promises";
 import type { IncomingMessage } from "http";
 import * as http from "http";
 import * as https from "https";
-import { join } from "path";
+import { extname, join } from "path";
 import { validateUrl } from "./validator.js";
 
 /**
@@ -108,4 +115,38 @@ export async function deleteImage(filePath: string): Promise<void> {
  */
 export async function deleteThumbnail(filePath: string): Promise<void> {
   return deleteImage(filePath);
+}
+
+/**
+ * 파일 복사 (로컬 파일을 썸네일 폴더로 복사)
+ * @param sourcePath 원본 파일 경로
+ * @param gamePath 게임 경로 (파일명 생성용)
+ * @param index 이미지 인덱스 (0 = 썸네일, 1+ = 추가 이미지)
+ */
+export async function copyImage(
+  sourcePath: string,
+  gamePath: string,
+  index: number = 0,
+): Promise<string> {
+  const thumbnailDir = getThumbnailDir();
+  await mkdir(thumbnailDir, { recursive: true });
+
+  // 원본 파일 존재 확인
+  try {
+    await access(sourcePath, constants.R_OK);
+  } catch {
+    throw new Error(`원본 파일을 읽을 수 없습니다: ${sourcePath}`);
+  }
+
+  // 원본 파일 확장자 유지
+  const ext = extname(sourcePath).toLowerCase();
+  const hash = createHash("md5").update(gamePath).digest("hex");
+  const suffix = index === 0 ? "" : `_${index}`;
+  const filename = `${hash}${suffix}${ext}`;
+  const destPath = join(thumbnailDir, filename);
+
+  // 파일 복사
+  await copyFile(sourcePath, destPath);
+
+  return destPath;
 }
