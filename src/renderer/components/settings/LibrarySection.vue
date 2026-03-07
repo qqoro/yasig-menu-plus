@@ -279,7 +279,7 @@ async function handleRemoveExcludedExecutable(
                 >{{ libraryPaths?.length ?? 0 }}개</span
               >
             </div>
-            <div class="space-y-2">
+            <div class="max-h-80 space-y-2 overflow-y-auto">
               <div
                 v-for="path in libraryPaths"
                 :key="path"
@@ -425,7 +425,7 @@ async function handleRemoveExcludedExecutable(
                 >{{ excludedExecutables.length }}개</span
               >
             </div>
-            <div class="space-y-2">
+            <div class="max-h-80 space-y-2 overflow-y-auto">
               <div
                 v-for="executable in excludedExecutables"
                 :key="executable"
