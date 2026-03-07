@@ -36,7 +36,7 @@ import {
 import { formatBytes } from "@/utils/format";
 
 // 컬렉터 관련
-const { isRunning: isCollectorRunning, progress } = useCollector();
+const { progress } = useCollector();
 const runAllCollectorsMutation = useRunAllCollectors();
 
 // 번역 설정
@@ -188,7 +188,7 @@ async function handleCleanUnusedThumbnails(): Promise<void> {
         <CardContent class="space-y-4">
           <!-- 진행 상태 -->
           <div
-            v-if="isCollectorRunning"
+            v-if="runAllCollectorsMutation.isPending.value"
             class="bg-muted/50 flex items-center gap-2 rounded-md p-3"
           >
             <Loader2 :size="16" class="text-muted-foreground animate-spin" />
@@ -197,7 +197,9 @@ async function handleCleanUnusedThumbnails(): Promise<void> {
             </span>
           </div>
           <p
-            v-if="isCollectorRunning && progress.gameTitle"
+            v-if="
+              runAllCollectorsMutation.isPending.value && progress.gameTitle
+            "
             class="text-muted-foreground ml-1 text-xs"
           >
             {{ progress.gameTitle }}
@@ -207,31 +209,39 @@ async function handleCleanUnusedThumbnails(): Promise<void> {
           <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Button
               @click="() => handleCollect(false)"
-              :disabled="isCollectorRunning"
+              :disabled="runAllCollectorsMutation.isPending.value"
               variant="secondary"
               class="w-full"
             >
               <Loader2
-                v-if="isCollectorRunning"
+                v-if="runAllCollectorsMutation.isPending.value"
                 :size="18"
                 class="animate-spin"
               />
               <RefreshCw v-else :size="18" />
-              {{ isCollectorRunning ? "수집 중..." : "미수집 게임 수집" }}
+              {{
+                runAllCollectorsMutation.isPending.value
+                  ? "수집 중..."
+                  : "미수집 게임 수집"
+              }}
             </Button>
             <Button
               @click="() => handleCollect(true)"
-              :disabled="isCollectorRunning"
+              :disabled="runAllCollectorsMutation.isPending.value"
               variant="default"
               class="w-full"
             >
               <Loader2
-                v-if="isCollectorRunning"
+                v-if="runAllCollectorsMutation.isPending.value"
                 :size="18"
                 class="animate-spin"
               />
               <RefreshCw v-else :size="18" />
-              {{ isCollectorRunning ? "수집 중..." : "강제 전체 재수집" }}
+              {{
+                runAllCollectorsMutation.isPending.value
+                  ? "수집 중..."
+                  : "강제 전체 재수집"
+              }}
             </Button>
           </div>
         </CardContent>

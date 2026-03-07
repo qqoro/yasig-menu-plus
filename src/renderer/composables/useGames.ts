@@ -19,11 +19,6 @@ import type { GameItem, SearchQuery } from "../types";
 import { queryKeys } from "../queryKeys";
 import { toast } from "vue-sonner";
 
-// 게임 목록 상태 (기존 호환성 유지용) - 더 이상 사용하지 않음
-// const games = shallowRef<GameItem[]>([]);
-// const isLoading = ref(false);
-// const error = ref<string | null>(null);
-
 /**
  * 게임 목록 로드 Mutation (Vue Query 기반)
  */

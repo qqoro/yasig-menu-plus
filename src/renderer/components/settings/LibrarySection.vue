@@ -3,6 +3,7 @@ import {
   Clock,
   Folder,
   FolderOpen,
+  Loader2,
   Plus,
   RefreshCw,
   Trash2,
@@ -46,8 +47,8 @@ const { data: libraryPaths } = useLibraryPaths();
 const addLibraryPathMutation = useAddLibraryPath();
 const removeLibraryPathMutation = useRemoveLibraryPath();
 
-// 개별 경로 새로고침 상태
-const isRefreshingPath = ref(false);
+// 개별 경로 새로고침 상태 (경로별 개별 추적)
+const refreshingPaths = ref(new Set<string>());
 
 // 라이브러리 스캔 기록
 const { data: libraryScanHistories } = useLibraryScanHistory();
@@ -143,7 +144,7 @@ async function handleOpenPath(path: string): Promise<void> {
  * 개별 경로 새로고침 핸들러
  */
 async function handleRefreshSinglePath(path: string): Promise<void> {
-  isRefreshingPath.value = true;
+  refreshingPaths.value.add(path);
   try {
     await refreshGamesMutation.mutateAsync([path]);
     toast.success(`"${path}" 경로를 스캔했습니다.`);
@@ -153,7 +154,7 @@ async function handleRefreshSinglePath(path: string): Promise<void> {
       err instanceof Error ? err.message : "새로고침에 실패했습니다.",
     );
   } finally {
-    isRefreshingPath.value = false;
+    refreshingPaths.value.delete(path);
   }
 }
 
@@ -232,18 +233,39 @@ async function handleRemoveExcludedExecutable(
                 placeholder="폴더 경로 입력 (예: C:\Games)"
                 class="flex-1"
               />
-              <Button @click="handleAddPath" size="default">
-                <Plus :size="16" />
-                추가
+              <Button
+                @click="handleAddPath"
+                :disabled="addLibraryPathMutation.isPending.value"
+                size="default"
+              >
+                <Loader2
+                  v-if="addLibraryPathMutation.isPending.value"
+                  :size="18"
+                  class="animate-spin"
+                />
+                <Plus v-else :size="18" />
+                {{
+                  addLibraryPathMutation.isPending.value ? "추가 중..." : "추가"
+                }}
               </Button>
             </div>
             <Button
               @click="handleSelectFolder"
+              :disabled="selectFolderMutation.isPending.value"
               variant="outline"
               class="w-full"
             >
-              <Folder :size="16" />
-              폴더에서 선택
+              <Loader2
+                v-if="selectFolderMutation.isPending.value"
+                :size="18"
+                class="animate-spin"
+              />
+              <Folder v-else :size="18" />
+              {{
+                selectFolderMutation.isPending.value
+                  ? "선택 중..."
+                  : "폴더에서 선택"
+              }}
             </Button>
           </div>
 
@@ -283,12 +305,14 @@ async function handleRemoveExcludedExecutable(
                     size="icon"
                     class="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
                     title="새로고침"
-                    :disabled="isRefreshingPath"
+                    :disabled="refreshingPaths.has(path)"
                   >
-                    <RefreshCw
-                      :size="16"
-                      :class="{ 'animate-spin': isRefreshingPath }"
+                    <Loader2
+                      v-if="refreshingPaths.has(path)"
+                      :size="18"
+                      class="animate-spin"
                     />
+                    <RefreshCw v-else :size="18" />
                   </Button>
                   <Button
                     @click="handleRemovePath(path)"
@@ -375,8 +399,15 @@ async function handleRemoveExcludedExecutable(
                 "
                 size="default"
               >
-                <Plus :size="16" />
-                추가
+                <Loader2
+                  v-if="addExcludedExecutable.isPending.value"
+                  :size="18"
+                  class="animate-spin"
+                />
+                <Plus v-else :size="18" />
+                {{
+                  addExcludedExecutable.isPending.value ? "추가 중..." : "추가"
+                }}
               </Button>
             </div>
           </div>

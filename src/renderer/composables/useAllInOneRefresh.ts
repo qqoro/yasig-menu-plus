@@ -11,7 +11,6 @@ import { queryKeys } from "../queryKeys";
 type RefreshStep = "scan" | "collect" | "translate" | "done";
 
 // 진행 상태 (전역 공유)
-const isRunning = ref(false);
 const currentStep = ref<RefreshStep | null>(null);
 const collectorProgress = ref({ current: 0, total: 0, gameTitle: "" });
 const translationProgress = ref({ current: 0, total: 0, gameTitle: "" });
@@ -31,7 +30,6 @@ export function useAllInOneRefresh() {
   });
 
   return {
-    isRunning,
     currentStep,
     stepLabel,
     collectorProgress,
@@ -152,15 +150,11 @@ export function useAllInOneRefreshMutation() {
 
       return results;
     },
-    onMutate: () => {
-      isRunning.value = true;
-    },
     onSuccess: () => {
       // 전체 동기화 완료 후 모든 캐시 무효화
       queryClient.invalidateQueries();
     },
     onSettled: () => {
-      isRunning.value = false;
       currentStep.value = null;
     },
   });
