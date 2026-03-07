@@ -123,6 +123,9 @@ export const enum IpcRendererSend {
 
   // 체인지로그 관련
   GetChangelog = "getChangelog", // 체인지로그 조회
+
+  // 썸네일 마이그레이션
+  MigrateThumbnails = "migrateThumbnails", // 이전 버전 썸네일 마이그레이션
 }
 
 // ========== Main → Renderer 이벤트 ==========
@@ -212,6 +215,9 @@ export const enum IpcMainSend {
 
   // 체인지로그 관련
   ChangelogResult = "changelogResult", // 체인지로그 조회 결과
+
+  // 썸네일 마이그레이션
+  ThumbnailsMigrated = "thumbnailsMigrated", // 썸네일 마이그레이션 완료
 }
 
 /**
@@ -271,7 +277,8 @@ export type IpcMainSendChannel =
   | "gamesDeleted"
   | "changelogResult"
   | "libraryPathVisibilityToggled"
-  | "disabledLibraryPaths";
+  | "disabledLibraryPaths"
+  | "thumbnailsMigrated";
 
 // ========== 이벤트 페이로드 타입 ==========
 
@@ -492,6 +499,9 @@ export interface IpcRendererEventMap {
     currentVersion: string;
     mode: "afterVersion" | "recent";
   };
+
+  // 썸네일 마이그레이션
+  migrateThumbnails: { sourceFolder: string };
 }
 
 // Main → Renderer 페이로드
@@ -646,5 +656,12 @@ export interface IpcMainEventMap {
       publishedAt: string;
       htmlUrl: string;
     }>;
+  };
+
+  // 썸네일 마이그레이션
+  thumbnailsMigrated: {
+    successCount: number;
+    skipCount: number;
+    failCount: number;
   };
 }
