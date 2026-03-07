@@ -62,6 +62,7 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
+          generate_release_notes: true
           files: |
             artifacts/build_win/yasig-menu-plus-setup-*.exe
             artifacts/build_win/*.blockmap

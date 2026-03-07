@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { version as APP_VERSION } from "../../package.json";
 import { CircleHelp, Minus, Moon, Square, Sun, X } from "lucide-vue-next";
 import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { toast, Toaster } from "vue-sonner";
 import { Button } from "./components/ui/button";
+import ChangelogDialog from "./components/ChangelogDialog.vue";
 import HelpDialog from "./components/HelpDialog.vue";
 import { initializeTheme } from "./composables/useTheme";
 import { useWindow } from "./composables/useWindow";
@@ -32,6 +34,10 @@ const themeIcon = computed(() => (uiStore.isDark ? Moon : Sun));
 
 // 도움말 다이얼로그 상태
 const showHelpDialog = ref(false);
+
+// 체인지로그 다이얼로그 상태
+const showChangelogDialog = ref(false);
+const changelogMode = ref<"afterVersion" | "recent">("afterVersion");
 
 onMounted(async () => {
   // 컬러 테마 초기화 (설정에서 불러오기)
@@ -131,6 +137,18 @@ onMounted(async () => {
             },
           },
         });
+        toast(`업데이트 내역 보기`, {
+          id: "changelog-hint",
+          duration: Infinity,
+          action: {
+            label: "확인하기",
+            onClick: () => {
+              toast.dismiss("changelog-hint");
+              changelogMode.value = "afterVersion";
+              showChangelogDialog.value = true;
+            },
+          },
+        });
       } else {
         // 일반: 자동 다운로드→설치
         toast.info(`새 버전 v${data.version}을 사용할 수 있습니다`, {
@@ -140,6 +158,18 @@ onMounted(async () => {
             label: "설치하기",
             onClick: async () => {
               await window.api.invoke("downloadUpdate");
+            },
+          },
+        });
+        toast(`업데이트 내역 보기`, {
+          id: "changelog-hint",
+          duration: Infinity,
+          action: {
+            label: "확인하기",
+            onClick: () => {
+              toast.dismiss("changelog-hint");
+              changelogMode.value = "afterVersion";
+              showChangelogDialog.value = true;
             },
           },
         });
@@ -175,6 +205,19 @@ onMounted(async () => {
       description: data.error,
     });
   });
+
+  // 버전 변경 확인 및 체인지로그 표시 (첫 실행 시)
+  try {
+    const result = await window.api.invoke("checkVersionChange", {
+      currentVersion: APP_VERSION,
+    });
+    if (result.isVersionChanged) {
+      changelogMode.value = "recent";
+      showChangelogDialog.value = true;
+    }
+  } catch (error) {
+    console.error("버전 확인 실패:", error);
+  }
 });
 </script>
 
@@ -246,6 +289,13 @@ onMounted(async () => {
 
     <!-- 도움말 다이얼로그 -->
     <HelpDialog v-model:open="showHelpDialog" />
+
+    <!-- 체인지로그 다이얼로그 -->
+    <ChangelogDialog
+      v-model:open="showChangelogDialog"
+      :current-version="APP_VERSION"
+      :mode="changelogMode"
+    />
   </div>
 </template>
 

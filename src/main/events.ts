@@ -116,6 +116,13 @@ export const enum IpcRendererSend {
   // 중복 게임 관리
   FindDuplicates = "findDuplicates", // 중복 게임 그룹 조회
   DeleteGames = "deleteGames", // 게임 삭제 (DB + 파일)
+
+  // 체인지로그 관련
+  GetChangelog = "getChangelog", // 체인지로그 조회
+
+  // 버전 체크 관련
+  CheckVersionChange = "checkVersionChange", // 버전 변경 확인
+  SetLastVersion = "setLastVersion", // 마지막 버전 설정
 }
 
 // ========== Main → Renderer 이벤트 ==========
@@ -202,6 +209,9 @@ export const enum IpcMainSend {
   // 중복 게임 관리
   DuplicatesFound = "duplicatesFound", // 중복 게임 그룹 조회 결과
   GamesDeleted = "gamesDeleted", // 게임 삭제 완료
+
+  // 체인지로그 관련
+  ChangelogResult = "changelogResult", // 체인지로그 조회 결과
 }
 
 /**
@@ -258,7 +268,8 @@ export type IpcMainSendChannel =
   | "updateDownloaded"
   | "updateError"
   | "duplicatesFound"
-  | "gamesDeleted";
+  | "gamesDeleted"
+  | "changelogResult";
 
 // ========== 이벤트 페이로드 타입 ==========
 
@@ -469,6 +480,16 @@ export interface IpcRendererEventMap {
   // 중복 게임 관리
   findDuplicates: undefined;
   deleteGames: { paths: string[] };
+
+  // 체인지로그 관련
+  getChangelog: {
+    currentVersion: string;
+    mode: "afterVersion" | "recent";
+  };
+
+  // 버전 체크 관련
+  checkVersionChange: { currentVersion: string };
+  setLastVersion: { version: string };
 }
 
 // Main → Renderer 페이로드
@@ -609,4 +630,19 @@ export interface IpcMainEventMap {
   // 중복 게임 관리
   duplicatesFound: { groups: DuplicateGroup[] };
   gamesDeleted: { deletedCount: number };
+
+  // 체인지로그 관련
+  changelogResult: {
+    releases: Array<{
+      version: string;
+      name: string;
+      body: string;
+      publishedAt: string;
+      htmlUrl: string;
+    }>;
+  };
+
+  // 버전 체크 관련
+  versionChangeResult: { isVersionChanged: boolean };
+  lastVersionSet: { version: string };
 }

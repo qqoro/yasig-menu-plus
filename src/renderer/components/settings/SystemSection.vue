@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { version as APP_VERSION } from "../../../../package.json";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import {
   Download,
   Github,
+  History,
   Info,
   Loader2,
   RefreshCw,
@@ -18,6 +19,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import ChangelogDialog from "@/components/ChangelogDialog.vue";
 import {
   useAllSettings,
   useUpdateSettings,
@@ -61,6 +63,9 @@ const checkOnStartup = computed({
 
 const isChecking = computed(() => updateStatus.value === "checking");
 const isDownloading = computed(() => updateStatus.value === "downloading");
+
+// 체인지로그 다이얼로그 상태
+const changelogOpen = ref(false);
 </script>
 
 <template>
@@ -187,8 +192,8 @@ const isDownloading = computed(() => updateStatus.value === "downloading");
             </Button>
           </div>
 
-          <!-- 수동 확인 버튼 -->
-          <Button
+          <!-- 버튼 그룹 -->
+          <div
             v-if="
               !isChecking &&
               !isDownloading &&
@@ -196,13 +201,21 @@ const isDownloading = computed(() => updateStatus.value === "downloading");
               !isCheckPending &&
               !isDownloadPending
             "
-            @click="checkForUpdates"
-            variant="secondary"
-            class="w-full"
+            class="flex gap-2"
           >
-            <RefreshCw class="h-4 w-4" />
-            업데이트 확인
-          </Button>
+            <Button @click="checkForUpdates" variant="secondary" class="flex-1">
+              <RefreshCw class="h-4 w-4" />
+              업데이트 확인
+            </Button>
+            <Button
+              @click="changelogOpen = true"
+              variant="outline"
+              class="flex-1"
+            >
+              <History :size="16" />
+              업데이트 내역
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -239,5 +252,11 @@ const isDownloading = computed(() => updateStatus.value === "downloading");
         </CardContent>
       </Card>
     </div>
+
+    <!-- 체인지로그 다이얼로그 -->
+    <ChangelogDialog
+      v-model:open="changelogOpen"
+      :current-version="APP_VERSION"
+    />
   </div>
 </template>

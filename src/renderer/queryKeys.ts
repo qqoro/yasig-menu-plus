@@ -131,4 +131,10 @@ export const queryKeys = {
   duplicates: {
     all: ["duplicates"] as const,
   },
+
+  /**
+   * 체인지로그 쿼리 키
+   */
+  changelog: (currentVersion: string, mode: "afterVersion" | "recent") =>
+    ["changelog", currentVersion, mode] as const,
 } as const;

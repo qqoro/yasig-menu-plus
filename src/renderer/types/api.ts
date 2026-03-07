@@ -90,6 +90,13 @@ type IpcInvokeReturn = {
   // 중복 게임 관리
   findDuplicates: IpcMainEventMap["duplicatesFound"];
   deleteGames: IpcMainEventMap["gamesDeleted"];
+
+  // 체인지로그 관련
+  getChangelog: IpcMainEventMap["changelogResult"];
+
+  // 버전 체크 관련
+  checkVersionChange: IpcMainEventMap["versionChangeResult"];
+  setLastVersion: IpcMainEventMap["lastVersionSet"];
 };
 
 /**
