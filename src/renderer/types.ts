@@ -87,3 +87,13 @@ export interface SearchQuery {
   offset?: number;
   limit?: number;
 }
+
+/**
+ * 중복 게임 그룹
+ */
+export interface DuplicateGroup {
+  id: string; // 그룹 식별자 (externalId 또는 originalTitle)
+  type: "externalId" | "originalTitle"; // 중복 기준
+  provider?: string | null; // externalId 타입인 경우 제공자
+  games: GameItem[]; // 그룹 내 게임 목록
+}

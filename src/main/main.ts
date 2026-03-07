@@ -49,6 +49,7 @@ import {
 } from "./handlers/setting.js";
 import * as ThumbnailHandlers from "./handlers/thumbnail.js";
 import * as TranslationHandlers from "./handlers/translation.js";
+import * as DuplicatesHandlers from "./handlers/duplicates.js";
 import {
   closeWindowHandler,
   maximizeWindowHandler,
@@ -362,6 +363,16 @@ function registerIpcHandlers() {
   ipcMain.handle(
     IpcRendererSend.SetAutoUpdateSettings,
     AutoUpdateHandlers.setAutoUpdateSettingsHandler,
+  );
+
+  // ========== 중복 게임 관리 ==========
+  ipcMain.handle(
+    IpcRendererSend.FindDuplicates,
+    DuplicatesHandlers.findDuplicatesHandler,
+  );
+  ipcMain.handle(
+    IpcRendererSend.DeleteGames,
+    DuplicatesHandlers.deleteGamesHandler,
   );
 }
 

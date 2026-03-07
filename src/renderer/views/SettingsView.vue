@@ -6,6 +6,7 @@ import {
   ChevronUp,
   Clock,
   Cookie,
+  Copy,
   Download,
   Folder,
   FolderOpen,
@@ -19,6 +20,7 @@ import {
   Trash2,
 } from "lucide-vue-next";
 import { computed, ref } from "vue";
+import { useRouter } from "vue-router";
 import { toast } from "vue-sonner";
 import { Button } from "../components/ui/button";
 import {
@@ -77,6 +79,8 @@ interface LibraryScanInfo {
   lastScannedAt: string;
   lastGameCount: number;
 }
+
+const router = useRouter();
 
 const refreshGamesMutation = useRefreshGames();
 const loadGamesMutation = useLoadGames();
@@ -655,6 +659,24 @@ function formatBytes(bytes: number): string {
                 추가된 라이브러리 경로가 없습니다.
               </p>
             </div>
+          </CardContent>
+        </Card>
+
+        <!-- 중복 게임 관리 -->
+        <Card>
+          <CardHeader class="pb-4">
+            <CardTitle class="flex items-center gap-2 text-lg">
+              <Copy :size="20" />
+              중복 게임 관리
+            </CardTitle>
+            <CardDescription class="text-sm">
+              중복된 게임을 찾아 정리합니다
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" @click="router.push('/duplicates')">
+              중복 게임 확인
+            </Button>
           </CardContent>
         </Card>
 

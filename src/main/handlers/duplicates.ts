@@ -1,0 +1,285 @@
+/**
+ * 중복 게임 관리 핸들러
+ *
+ * - provider + externalId 기준 중복 감지
+ * - originalTitle 기준 중복 감지
+ * - 선택한 게임 삭제 (DB + 파일 시스템)
+ */
+
+import { shell } from "electron";
+import { existsSync } from "fs";
+import type { IpcMainInvokeEvent } from "electron";
+import { db } from "../db/db-manager.js";
+import type {
+  DuplicateGroup,
+  GameItem,
+  IpcMainEventMap,
+  IpcRendererEventMap,
+} from "../events.js";
+import { deleteImage } from "../utils/downloader.js";
+
+/**
+ * 관계 데이터 조회 및 맵 생성
+ */
+async function loadRelationsAndGroup(gamePaths: string[]): Promise<{
+  makers: Map<string, string[]>;
+  categories: Map<string, string[]>;
+  tags: Map<string, string[]>;
+}> {
+  const [makers, categories, tags] = await Promise.all([
+    db("gameMakers")
+      .join("makers", "gameMakers.makerId", "makers.id")
+      .whereIn("gameMakers.gamePath", gamePaths)
+      .select("gameMakers.gamePath", "makers.name"),
+    db("gameCategories")
+      .join("categories", "gameCategories.categoryId", "categories.id")
+      .whereIn("gameCategories.gamePath", gamePaths)
+      .select("gameCategories.gamePath", "categories.name"),
+    db("gameTags")
+      .join("tags", "gameTags.tagId", "tags.id")
+      .whereIn("gameTags.gamePath", gamePaths)
+      .select("gameTags.gamePath", "tags.name"),
+  ]);
+
+  const groupByPath = (
+    relations: Array<{ gamePath: string; name: string }>,
+  ) => {
+    const map = new Map<string, string[]>();
+    for (const r of relations) {
+      if (!map.has(r.gamePath)) map.set(r.gamePath, []);
+      map.get(r.gamePath)!.push(r.name);
+    }
+    return map;
+  };
+
+  return {
+    makers: groupByPath(makers as Array<{ gamePath: string; name: string }>),
+    categories: groupByPath(
+      categories as Array<{ gamePath: string; name: string }>,
+    ),
+    tags: groupByPath(tags as Array<{ gamePath: string; name: string }>),
+  };
+}
+
+/**
+ * DB 결과를 GameItem으로 변환
+ */
+function buildGameItems(
+  games: Array<{
+    path: string;
+    title: string;
+    originalTitle: string;
+    source: string;
+    thumbnail: string | null;
+    executablePath: string | null;
+    isCompressFile: number | boolean;
+    publishDate: Date | null;
+    isFavorite?: number | boolean;
+    isHidden?: number | boolean;
+    isClear?: number | boolean;
+    provider?: string | null;
+    externalId?: string | null;
+    lastPlayedAt?: Date | null;
+    createdAt?: Date | null;
+    translatedTitle?: string | null;
+    translationSource?: string | null;
+    rating?: number | null;
+    totalPlayTime?: number;
+  }>,
+  relations: {
+    makers: Map<string, string[]>;
+    categories: Map<string, string[]>;
+    tags: Map<string, string[]>;
+  },
+): GameItem[] {
+  return games.map((g) => ({
+    path: g.path,
+    title: g.title,
+    originalTitle: g.originalTitle,
+    source: g.source,
+    thumbnail: g.thumbnail,
+    executablePath: g.executablePath || null,
+    isCompressFile: Boolean(g.isCompressFile),
+    publishDate: g.publishDate || null,
+    translatedTitle: g.translatedTitle || null,
+    translationSource: g.translationSource || null,
+    rating: g.rating,
+    isFavorite: g.isFavorite !== undefined ? Boolean(g.isFavorite) : undefined,
+    isHidden: g.isHidden !== undefined ? Boolean(g.isHidden) : undefined,
+    isClear: g.isClear !== undefined ? Boolean(g.isClear) : undefined,
+    provider: g.provider || null,
+    externalId: g.externalId || null,
+    lastPlayedAt: g.lastPlayedAt || null,
+    createdAt: g.createdAt || null,
+    totalPlayTime: g.totalPlayTime,
+    makers: relations.makers.get(g.path) || [],
+    categories: relations.categories.get(g.path) || [],
+    tags: relations.tags.get(g.path) || [],
+  }));
+}
+
+/**
+ * 중복 게임 그룹 조회 핸들러
+ *
+ * 중복 기준:
+ * 1. provider + externalId 동일
+ * 2. originalTitle 정확히 일치
+ */
+export async function findDuplicatesHandler(
+  _event: IpcMainInvokeEvent,
+  _payload: IpcRendererEventMap["findDuplicates"],
+): Promise<IpcMainEventMap["duplicatesFound"]> {
+  // 모든 게임 조회 (숨김 포함)
+  const games = await db("games")
+    .select(
+      "path",
+      "title",
+      "originalTitle",
+      "source",
+      "thumbnail",
+      "executablePath",
+      "isCompressFile",
+      "publishDate",
+      "isFavorite",
+      "isHidden",
+      "isClear",
+      "provider",
+      "externalId",
+      "lastPlayedAt",
+      "createdAt",
+      "translatedTitle",
+      "translationSource",
+      "rating",
+      "totalPlayTime",
+    )
+    .orderBy("createdAt", "asc");
+
+  if (games.length === 0) {
+    return { groups: [] };
+  }
+
+  // 관계 데이터 조회
+  const gamePaths = games.map((g) => g.path);
+  const relations = await loadRelationsAndGroup(gamePaths);
+  const gameItems = buildGameItems(games, relations);
+
+  // 중복 그룹화
+  const groups: DuplicateGroup[] = [];
+  const processedPaths = new Set<string>();
+
+  // 1. provider + externalId 기준 그룹화
+  const externalIdGroups = new Map<string, GameItem[]>();
+  for (const game of gameItems) {
+    if (game.provider && game.externalId) {
+      const key = `${game.provider}:${game.externalId}`;
+      if (!externalIdGroups.has(key)) {
+        externalIdGroups.set(key, []);
+      }
+      externalIdGroups.get(key)!.push(game);
+    }
+  }
+
+  // 2개 이상인 그룹만 추가
+  for (const [key, groupGames] of externalIdGroups) {
+    if (groupGames.length >= 2) {
+      const [provider, externalId] = key.split(":");
+      groups.push({
+        id: key,
+        type: "externalId",
+        provider,
+        games: groupGames,
+      });
+      for (const g of groupGames) {
+        processedPaths.add(g.path);
+      }
+    }
+  }
+
+  // 2. originalTitle 기준 그룹화 (이미 처리된 경로 제외)
+  const titleGroups = new Map<string, GameItem[]>();
+  for (const game of gameItems) {
+    if (!processedPaths.has(game.path)) {
+      const key = game.originalTitle;
+      if (!titleGroups.has(key)) {
+        titleGroups.set(key, []);
+      }
+      titleGroups.get(key)!.push(game);
+    }
+  }
+
+  // 2개 이상인 그룹만 추가
+  for (const [title, groupGames] of titleGroups) {
+    if (groupGames.length >= 2) {
+      groups.push({
+        id: title,
+        type: "originalTitle",
+        games: groupGames,
+      });
+    }
+  }
+
+  return { groups };
+}
+
+/**
+ * 게임 삭제 핸들러 (DB + 파일 시스템)
+ *
+ * 삭제 대상:
+ * - DB: games, gameMakers, gameCategories, gameTags, gameImages, playSessions
+ * - 파일: 게임 폴더/파일, 썸네일, 이미지
+ */
+export async function deleteGamesHandler(
+  _event: IpcMainInvokeEvent,
+  payload: IpcRendererEventMap["deleteGames"],
+): Promise<IpcMainEventMap["gamesDeleted"]> {
+  const { paths } = payload;
+
+  if (paths.length === 0) {
+    return { deletedCount: 0 };
+  }
+
+  // 삭제 전 썸네일 및 이미지 경로 조회
+  const gamesToDelete = await db("games")
+    .whereIn("path", paths)
+    .select("path", "thumbnail", "isCompressFile");
+
+  const thumbnailsToDelete = gamesToDelete
+    .map((g) => g.thumbnail)
+    .filter((t): t is string => t !== null);
+
+  const imagesToDelete = await db("gameImages")
+    .whereIn("gamePath", paths)
+    .pluck("path");
+
+  // 관계 데이터 삭제 (CASCADE로 자동 삭제되지만 명시적으로)
+  await db("gameMakers").whereIn("gamePath", paths).delete();
+  await db("gameCategories").whereIn("gamePath", paths).delete();
+  await db("gameTags").whereIn("gamePath", paths).delete();
+  await db("gameImages").whereIn("gamePath", paths).delete();
+  await db("playSessions").whereIn("gamePath", paths).delete();
+
+  // 게임 레코드 삭제
+  const deletedCount = await db("games").whereIn("path", paths).delete();
+
+  // 실제 파일 삭제 (휴지통으로 이동)
+  for (const game of gamesToDelete) {
+    try {
+      if (existsSync(game.path)) {
+        // 휴지통으로 이동 (복원 가능)
+        shell.trashItem(game.path);
+      }
+    } catch (error) {
+      console.error(`게임 폴더 삭제 실패: ${game.path}`, error);
+    }
+  }
+
+  // 썸네일 및 이미지 파일 삭제
+  for (const thumbnail of thumbnailsToDelete) {
+    await deleteImage(thumbnail);
+  }
+  for (const imagePath of imagesToDelete) {
+    await deleteImage(imagePath);
+  }
+
+  return { deletedCount };
+}

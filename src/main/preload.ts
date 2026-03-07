@@ -86,6 +86,10 @@ type IpcInvokeReturn = {
   installUpdate: void;
   getAutoUpdateSettings: { settings: { checkOnStartup: boolean } };
   setAutoUpdateSettings: { settings: { checkOnStartup: boolean } };
+
+  // 중복 게임 관리
+  findDuplicates: IpcMainEventMap["duplicatesFound"];
+  deleteGames: IpcMainEventMap["gamesDeleted"];
 };
 
 const api = {

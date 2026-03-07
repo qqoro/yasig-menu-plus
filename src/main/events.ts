@@ -112,6 +112,10 @@ export const enum IpcRendererSend {
   InstallUpdate = "installUpdate", // 업데이트 설치
   GetAutoUpdateSettings = "getAutoUpdateSettings", // 자동 업데이트 설정 조회
   SetAutoUpdateSettings = "setAutoUpdateSettings", // 자동 업데이트 설정 저장
+
+  // 중복 게임 관리
+  FindDuplicates = "findDuplicates", // 중복 게임 그룹 조회
+  DeleteGames = "deleteGames", // 게임 삭제 (DB + 파일)
 }
 
 // ========== Main → Renderer 이벤트 ==========
@@ -194,6 +198,10 @@ export const enum IpcMainSend {
   UpdateDownloadProgress = "updateDownloadProgress", // 다운로드 진행률
   UpdateDownloaded = "updateDownloaded", // 다운로드 완료
   UpdateError = "updateError", // 업데이트 오류
+
+  // 중복 게임 관리
+  DuplicatesFound = "duplicatesFound", // 중복 게임 그룹 조회 결과
+  GamesDeleted = "gamesDeleted", // 게임 삭제 완료
 }
 
 /**
@@ -248,7 +256,9 @@ export type IpcMainSendChannel =
   | "updateNotAvailable"
   | "updateDownloadProgress"
   | "updateDownloaded"
-  | "updateError";
+  | "updateError"
+  | "duplicatesFound"
+  | "gamesDeleted";
 
 // ========== 이벤트 페이로드 타입 ==========
 
@@ -288,6 +298,14 @@ export interface GameDetailItem extends GameItem {
 export interface GameImageItem {
   path: string;
   sortOrder: number;
+}
+
+// 중복 게임 그룹
+export interface DuplicateGroup {
+  id: string; // 그룹 식별자 (externalId 또는 originalTitle)
+  type: "externalId" | "originalTitle"; // 중복 기준
+  provider?: string | null; // externalId 타입인 경우 제공자
+  games: GameItem[]; // 그룹 내 게임 목록
 }
 
 // 플레이 세션
@@ -447,6 +465,10 @@ export interface IpcRendererEventMap {
   installUpdate: undefined;
   getAutoUpdateSettings: undefined;
   setAutoUpdateSettings: { settings: { checkOnStartup: boolean } };
+
+  // 중복 게임 관리
+  findDuplicates: undefined;
+  deleteGames: { paths: string[] };
 }
 
 // Main → Renderer 페이로드
@@ -579,4 +601,8 @@ export interface IpcMainEventMap {
   };
   updateDownloaded: { version: string };
   updateError: { error: string };
+
+  // 중복 게임 관리
+  duplicatesFound: { groups: DuplicateGroup[] };
+  gamesDeleted: { deletedCount: number };
 }

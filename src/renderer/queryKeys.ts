@@ -124,4 +124,11 @@ export const queryKeys = {
    */
   playSessions: (path: string | Ref<string>, limit?: number) =>
     ["playSessions", path, limit] as const,
+
+  /**
+   * 중복 게임 쿼리 키
+   */
+  duplicates: {
+    all: ["duplicates"] as const,
+  },
 } as const;
