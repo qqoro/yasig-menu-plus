@@ -8,9 +8,7 @@ docs/plans/
 
 .vscode
 .idea
-.claude/settings.local.json
+.claude/
 
 TODO.md
 CLAUDE.md
-
-.claude/worktrees
