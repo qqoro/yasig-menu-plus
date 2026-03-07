@@ -29,16 +29,46 @@ export const DLSiteCollector: Collector = {
 
     const title = body.querySelector("#work_name")?.textContent ?? null;
 
-    // product-slider-data 내의 모든 이미지 수집
+    // 이미지 수집 - 기존 방식 우선, 실패 시 새로운 방식 사용
+    let allImages: string[] = [];
+
+    // 1차: 기존 방식 (product-slider-data)
     const sliderDivs = body.querySelectorAll(".product-slider-data > div");
-    const allImages = Array.from(sliderDivs)
+    allImages = Array.from(sliderDivs)
       .map((div) => div.getAttribute("data-src"))
       .filter((src): src is string => src !== null)
       .map((src) => "https:" + src);
 
-    // 첫 번째는 thumbnailUrl, 전체는 images 배열
+    // 2차: 새로운 방식 (기존 방식 실패 시)
+    if (allImages.length === 0) {
+      // 메인 이미지 (썸네일)
+      const mainImageSrcset =
+        body
+          .querySelector(".slider_item picture source[type='image/jpeg']")
+          ?.getAttribute("srcset") ??
+        body
+          .querySelector(".slider_item picture source")
+          ?.getAttribute("srcset") ??
+        body.querySelector(".slider_item img")?.getAttribute("srcset");
+
+      // 샘플 이미지들
+      const sampleImageElements = body.querySelectorAll(
+        "a[href*='/parts/'] img[src]",
+      );
+      const sampleImages = Array.from(sampleImageElements)
+        .map((img) => img.getAttribute("src"))
+        .filter((src): src is string => src !== null)
+        .map((src) => "https:" + src);
+
+      // 조합
+      if (mainImageSrcset) {
+        allImages.push("https:" + mainImageSrcset);
+      }
+      allImages.push(...sampleImages);
+    }
+
     const thumbnailUrl = allImages.length > 0 ? allImages[0] : null;
-    const images = allImages; // 모든 이미지 (썸네일 포함)
+    const images = allImages;
 
     const date = dayjs(
       body.querySelector("#work_outline > tr:nth-child(1) > td > a")
