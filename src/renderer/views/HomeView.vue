@@ -58,7 +58,6 @@ const openOriginalSite = useOpenOriginalSite();
 
 // 전체 동기화 composable
 const {
-  isRunning: isAllInOneRunning,
   currentStep: allInOneStep,
   stepLabel: allInOneStepLabel,
   collectorProgress: allInOneCollectorProgress,
@@ -629,14 +628,14 @@ onUnmounted(() => {
           <!-- 전체 동기화 버튼 -->
           <Button
             @click="handleAllInOneRefresh"
-            :disabled="isAllInOneRunning || isSearching"
+            :disabled="allInOneRefreshMutation.isPending || isSearching"
             variant="default"
             size="sm"
             title="폴더 스캔 + 정보 수집 + 번역"
           >
             <RefreshCw
               :size="14"
-              :class="{ 'animate-spin': isAllInOneRunning }"
+              :class="{ 'animate-spin': allInOneRefreshMutation.isPending }"
             />
             <span class="hidden sm:inline">전체 동기화</span>
           </Button>
@@ -644,7 +643,9 @@ onUnmounted(() => {
           <!-- 랜덤 선택 버튼 -->
           <Button
             @click="handleRandomSelect"
-            :disabled="specialOnlyTotalCount === 0 || isAllInOneRunning"
+            :disabled="
+              specialOnlyTotalCount === 0 || allInOneRefreshMutation.isPending
+            "
             variant="secondary"
             size="sm"
             title="랜덤 선택"
@@ -718,7 +719,7 @@ onUnmounted(() => {
               </span>
 
               <!-- 진행 상태 -->
-              <template v-if="isAllInOneRunning">
+              <template v-if="allInOneRefreshMutation.isPending">
                 <span class="text-muted-foreground">•</span>
                 <span class="flex items-center gap-1">
                   <Loader2 :size="12" class="animate-spin" />
