@@ -57,6 +57,10 @@ export function useSetTranslationSettings() {
       queryClient.invalidateQueries({
         queryKey: queryKeys.translationSettings.all,
       });
+      // 제목 정렬 순서 변경 반영을 위해 게임 목록 캐시 무효화
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.games.all,
+      });
     },
   });
 }

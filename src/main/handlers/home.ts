@@ -35,16 +35,19 @@ import { processMonitor } from "../services/ProcessMonitor.js";
 import {
   addExcludedExecutable,
   addLibraryPath as addLibraryPathToStore,
+  DEFAULT_TITLE_DISPLAY_PRIORITY,
   getAllLibraryScanHistory,
   getExcludedExecutables as getExcludedExecutablesFromStore,
   getLastRefreshedAt,
   getLibraryPaths,
   getLibraryScanHistory,
+  getTranslationSettings,
   removeExcludedExecutable,
   removeLibraryPath as removeLibraryPathFromStore,
   setLastRefreshedAt,
   updateLibraryScanHistory,
 } from "../store.js";
+import type { TitleDisplayMode } from "../store.js";
 import { deleteImage } from "../utils/downloader.js";
 import {
   validateDirectoryPath,
@@ -427,6 +430,35 @@ async function loadRelationsAndGroup(gamePaths: string[]): Promise<{
     ),
     tags: groupByPath(tags as Array<{ gamePath: string; name: string }>),
   };
+}
+
+/**
+ * titleDisplayPriority에 따른 ORDER BY COALESCE 구문 생성
+ *
+ * @param priority - 제목 표시 우선순위 배열
+ * @returns ORDER BY에 사용할 COALESCE 표현식
+ *
+ * @example
+ * // ["translated", "collected", "original"]
+ * // → "COALESCE(NULLIF(translated_title, ''), NULLIF(title, ''), original_title)"
+ */
+function buildTitleOrderParts(priority: TitleDisplayMode[]): string {
+  const columnMap: Record<TitleDisplayMode, string> = {
+    translated: "translated_title",
+    collected: "title",
+    original: "original_title",
+  };
+
+  const parts = priority.map((mode, index, arr) => {
+    const column = columnMap[mode];
+    // 마지막 항목은 NULLIF 없이 (기본값 역할)
+    if (index === arr.length - 1) {
+      return column;
+    }
+    return `NULLIF(${column}, '')`;
+  });
+
+  return `COALESCE(${parts.join(", ")})`;
 }
 
 /**
@@ -911,12 +943,14 @@ export async function searchGamesHandler(
   // 정렬 적용
   const order = sortOrder === "asc" ? "asc" : "desc";
   switch (sortBy) {
-    case "title":
-      // 번역제목이 있으면 번역제목 기준, 없으면 원제목 기준으로 정렬 (표시 제목과 동일하게)
-      query = query.orderByRaw(
-        `COALESCE(NULLIF(translated_title, ''), title) ${order}`,
-      );
+    case "title": {
+      const priority =
+        getTranslationSettings().titleDisplayPriority ??
+        DEFAULT_TITLE_DISPLAY_PRIORITY;
+      const orderExpr = buildTitleOrderParts(priority);
+      query = query.orderByRaw(`${orderExpr} ${order}`);
       break;
+    }
     case "publishDate":
       query = query.orderByRaw(`publish_date IS NULL, publish_date ${order}`);
       break;
