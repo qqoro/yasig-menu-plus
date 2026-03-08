@@ -25,8 +25,10 @@ export async function downloadThumbnailHandler(
 
   const filePath = await downloadImage(url, gamePath);
 
-  // DB 업데이트
-  await db("games").where("path", gamePath).update({ thumbnail: filePath });
+  // DB 업데이트 (수동 수정 표시)
+  await db("games")
+    .where("path", gamePath)
+    .update({ thumbnail: filePath, isLoadedInfo: true });
 
   return { gamePath, thumbnailPath: filePath };
 }
