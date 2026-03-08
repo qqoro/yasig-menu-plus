@@ -194,24 +194,6 @@ function createWindow() {
 
   // AutoUpdater에 메인 윈도우 설정
   autoUpdaterService.setMainWindow(mainWindow);
-
-  // 윈도우 포커스 시 자동 스캔 (설정된 경우)
-  mainWindow.on("focus", async () => {
-    if (getAutoScanOnStartup()) {
-      try {
-        const added = await autoScanLibraries();
-        if (added > 0) {
-          console.log(`포커스 시 자동 스캔 완료: ${added}개의 새 게임 추가`);
-        }
-        // Renderer에 자동 스캔 완료 알림
-        mainWindow.webContents.send(IpcMainSend.AutoScanDone, {
-          addedCount: added,
-        });
-      } catch (error) {
-        console.error("포커스 시 자동 스캔 오류:", error);
-      }
-    }
-  });
 }
 
 /**
