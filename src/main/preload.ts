@@ -5,7 +5,7 @@
  * Electron 보안 베스트 프랙티스: contextIsolation 활성화, preload 스크립트 사용
  */
 
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 import type {
   IpcMainEventMap,
   IpcMainSend,
@@ -23,7 +23,6 @@ import type {
  * invoke 호출 시 반환되는 타입 정의
  */
 type IpcInvokeReturn = {
-  loadList: IpcMainEventMap["loadedList"];
   refreshList: IpcMainEventMap["listRefreshed"];
   playGame: IpcMainEventMap["gamePlayed"];
   openFolder: void;
@@ -178,6 +177,13 @@ const api = {
    */
   removeAllListeners: (channel: IpcMainSend): void => {
     ipcRenderer.removeAllListeners(channel);
+  },
+
+  /**
+   * File 객체에서 파일 경로 가져오기 (드래그 앤 드롭용)
+   */
+  getPathForFile: (file: File): string => {
+    return webUtils.getPathForFile(file);
   },
 };
 

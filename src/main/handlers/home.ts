@@ -484,6 +484,7 @@ function buildGameItems(
     externalId?: string | null;
     lastPlayedAt?: Date | null;
     createdAt?: Date | null;
+    updatedAt?: Date | null;
   }>,
   relations: {
     makers: Map<string, string[]>;
@@ -499,7 +500,7 @@ function buildGameItems(
     thumbnail: g.thumbnail,
     executablePath: g.executablePath || null,
     isCompressFile: Boolean(g.isCompressFile),
-    publishDate: g.publishDate || null,
+    publishDate: g.publishDate ? new Date(g.publishDate) : null,
     translatedTitle: g.translatedTitle || null,
     translationSource: g.translationSource || null,
     rating: g.rating,
@@ -508,60 +509,13 @@ function buildGameItems(
     isClear: g.isClear !== undefined ? Boolean(g.isClear) : undefined,
     provider: g.provider || null,
     externalId: g.externalId || null,
-    lastPlayedAt: g.lastPlayedAt || null,
-    createdAt: g.createdAt || null,
+    lastPlayedAt: g.lastPlayedAt ? new Date(g.lastPlayedAt) : null,
+    createdAt: g.createdAt ? new Date(g.createdAt) : null,
+    updatedAt: g.updatedAt ? new Date(g.updatedAt) : null,
     makers: relations.makers.get(g.path) || [],
     categories: relations.categories.get(g.path) || [],
     tags: relations.tags.get(g.path) || [],
   }));
-}
-
-/**
- * 게임 목록 로드 핸들러
- */
-export async function loadListHandler(
-  _event: IpcMainInvokeEvent,
-  payload: IpcRendererEventMap["loadList"],
-): Promise<IpcMainEventMap["loadedList"]> {
-  const { sourcePaths } = payload;
-
-  // 라이브러리 경로들 유효성 검증 후 필터링
-  const validPaths = sourcePaths.filter((p) => {
-    try {
-      validateDirectoryPath(p);
-      return true;
-    } catch {
-      return false;
-    }
-  });
-
-  // 각 경로에서 게임 로드
-  const games = await db("games")
-    .whereIn("source", validPaths)
-    .where("isHidden", 0)
-    .orderBy("title", "asc")
-    .select(
-      "path",
-      "title",
-      "originalTitle",
-      "source",
-      "thumbnail",
-      "executablePath",
-      "isCompressFile",
-      "publishDate",
-      "translatedTitle",
-      "translationSource",
-      "rating",
-    );
-
-  // 관계 데이터 조회 및 그룹화
-  const gamePaths = games.map((g) => g.path);
-  const relations = await loadRelationsAndGroup(gamePaths);
-
-  // GameItem으로 변환
-  const plainGames = buildGameItems(games, relations);
-
-  return { games: plainGames };
 }
 
 /**
@@ -827,6 +781,7 @@ export async function searchGamesHandler(
       "externalId",
       "lastPlayedAt",
       "createdAt",
+      "updatedAt",
       "translatedTitle",
       "translationSource",
       "rating",

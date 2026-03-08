@@ -31,7 +31,6 @@ import {
   getPlaySessionsHandler,
   getPlayTimeHandler,
   getRandomGameHandler,
-  loadListHandler,
   openFolderHandler,
   openOriginalSiteHandler,
   playGameHandler,
@@ -220,7 +219,6 @@ function createWindow() {
  */
 function registerIpcHandlers() {
   // ========== 게임 목록 관련 ==========
-  ipcMain.handle(IpcRendererSend.LoadList, loadListHandler);
   ipcMain.handle(IpcRendererSend.RefreshList, refreshListHandler);
 
   // ========== 게임 실행 관련 ==========

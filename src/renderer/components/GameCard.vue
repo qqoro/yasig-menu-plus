@@ -72,10 +72,11 @@ const formattedPublishDate = computed(() => {
     .replaceAll(".", "-");
 });
 
-// 썸네일 URL
+// 썸네일 URL (updatedAt으로 캐시 무효화)
 const thumbnailUrl = computed(() => {
   if (!props.game.thumbnail) return undefined;
-  return `file:///${props.game.thumbnail.replaceAll("\\", "/")}`;
+  const cacheKey = props.game.updatedAt?.getTime() ?? 0;
+  return `file:///${props.game.thumbnail.replaceAll("\\", "/")}?v=${cacheKey}`;
 });
 
 // 이미지 로드 실패 처리

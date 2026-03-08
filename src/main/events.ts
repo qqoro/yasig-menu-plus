@@ -14,7 +14,6 @@ import type {
 // ========== Renderer → Main 이벤트 ==========
 export const enum IpcRendererSend {
   // 게임 목록 관련
-  LoadList = "loadList",
   RefreshList = "refreshList", // 폴더 재스캔
 
   // 게임 실행 관련
@@ -134,7 +133,6 @@ export const enum IpcRendererSend {
 // ========== Main → Renderer 이벤트 ==========
 export const enum IpcMainSend {
   // 게임 목록 응답
-  LoadedList = "loadedList",
   ListRefreshed = "listRefreshed",
 
   // 알림 메시지
@@ -231,7 +229,6 @@ export const enum IpcMainSend {
  * 이 타입을 사용하여 리터럴 타입 안전성 제공
  */
 export type IpcMainSendChannel =
-  | "loadedList"
   | "listRefreshed"
   | "message"
   | "windowMaximized"
@@ -302,6 +299,7 @@ export interface GameItem {
   externalId?: string | null;
   lastPlayedAt?: Date | null;
   createdAt?: Date | null;
+  updatedAt?: Date | null; // 수정일 (썸네일 캐시 무효화용)
   translatedTitle?: string | null; // 번역된 제목
   translationSource?: string | null; // 번역 출처 (ollama, google)
   rating?: number | null; // 별점 (1-5)
@@ -370,7 +368,6 @@ export interface SearchQuery {
 
 // Renderer → Main 페이로드
 export interface IpcRendererEventMap {
-  loadList: { sourcePaths: string[] };
   refreshList: { sourcePaths: string[] };
   playGame: { path: string };
   openFolder: { path: string };
@@ -514,7 +511,6 @@ export interface IpcRendererEventMap {
 
 // Main → Renderer 페이로드
 export interface IpcMainEventMap {
-  loadedList: { games: GameItem[] };
   listRefreshed: {
     games: GameItem[];
     addedCount: number;

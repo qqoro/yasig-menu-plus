@@ -20,30 +20,6 @@ import { queryKeys } from "../queryKeys";
 import { toast } from "vue-sonner";
 
 /**
- * 게임 목록 로드 Mutation (Vue Query 기반)
- */
-export function useLoadGames() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (sourcePaths: string[]) => {
-      const paths = [...sourcePaths];
-      const result = await window.api.invoke("loadList", {
-        sourcePaths: paths,
-      });
-      return (result as { games: GameItem[] }).games;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.games.all });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.libraryScanHistory.all,
-      });
-      // 중복 게임 목록도 무효화 (게임 수집 시 중복 상태가 변경될 수 있음)
-      queryClient.invalidateQueries({ queryKey: queryKeys.duplicates.all });
-    },
-  });
-}
-
-/**
  * 게임 목록 새로고침 Mutation (Vue Query 기반)
  */
 export function useRefreshGames() {

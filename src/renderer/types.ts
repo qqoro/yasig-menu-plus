@@ -28,6 +28,7 @@ export interface GameItem {
   externalId?: string | null;
   lastPlayedAt?: Date | null;
   createdAt?: Date | null;
+  updatedAt?: Date | null; // 수정일 (썸네일 캐시 무효화용)
   executablePath?: string | null;
   translatedTitle?: string | null; // 번역된 제목
   translationSource?: string | null; // 번역 출처 (ollama, google)

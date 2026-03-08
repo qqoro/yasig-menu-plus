@@ -38,7 +38,15 @@ export async function getGameDetail(
     .select("tags.name")
     .pluck("name")) as string[];
 
-  // GameDetailItem 타입으로 변환
+// 날짜 필드 변환 (숫자 타임스탬프 또는 Date 객체 처리)
+const toDate = (value: unknown): Date | null => {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === "number") return new Date(value);
+  return null;
+};
+
+// GameDetailItem 타입으로 변환
   return {
     path: game.path,
     title: game.title,
@@ -49,14 +57,15 @@ export async function getGameDetail(
     thumbnail: game.thumbnail,
     executablePath: game.executablePath,
     isCompressFile: Boolean(game.isCompressFile),
-    publishDate: game.publishDate instanceof Date ? game.publishDate : null,
+    publishDate: toDate(game.publishDate),
     isFavorite: Boolean(game.isFavorite),
     isHidden: Boolean(game.isHidden),
     isClear: Boolean(game.isClear),
     provider: game.provider,
     externalId: game.externalId,
-    lastPlayedAt: game.lastPlayedAt instanceof Date ? game.lastPlayedAt : null,
-    createdAt: game.createdAt instanceof Date ? game.createdAt : null,
+    lastPlayedAt: toDate(game.lastPlayedAt),
+    createdAt: toDate(game.createdAt),
+    updatedAt: toDate(game.updatedAt),
     rating: game.rating,
     totalPlayTime: game.totalPlayTime,
     makers,

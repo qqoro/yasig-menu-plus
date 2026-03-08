@@ -91,6 +91,7 @@ const emit = defineEmits<Emits>();
 const showThumbnailMenu = ref(false);
 const thumbnailUrlInput = ref("");
 const isSettingThumbnail = ref(false);
+const isDragOver = ref(false);
 
 // 컬렉터 실행 상태
 const isRunningCollector = ref(false);
@@ -159,10 +160,11 @@ const formattedPlayTime = computed(() => {
 // 게임 데이터
 const game = computed(() => gameDetail.value);
 
-// 썸네일 URL
+// 썸네일 URL (updatedAt으로 캐시 무효화)
 const thumbnailUrl = computed(() => {
   if (!game.value?.thumbnail) return undefined;
-  return `file:///${game.value.thumbnail.replace(/\\/g, "/")}`;
+  const cacheKey = game.value.updatedAt?.getTime() ?? 0;
+  return `file:///${game.value.thumbnail.replace(/\\/g, "/")}?v=${cacheKey}`;
 });
 
 // 발매일 포맷팅
@@ -596,6 +598,52 @@ async function handleHideThumbnail() {
   }
 }
 
+// 드래그 앤 드롭 핸들러
+function handleDragOver(event: DragEvent) {
+  event.preventDefault();
+  if (event.dataTransfer?.types.includes("Files")) {
+    isDragOver.value = true;
+  }
+}
+
+function handleDragLeave(event: DragEvent) {
+  event.preventDefault();
+  isDragOver.value = false;
+}
+
+async function handleDrop(event: DragEvent) {
+  event.preventDefault();
+  isDragOver.value = false;
+
+  if (!props.gamePath) return;
+
+  const files = event.dataTransfer?.files;
+  if (!files || files.length === 0) return;
+
+  const file = files[0];
+  if (!file.type.startsWith("image/")) {
+    toast.error("이미지 파일만 업로드할 수 있습니다.");
+    return;
+  }
+
+  isSettingThumbnail.value = true;
+  try {
+    // webUtils를 통해 파일 경로 가져오기
+    const filePath = window.api.getPathForFile(file);
+    await setThumbnailFromFile.mutateAsync({
+      path: props.gamePath,
+      filePath,
+    });
+    showThumbnailMenu.value = false;
+    toast.success("썸네일이 설정되었습니다.");
+    emit("updated");
+  } catch (error) {
+    toast.error("썸네일 설정에 실패했습니다.");
+  } finally {
+    isSettingThumbnail.value = false;
+  }
+}
+
 // Enter 키로 태그 추가
 function handleTagKeydown(event: KeyboardEvent) {
   if (event.key === "Enter") {
@@ -718,79 +766,102 @@ async function handleRatingChange(rating: number | null) {
         <div class="flex flex-col gap-6 md:flex-row">
           <!-- 썸네일 영역 -->
           <div class="w-full flex-shrink-0 md:w-1/3">
+            <!-- 드래그 앤 드롭 영역 -->
             <div
-              class="bg-muted group relative aspect-[4/3] overflow-hidden rounded-lg"
+              class="relative"
+              @dragover="handleDragOver"
+              @dragleave="handleDragLeave"
+              @drop="handleDrop"
             >
-              <img
-                v-if="game.thumbnail"
-                :src="thumbnailUrl"
-                :alt="game.title"
-                class="h-full w-full object-cover"
-              />
               <div
-                v-else
-                class="bg-muted text-muted-foreground flex h-full w-full items-center justify-center"
+                class="bg-muted group relative aspect-[4/3] overflow-hidden rounded-lg transition-colors"
+                :class="{ 'bg-primary/20': isDragOver }"
               >
-                <ImageIcon :size="48" class="opacity-20" />
-              </div>
-              <!-- 썸네일 관리 버튼 -->
-              <div
-                class="bg-popover/60 absolute inset-0 flex items-center justify-center gap-2 opacity-0 transition-opacity group-hover:opacity-100"
-              >
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  @click="showThumbnailMenu = !showThumbnailMenu"
-                >
-                  <ImageIcon :size="16" />
-                  썸네일 관리
-                </Button>
-              </div>
-            </div>
-
-            <!-- 썸네일 관리 메뉴 -->
-            <div
-              v-if="showThumbnailMenu"
-              class="bg-muted mt-2 space-y-2 rounded-lg p-3"
-            >
-              <div class="flex gap-2">
-                <Input
-                  v-model="thumbnailUrlInput"
-                  placeholder="이미지 URL 입력"
-                  :disabled="isSettingThumbnail"
+                <img
+                  v-if="game.thumbnail"
+                  :src="thumbnailUrl"
+                  :alt="game.title"
+                  class="h-full w-full object-cover"
                 />
-                <Button
-                  size="sm"
-                  :disabled="isSettingThumbnail || !thumbnailUrlInput.trim()"
-                  @click="handleSetThumbnailFromUrl"
+                <div
+                  v-else
+                  class="bg-muted text-muted-foreground flex h-full w-full items-center justify-center"
                 >
-                  <Loader2
-                    v-if="isSettingThumbnail"
-                    :size="14"
-                    class="animate-spin"
-                  />
-                  <Link2 v-else :size="14" />
-                </Button>
+                  <ImageIcon :size="48" class="opacity-20" />
+                </div>
+                <!-- 썸네일 관리 버튼 -->
+                <div
+                  v-if="!isDragOver"
+                  class="bg-popover/60 absolute inset-0 flex items-center justify-center gap-2 opacity-0 transition-opacity group-hover:opacity-100"
+                >
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    @click="showThumbnailMenu = !showThumbnailMenu"
+                  >
+                    <ImageIcon :size="16" />
+                    썸네일 관리
+                  </Button>
+                </div>
               </div>
-              <div class="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  class="flex-1"
-                  :disabled="isSettingThumbnail"
-                  @click="handleSetThumbnailFromFile"
-                >
-                  <Upload :size="14" />
-                  파일에서 선택
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  :disabled="isSettingThumbnail"
-                  @click="handleHideThumbnail"
-                >
-                  <Trash2 :size="14" />
-                </Button>
+
+              <!-- 썸네일 관리 메뉴 -->
+              <div
+                v-if="showThumbnailMenu"
+                class="bg-muted mt-2 space-y-2 rounded-lg p-3"
+              >
+                <div class="flex gap-2">
+                  <Input
+                    v-model="thumbnailUrlInput"
+                    placeholder="이미지 URL 입력"
+                    :disabled="isSettingThumbnail"
+                  />
+                  <Button
+                    size="sm"
+                    :disabled="isSettingThumbnail || !thumbnailUrlInput.trim()"
+                    @click="handleSetThumbnailFromUrl"
+                  >
+                    <Loader2
+                      v-if="isSettingThumbnail"
+                      :size="14"
+                      class="animate-spin"
+                    />
+                    <Link2 v-else :size="14" />
+                  </Button>
+                </div>
+                <div class="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    class="flex-1"
+                    :disabled="isSettingThumbnail"
+                    @click="handleSetThumbnailFromFile"
+                  >
+                    <Upload :size="14" />
+                    파일에서 선택
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    :disabled="isSettingThumbnail"
+                    @click="handleHideThumbnail"
+                  >
+                    <Trash2 :size="14" />
+                  </Button>
+                </div>
+                <p class="text-muted-foreground text-center text-xs">
+                  또는 이미지를 드래그하여 업로드
+                </p>
+              </div>
+
+              <!-- 드래그 오버레이 (전체 영역 덮음) -->
+              <div
+                v-if="isDragOver"
+                class="border-primary bg-primary/30 absolute inset-0 flex items-center justify-center rounded-lg border-2"
+              >
+                <span class="text-primary-foreground text-sm font-medium">
+                  여기에 이미지를 놓으세요
+                </span>
               </div>
             </div>
 

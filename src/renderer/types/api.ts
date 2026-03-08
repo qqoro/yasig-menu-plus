@@ -23,7 +23,6 @@ import type { LibraryScanInfo, StoreSchema } from "../../main/store.js";
  * invoke 호출 시 반환되는 타입 정의
  */
 type IpcInvokeReturn = {
-  loadList: IpcMainEventMap["loadedList"];
   refreshList: IpcMainEventMap["listRefreshed"];
   playGame: IpcMainEventMap["gamePlayed"];
   openFolder: void;
@@ -161,6 +160,13 @@ export interface ElectronApi {
    * @param channel - 이벤트 채널 (enum 값 리터럴)
    */
   removeAllListeners: (channel: IpcMainSendChannel) => void;
+
+  /**
+   * File 객체에서 파일 경로 가져오기 (드래그 앤 드롭용)
+   * @param file - File 객체
+   * @returns 파일 경로
+   */
+  getPathForFile: (file: File) => string;
 }
 
 // events.ts 타입 재내보내기

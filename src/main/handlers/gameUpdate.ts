@@ -276,7 +276,7 @@ export async function setThumbnailFromUrl(
   // DB 업데이트 (수동 수정 표시)
   await db("games")
     .where("path", path)
-    .update({ thumbnail: filePath, isLoadedInfo: true });
+    .update({ thumbnail: filePath, isLoadedInfo: true, updatedAt: new Date() });
 
   return filePath;
 }
@@ -305,7 +305,7 @@ export async function setThumbnailFromFile(
   // DB 업데이트 (수동 수정 표시)
   await db("games")
     .where("path", path)
-    .update({ thumbnail: destPath, isLoadedInfo: true });
+    .update({ thumbnail: destPath, isLoadedInfo: true, updatedAt: new Date() });
 
   return destPath;
 }
@@ -324,7 +324,7 @@ export async function hideThumbnail(path: string): Promise<void> {
   // DB에서 썸네일 경로 제거 (수동 수정 표시)
   await db("games")
     .where("path", path)
-    .update({ thumbnail: null, isLoadedInfo: true });
+    .update({ thumbnail: null, isLoadedInfo: true, updatedAt: new Date() });
 
   // 실제 파일 삭제
   if (thumbnailPath) {
