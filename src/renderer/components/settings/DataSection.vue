@@ -2,6 +2,7 @@
 import {
   ChevronDown,
   ChevronUp,
+  FolderOpen,
   Languages,
   Loader2,
   RefreshCw,
@@ -20,6 +21,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import {
   useAllSettings,
+  useOpenDataFolder,
   useUpdateSettings,
 } from "@/composables/useAllSettings";
 import { useCleanThumbnails } from "@/composables/useCleanThumbnails";
@@ -125,6 +127,9 @@ const blurThumbnails = computed({
 // 썸네일 정리
 const cleanThumbnailsMutation = useCleanThumbnails();
 
+// 데이터 폴더 열기
+const openDataFolderMutation = useOpenDataFolder();
+
 /**
  * 정보 수집 핸들러
  */
@@ -162,6 +167,17 @@ async function handleCleanUnusedThumbnails(): Promise<void> {
     );
   } catch {
     toast.error("삭제에 실패했습니다.");
+  }
+}
+
+/**
+ * 데이터 폴더 열기 핸들러
+ */
+async function handleOpenDataFolder(): Promise<void> {
+  try {
+    await openDataFolderMutation.mutateAsync(undefined);
+  } catch {
+    toast.error("폴더를 열지 못했습니다.");
   }
 }
 </script>
@@ -424,6 +440,26 @@ async function handleCleanUnusedThumbnails(): Promise<void> {
               }})
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      <!-- 데이터 폴더 -->
+      <Card>
+        <CardHeader class="pb-4">
+          <CardTitle class="text-lg">데이터 폴더</CardTitle>
+          <CardDescription class="text-sm">
+            앱 데이터가 저장된 폴더를 엽니다 (데이터베이스, 썸네일, 설정)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            @click="handleOpenDataFolder"
+            variant="outline"
+            class="w-full"
+          >
+            <FolderOpen :size="18" />
+            폴더 열기
+          </Button>
         </CardContent>
       </Card>
     </div>

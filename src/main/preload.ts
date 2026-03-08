@@ -96,6 +96,9 @@ type IpcInvokeReturn = {
 
   // 체인지로그 관련
   getChangelog: IpcMainEventMap["changelogResult"];
+
+  // 데이터 폴더 열기
+  openDataFolder: IpcMainEventMap["dataFolderOpened"];
 };
 
 const api = {

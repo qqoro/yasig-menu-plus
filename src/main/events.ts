@@ -126,6 +126,9 @@ export const enum IpcRendererSend {
 
   // 썸네일 마이그레이션
   MigrateThumbnails = "migrateThumbnails", // 이전 버전 썸네일 마이그레이션
+
+  // 데이터 폴더 열기
+  OpenDataFolder = "openDataFolder", // 데이터 저장 폴더 열기
 }
 
 // ========== Main → Renderer 이벤트 ==========
@@ -502,6 +505,9 @@ export interface IpcRendererEventMap {
 
   // 썸네일 마이그레이션
   migrateThumbnails: { sourceFolder: string };
+
+  // 데이터 폴더 열기
+  openDataFolder: undefined;
 }
 
 // Main → Renderer 페이로드
@@ -664,4 +670,7 @@ export interface IpcMainEventMap {
     skipCount: number;
     failCount: number;
   };
+
+  // 데이터 폴더 열기
+  dataFolderOpened: { path: string };
 }

@@ -47,3 +47,14 @@ export function useUpdateSettings() {
     },
   });
 }
+
+/**
+ * 데이터 저장 폴더 열기
+ */
+export function useOpenDataFolder() {
+  return useMutation({
+    mutationFn: async () => {
+      return await window.api.invoke("openDataFolder");
+    },
+  });
+}

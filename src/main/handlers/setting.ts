@@ -4,6 +4,7 @@
  * 전체 설정 조회 및 부분 업데이트를 위한 통합 API
  */
 
+import { app, shell } from "electron";
 import type { IpcMainInvokeEvent } from "electron";
 import type { IpcMainEventMap, IpcRendererEventMap } from "../events.js";
 import { getAllSettings, updateSettings } from "../store.js";
@@ -32,4 +33,16 @@ export async function updateSettingsHandler(
   // 업데이트된 전체 설정 반환
   const updatedSettings = getAllSettings();
   return { settings: updatedSettings };
+}
+
+/**
+ * 데이터 저장 폴더 열기 핸들러
+ */
+export async function openDataFolderHandler(
+  _event: IpcMainInvokeEvent,
+  _payload: IpcRendererEventMap["openDataFolder"],
+): Promise<IpcMainEventMap["dataFolderOpened"]> {
+  const dataPath = app.getPath("userData");
+  shell.openPath(dataPath);
+  return { path: dataPath };
 }
