@@ -7,17 +7,13 @@ header = """
 """
 # changelog 본문 템플릿
 body = """
-## {{ version }} ({{ date | date(format="%Y-%m-%d") }})
-
+{%- if version %}## {{ version }}{% if date %} ({{ date | date(format="%Y-%m-%d") }}){% endif %}{% else %}## [Unreleased]{% endif %}
 {% for group, commits in commits | group_by(attribute="group") %}
 ### {{ group | striptags | trim }}
 {% for commit in commits %}
 - {% if commit.scope %}{{ commit.scope }}: {% endif %}{{ commit.message | upper_first }}
+{%- endfor %}
 {% endfor %}
-{% endfor %}
-
-### 전체 변경사항
-{{ previous.version }}...{{ version }}
 """
 # changelog 푸터
 footer = ""
@@ -47,7 +43,7 @@ commit_parsers = [
 ]
 
 # 링크 생성
-[git.link_parsers]
+[[git.link_parsers]]
 # GitHub 이슈/PR 링크
-issue_prefixes = ["#"]
-issue_url = "https://github.com/qqoro/yasig-menu-plus/issues/{{ id }}"
+pattern = "#(\\d+)"
+href = "https://github.com/qqoro/yasig-menu-plus/issues/$1"
