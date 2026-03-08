@@ -177,6 +177,13 @@ function scanSingleFolder(
         entry.name.toLowerCase().endsWith(ext),
       );
 
+      // 실행파일(.exe, .lnk, .url) 확인
+      const isExecutableFile =
+        entry.isFile() &&
+        EXECUTABLE_EXTENSIONS.some((ext) =>
+          entry.name.toLowerCase().endsWith(ext),
+        );
+
       if (entry.isDirectory()) {
         // 폴더인 경우: 실행파일 확인
         const hasExecutable = hasExecutableFile(fullPath);
@@ -198,6 +205,13 @@ function scanSingleFolder(
           path: fullPath,
           name: entry.name,
           isCompressFile: true,
+        });
+      } else if (isExecutableFile) {
+        // 실행파일(.exe, .lnk, .url)도 게임 후보
+        candidates.push({
+          path: fullPath,
+          name: entry.name,
+          isCompressFile: false,
         });
       }
     }
@@ -1474,11 +1488,8 @@ export async function openOriginalSiteHandler(
 // ========== 라이브러리 스캔 기록 관리 ==========
 
 /**
- * 폴더의 게임 수를 셈
- */
-/**
  * 폴더의 게임 수를 셈 (재귀 스캔)
- * 실행파일이 있는 폴더와 압축파일을 게임으로 간주
+ * 실행파일이 있는 폴더, 압축파일, 실행파일(.exe, .lnk, .url)을 게임으로 간주
  */
 function countGames(sourcePath: string): number {
   if (!existsSync(sourcePath)) {
@@ -1506,6 +1517,11 @@ function countGames(sourcePath: string): number {
         const isCompressFile = COMPRESS_FILE_TYPE.some((ext) =>
           entry.name.toLowerCase().endsWith(ext),
         );
+        const isExecutableFile =
+          entry.isFile() &&
+          EXECUTABLE_EXTENSIONS.some((ext) =>
+            entry.name.toLowerCase().endsWith(ext),
+          );
 
         if (entry.isDirectory()) {
           if (hasExecutableFile(fullPath)) {
@@ -1513,7 +1529,7 @@ function countGames(sourcePath: string): number {
           } else {
             queue.push({ path: fullPath, depth: depth + 1 });
           }
-        } else if (isCompressFile) {
+        } else if (isCompressFile || isExecutableFile) {
           count++;
         }
       }
