@@ -3,15 +3,16 @@ import { app } from "electron";
 import {
   access,
   constants,
-  copyFile,
   mkdir,
+  readFile,
   unlink,
   writeFile,
 } from "fs/promises";
 import type { IncomingMessage } from "http";
 import * as http from "http";
 import * as https from "https";
-import { extname, join } from "path";
+import { join } from "path";
+import sharp from "sharp";
 import { validateUrl } from "./validator.js";
 
 /**
@@ -35,7 +36,30 @@ export function generateThumbnailFilename(
 }
 
 /**
- * URL에서 이미지 다운로드
+ * 이미지 최적화 설정
+ */
+const IMAGE_CONFIG = {
+  maxWidth: 1280,
+  quality: 80,
+} as const;
+
+/**
+ * 이미지 최적화 (리사이징 + WebP 변환)
+ * @param buffer 원본 이미지 버퍼
+ * @returns 최적화된 WebP 버퍼
+ */
+export async function optimizeImage(buffer: Buffer): Promise<Buffer> {
+  return sharp(buffer)
+    .resize(IMAGE_CONFIG.maxWidth, undefined, {
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .webp({ quality: IMAGE_CONFIG.quality })
+    .toBuffer();
+}
+
+/**
+ * URL에서 이미지 다운로드 후 WebP로 변환
  * @param url 이미지 URL
  * @param gamePath 게임 경로
  * @param index 이미지 인덱스 (0 = 썸네일, 1+ = 추가 이미지)
@@ -48,8 +72,10 @@ export async function downloadImage(
   const thumbnailDir = getThumbnailDir();
   await mkdir(thumbnailDir, { recursive: true });
 
+  // WebP 확장자로 저장
   const filename = generateThumbnailFilename(gamePath, index);
-  const filePath = join(thumbnailDir, filename);
+  const webpFilename = filename.replace(/\.[^.]+$/, ".webp");
+  const filePath = join(thumbnailDir, webpFilename);
 
   // base64 data URL 처리
   if (url.startsWith("data:")) {
@@ -58,7 +84,8 @@ export async function downloadImage(
       throw new Error("잘못된 data URL 형식");
     }
     const buffer = Buffer.from(matches[2], "base64");
-    await writeFile(filePath, buffer);
+    const optimized = await optimizeImage(buffer);
+    await writeFile(filePath, optimized);
     return filePath;
   }
 
@@ -84,9 +111,14 @@ export async function downloadImage(
         const chunks: Buffer[] = [];
         response.on("data", (chunk: Buffer) => chunks.push(chunk));
         response.on("end", async () => {
-          const buffer = Buffer.concat(chunks);
-          await writeFile(filePath, buffer);
-          resolve(filePath);
+          try {
+            const buffer = Buffer.concat(chunks);
+            const optimized = await optimizeImage(buffer);
+            await writeFile(filePath, optimized);
+            resolve(filePath);
+          } catch (error) {
+            reject(error);
+          }
         });
       },
     );
@@ -118,7 +150,7 @@ export async function deleteThumbnail(filePath: string): Promise<void> {
 }
 
 /**
- * 파일 복사 (로컬 파일을 썸네일 폴더로 복사)
+ * 파일 복사 후 WebP로 변환
  * @param sourcePath 원본 파일 경로
  * @param gamePath 게임 경로 (파일명 생성용)
  * @param index 이미지 인덱스 (0 = 썸네일, 1+ = 추가 이미지)
@@ -138,15 +170,16 @@ export async function copyImage(
     throw new Error(`원본 파일을 읽을 수 없습니다: ${sourcePath}`);
   }
 
-  // 원본 파일 확장자 유지
-  const ext = extname(sourcePath).toLowerCase();
+  // WebP 확장자로 저장
   const hash = createHash("md5").update(gamePath).digest("hex");
   const suffix = index === 0 ? "" : `_${index}`;
-  const filename = `${hash}${suffix}${ext}`;
+  const filename = `${hash}${suffix}.webp`;
   const destPath = join(thumbnailDir, filename);
 
-  // 파일 복사
-  await copyFile(sourcePath, destPath);
+  // 파일 읽기 → 최적화 → 저장
+  const buffer = await readFile(sourcePath);
+  const optimized = await optimizeImage(buffer);
+  await writeFile(destPath, optimized);
 
   return destPath;
 }

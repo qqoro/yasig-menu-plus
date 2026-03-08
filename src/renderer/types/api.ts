@@ -98,6 +98,7 @@ type IpcInvokeReturn = {
 
   // 데이터 폴더 열기
   openDataFolder: IpcMainEventMap["dataFolderOpened"];
+  convertImagesToWebp: IpcMainEventMap["imagesConvertedToWebp"];
 };
 
 /**

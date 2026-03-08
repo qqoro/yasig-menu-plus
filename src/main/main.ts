@@ -266,6 +266,10 @@ function registerIpcHandlers() {
     IpcRendererSend.MigrateThumbnails,
     ThumbnailHandlers.migrateThumbnailsHandler,
   );
+  ipcMain.handle(
+    IpcRendererSend.ConvertImagesToWebp,
+    ThumbnailHandlers.convertImagesToWebpHandler,
+  );
 
   // ========== 게임 이미지 관련 ==========
   ipcMain.handle(

@@ -128,6 +128,9 @@ export const enum IpcRendererSend {
 
   // 데이터 폴더 열기
   OpenDataFolder = "openDataFolder", // 데이터 저장 폴더 열기
+
+  // 이미지 일괄 변환
+  ConvertImagesToWebp = "convertImagesToWebp", // 기존 이미지 WebP로 일괄 변환
 }
 
 // ========== Main → Renderer 이벤트 ==========
@@ -219,6 +222,9 @@ export const enum IpcMainSend {
 
   // 썸네일 마이그레이션
   ThumbnailsMigrated = "thumbnailsMigrated", // 썸네일 마이그레이션 완료
+
+  // 이미지 일괄 변환
+  ImagesConvertedToWebp = "imagesConvertedToWebp", // 기존 이미지 WebP 변환 완료
 }
 
 /**
@@ -278,7 +284,8 @@ export type IpcMainSendChannel =
   | "changelogResult"
   | "libraryPathVisibilityToggled"
   | "disabledLibraryPaths"
-  | "thumbnailsMigrated";
+  | "thumbnailsMigrated"
+  | "imagesConvertedToWebp";
 
 // ========== 이벤트 페이로드 타입 ==========
 
@@ -507,6 +514,9 @@ export interface IpcRendererEventMap {
 
   // 데이터 폴더 열기
   openDataFolder: undefined;
+
+  // 이미지 일괄 변환
+  convertImagesToWebp: undefined;
 }
 
 // Main → Renderer 페이로드
@@ -671,4 +681,12 @@ export interface IpcMainEventMap {
 
   // 데이터 폴더 열기
   dataFolderOpened: { path: string };
+
+  // 이미지 일괄 변환
+  imagesConvertedToWebp: {
+    total: number;
+    converted: number;
+    failed: number;
+    freedBytes: number;
+  };
 }

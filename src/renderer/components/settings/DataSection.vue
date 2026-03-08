@@ -3,6 +3,7 @@ import {
   ChevronDown,
   ChevronUp,
   FolderOpen,
+  Image,
   Languages,
   Loader2,
   RefreshCw,
@@ -25,6 +26,7 @@ import {
   useUpdateSettings,
 } from "@/composables/useAllSettings";
 import { useCleanThumbnails } from "@/composables/useCleanThumbnails";
+import { useConvertImagesToWebp } from "@/composables/useConvertImagesToWebp";
 import { useCollector, useRunAllCollectors } from "@/composables/useCollector";
 import {
   useTranslateAllTitlesMutation,
@@ -127,6 +129,9 @@ const blurThumbnails = computed({
 // 썸네일 정리
 const cleanThumbnailsMutation = useCleanThumbnails();
 
+// 이미지 WebP 변환
+const convertImagesMutation = useConvertImagesToWebp();
+
 // 데이터 폴더 열기
 const openDataFolderMutation = useOpenDataFolder();
 
@@ -167,6 +172,20 @@ async function handleCleanUnusedThumbnails(): Promise<void> {
     );
   } catch {
     toast.error("삭제에 실패했습니다.");
+  }
+}
+
+/**
+ * 이미지 WebP 변환 핸들러
+ */
+async function handleConvertImagesToWebp(): Promise<void> {
+  try {
+    const result = await convertImagesMutation.mutateAsync(undefined);
+    toast.success(
+      `${result.converted}개 이미지 변환 완료 (${formatBytes(result.freedBytes)} 절약)`,
+    );
+  } catch {
+    toast.error("변환에 실패했습니다.");
   }
 }
 
@@ -438,6 +457,44 @@ async function handleOpenDataFolder(): Promise<void> {
               삭제됨 ({{
                 formatBytes(cleanThumbnailsMutation.data.value.freedSpace)
               }})
+            </p>
+          </div>
+
+          <div class="border-t pt-2">
+            <div class="space-y-0.5">
+              <label class="text-sm leading-none font-medium"
+                >이미지 WebP 변환</label
+              >
+              <p class="text-muted-foreground text-xs">
+                기존 JPG/PNG 이미지를 WebP로 변환하여 용량을 절약합니다
+              </p>
+            </div>
+            <Button
+              @click="handleConvertImagesToWebp"
+              :disabled="convertImagesMutation.isPending.value"
+              variant="outline"
+              class="mt-2 w-full"
+            >
+              <Loader2
+                v-if="convertImagesMutation.isPending.value"
+                :size="18"
+                class="animate-spin"
+              />
+              <Image v-else :size="18" />
+              {{
+                convertImagesMutation.isPending.value
+                  ? "변환 중..."
+                  : "기존 이미지 WebP로 변환"
+              }}
+            </Button>
+            <p
+              v-if="convertImagesMutation.data.value"
+              class="text-muted-foreground mt-1 text-xs"
+            >
+              {{ convertImagesMutation.data.value.converted }}개 변환됨 ({{
+                formatBytes(convertImagesMutation.data.value.freedBytes)
+              }}
+              절약)
             </p>
           </div>
         </CardContent>

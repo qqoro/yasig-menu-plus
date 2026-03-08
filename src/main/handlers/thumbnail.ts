@@ -1,5 +1,5 @@
 import type { IpcMainInvokeEvent } from "electron";
-import { readdir, stat, unlink } from "node:fs/promises";
+import { readdir, stat, unlink, readFile, writeFile } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import { db } from "../db/db-manager.js";
 import type { IpcMainEventMap, IpcRendererEventMap } from "../events.js";
@@ -8,6 +8,7 @@ import {
   deleteThumbnail as deleteFile,
   downloadImage,
   getThumbnailDir,
+  optimizeImage,
 } from "../utils/downloader.js";
 import { validatePath } from "../utils/validator.js";
 
@@ -223,4 +224,63 @@ export async function migrateThumbnailsHandler(
   );
 
   return { successCount, skipCount, failCount };
+}
+
+/**
+ * 기존 이미지를 WebP로 일괄 변환
+ */
+export async function convertImagesToWebpHandler(
+  _event: IpcMainInvokeEvent,
+  _payload: IpcRendererEventMap["convertImagesToWebp"],
+): Promise<IpcMainEventMap["imagesConvertedToWebp"]> {
+  const thumbnailDir = getThumbnailDir();
+  const files = await readdir(thumbnailDir);
+
+  // 변환 대상 파일 필터링 (jpg, jpeg, png, bmp)
+  const targetExtensions = [".jpg", ".jpeg", ".png", ".bmp"];
+  const targetFiles = files.filter((f) =>
+    targetExtensions.includes(extname(f).toLowerCase()),
+  );
+
+  let converted = 0;
+  let failed = 0;
+  let freedBytes = 0;
+
+  for (const file of targetFiles) {
+    const sourcePath = join(thumbnailDir, file);
+    const destPath = sourcePath.replace(/\.[^.]+$/, ".webp");
+
+    try {
+      const beforeStat = await stat(sourcePath);
+      const buffer = await readFile(sourcePath);
+      const optimized = await optimizeImage(buffer);
+      await writeFile(destPath, optimized);
+      const afterStat = await stat(destPath);
+
+      // 원본 삭제
+      await unlink(sourcePath);
+
+      // DB 경로 업데이트 (games 테이블)
+      await db("games")
+        .where("thumbnail", sourcePath)
+        .update({ thumbnail: destPath });
+
+      // DB 경로 업데이트 (gameImages 테이블)
+      await db("gameImages")
+        .where("path", sourcePath)
+        .update({ path: destPath });
+
+      freedBytes += beforeStat.size - afterStat.size;
+      converted++;
+    } catch (error) {
+      console.error(`[WebP 변환] 실패: ${file}`, error);
+      failed++;
+    }
+  }
+
+  console.log(
+    `[WebP 변환] 완료: 변환 ${converted}, 실패 ${failed}, 절약 ${freedBytes} bytes`,
+  );
+
+  return { total: targetFiles.length, converted, failed, freedBytes };
 }
