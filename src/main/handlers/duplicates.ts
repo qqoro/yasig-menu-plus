@@ -7,7 +7,7 @@
  */
 
 import { shell } from "electron";
-import { existsSync } from "fs";
+import { existsSync, statSync } from "fs";
 import type { IpcMainInvokeEvent } from "electron";
 import { db } from "../db/db-manager.js";
 import type {
@@ -62,6 +62,26 @@ async function loadRelationsAndGroup(gamePaths: string[]): Promise<{
 }
 
 /**
+ * 파일 시스템에서 파일 생성/수정일 조회
+ */
+function getFileStats(
+  filePath: string,
+): { fileCreatedAt: Date | null; fileModifiedAt: Date | null } {
+  try {
+    if (existsSync(filePath)) {
+      const stats = statSync(filePath);
+      return {
+        fileCreatedAt: stats.birthtime,
+        fileModifiedAt: stats.mtime,
+      };
+    }
+  } catch (error) {
+    console.error(`파일 정보 조회 실패: ${filePath}`, error);
+  }
+  return { fileCreatedAt: null, fileModifiedAt: null };
+}
+
+/**
  * DB 결과를 GameItem으로 변환
  */
 function buildGameItems(
@@ -92,30 +112,35 @@ function buildGameItems(
     tags: Map<string, string[]>;
   },
 ): GameItem[] {
-  return games.map((g) => ({
-    path: g.path,
-    title: g.title,
-    originalTitle: g.originalTitle,
-    source: g.source,
-    thumbnail: g.thumbnail,
-    executablePath: g.executablePath || null,
-    isCompressFile: Boolean(g.isCompressFile),
-    publishDate: g.publishDate || null,
-    translatedTitle: g.translatedTitle || null,
-    translationSource: g.translationSource || null,
-    rating: g.rating,
-    isFavorite: g.isFavorite !== undefined ? Boolean(g.isFavorite) : undefined,
-    isHidden: g.isHidden !== undefined ? Boolean(g.isHidden) : undefined,
-    isClear: g.isClear !== undefined ? Boolean(g.isClear) : undefined,
-    provider: g.provider || null,
-    externalId: g.externalId || null,
-    lastPlayedAt: g.lastPlayedAt || null,
-    createdAt: g.createdAt || null,
-    totalPlayTime: g.totalPlayTime,
-    makers: relations.makers.get(g.path) || [],
-    categories: relations.categories.get(g.path) || [],
-    tags: relations.tags.get(g.path) || [],
-  }));
+  return games.map((g) => {
+    const fileStats = getFileStats(g.path);
+    return {
+      path: g.path,
+      title: g.title,
+      originalTitle: g.originalTitle,
+      source: g.source,
+      thumbnail: g.thumbnail,
+      executablePath: g.executablePath || null,
+      isCompressFile: Boolean(g.isCompressFile),
+      publishDate: g.publishDate || null,
+      translatedTitle: g.translatedTitle || null,
+      translationSource: g.translationSource || null,
+      rating: g.rating,
+      isFavorite: g.isFavorite !== undefined ? Boolean(g.isFavorite) : undefined,
+      isHidden: g.isHidden !== undefined ? Boolean(g.isHidden) : undefined,
+      isClear: g.isClear !== undefined ? Boolean(g.isClear) : undefined,
+      provider: g.provider || null,
+      externalId: g.externalId || null,
+      lastPlayedAt: g.lastPlayedAt || null,
+      createdAt: g.createdAt || null,
+      totalPlayTime: g.totalPlayTime,
+      fileCreatedAt: fileStats.fileCreatedAt,
+      fileModifiedAt: fileStats.fileModifiedAt,
+      makers: relations.makers.get(g.path) || [],
+      categories: relations.categories.get(g.path) || [],
+      tags: relations.tags.get(g.path) || [],
+    };
+  });
 }
 
 /**

@@ -32,6 +32,8 @@ export interface GameItem {
   translatedTitle?: string | null; // 번역된 제목
   translationSource?: string | null; // 번역 출처 (ollama, google)
   rating?: number | null; // 별점 (1-5)
+  fileCreatedAt?: Date | null; // 파일 생성일 (파일 시스템)
+  fileModifiedAt?: Date | null; // 파일 수정일 (파일 시스템)
 }
 
 /**

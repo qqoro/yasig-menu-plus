@@ -307,6 +307,8 @@ export interface GameItem {
   rating?: number | null; // 별점 (1-5)
   totalPlayTime?: number; // 총 플레이 시간 (초)
   sessionStartAt?: Date | null; // 현재 세션 시작 시간
+  fileCreatedAt?: Date | null; // 파일 생성일 (파일 시스템)
+  fileModifiedAt?: Date | null; // 파일 수정일 (파일 시스템)
   makers: string[];
   categories: string[];
   tags: string[];

@@ -261,9 +261,15 @@ const selectedGames = computed(() => {
                   {{ game.path }}
                 </p>
                 <div
-                  class="text-muted-foreground mt-1 flex items-center gap-2 text-xs"
+                  class="text-muted-foreground mt-1 flex flex-wrap items-center gap-2 text-xs"
                 >
-                  <span>추가: {{ formatDate(game.createdAt) }}</span>
+                  <span>라이브러리 추가: {{ formatDate(game.createdAt) }}</span>
+                  <span v-if="game.fileCreatedAt"
+                    >파일 생성: {{ formatDate(game.fileCreatedAt) }}</span
+                  >
+                  <span v-if="game.fileModifiedAt"
+                    >수정: {{ formatDate(game.fileModifiedAt) }}</span
+                  >
                   <span v-if="game.isCompressFile">📦 압축</span>
                   <span v-if="game.isFavorite">⭐</span>
                   <span v-if="game.isClear">✅</span>
