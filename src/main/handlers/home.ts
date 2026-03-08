@@ -591,10 +591,11 @@ export async function playGameHandler(
   }
 
   const isCompressFile = Boolean(game.isCompressFile);
+  const isShortcutFile = path.toLowerCase().endsWith(".lnk");
   let executablePath: string | null = null;
 
-  // 압축파일인 경우 압축파일 자체를 실행
-  if (isCompressFile) {
+  // 압축파일이거나 바로가기 파일인 경우 파일 자체를 실행
+  if (isCompressFile || isShortcutFile) {
     executablePath = path;
   } else if (game.executablePath) {
     // 직접 지정한 실행 파일이 있으면 사용
@@ -650,9 +651,10 @@ export async function openFolderHandler(
   }
 
   const isCompressFile = Boolean(game.isCompressFile);
+  const isShortcutFile = path.toLowerCase().endsWith(".lnk");
 
-  if (isCompressFile) {
-    // 압축파일인 경우 파일이 있는 폴더에서 파일 선택
+  if (isCompressFile || isShortcutFile) {
+    // 압축파일이거나 바로가기 파일인 경우 파일이 있는 폴더에서 파일 선택
     shell.showItemInFolder(path);
   } else {
     // 폴더인 경우 해당 폴더 열기
