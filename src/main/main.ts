@@ -45,6 +45,7 @@ import {
 } from "./handlers/home.js";
 import {
   getAllSettingsHandler,
+  openDataFolderHandler,
   updateSettingsHandler,
 } from "./handlers/setting.js";
 import * as ThumbnailHandlers from "./handlers/thumbnail.js";
@@ -118,27 +119,35 @@ function createWindow() {
     // 전체화면 진입 이벤트 (필요시 구현)
   });
 
+  /**
+   * URL이 외부 링크인지 확인 (내부 파일/localhost 제외)
+   */
+  const isExternalUrl = (url: string): boolean => {
+    try {
+      const urlObj = new URL(url);
+      return urlObj.protocol !== "file:";
+    } catch {
+      return false;
+    }
+  };
+
+  // target="_blank" 링크 및 window.open() 처리
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    // 특정 도메인만 외부 브라우저로 열기
-    const allowedDomains = [
-      "github.com",
-      "www.dlsite.com",
-      "www.getchu.com",
-      "ci-en.net",
-      "forms.gle",
-    ];
-    if (
-      allowedDomains.some(
-        (domain) =>
-          details.url.startsWith("https://" + domain) ||
-          details.url.startsWith("https://www." + domain),
-      )
-    ) {
+    if (isExternalUrl(details.url)) {
       shell.openExternal(details.url);
     }
-
-    // Electron 내부 창 생성 차단
     return { action: "deny" };
+  });
+
+  // 일반 <a href> 링크 처리
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    // 내부 내비게이션은 허용
+    if (url.startsWith("file://") || url.startsWith("http://localhost")) {
+      return;
+    }
+    // 외부 링크는 차단하고 외부 브라우저로 열기
+    event.preventDefault();
+    shell.openExternal(url);
   });
 
   // 브라우저 단축키 처리
@@ -355,6 +364,7 @@ function registerIpcHandlers() {
   // ========== 통합 설정 관리 ==========
   ipcMain.handle(IpcRendererSend.GetAllSettings, getAllSettingsHandler);
   ipcMain.handle(IpcRendererSend.UpdateSettings, updateSettingsHandler);
+  ipcMain.handle(IpcRendererSend.OpenDataFolder, openDataFolderHandler);
 
   // ========== 플레이 타임 관련 ==========
   ipcMain.handle(IpcRendererSend.GetPlayTime, getPlayTimeHandler);
