@@ -33,9 +33,13 @@ export const GoogleCollector: Collector = {
     try {
       await page.waitForSelector("#center_col img", { timeout: 5000 });
 
-      // 모든 썸네일 이미지 src 수집
+      // 실제 썸네일 이미지만 수집 (파비콘 등 작은 아이콘 제외)
+      // 최소 크기 50px 이상인 이미지만 필터링
       const thumbnailSrcs = await page.$$eval("#center_col img", (imgs) =>
-        imgs.map((img) => img.src).filter((src) => src != null),
+        imgs
+          .filter((img) => img.naturalWidth >= 50 && img.naturalHeight >= 50)
+          .map((img) => img.src)
+          .filter((src) => src != null),
       );
 
       // 첫 번째 이미지 클릭하여 고화질 이미지 획득
@@ -66,7 +70,7 @@ export const GoogleCollector: Collector = {
           return {
             title: null,
             thumbnailUrl: base64Data,
-            images: thumbnailSrcs.slice(0, 10),
+            images: thumbnailSrcs.slice(0, 5),
             publishDate: null,
             makers: [],
             categories: [],
@@ -87,7 +91,7 @@ export const GoogleCollector: Collector = {
       return {
         title: null,
         thumbnailUrl: thumbnailSrc,
-        images: thumbnailSrcs.slice(0, 10),
+        images: thumbnailSrcs.slice(0, 5),
         publishDate: null,
         makers: [],
         categories: [],
