@@ -64,9 +64,10 @@ async function loadRelationsAndGroup(gamePaths: string[]): Promise<{
 /**
  * 파일 시스템에서 파일 생성/수정일 조회
  */
-function getFileStats(
-  filePath: string,
-): { fileCreatedAt: Date | null; fileModifiedAt: Date | null } {
+function getFileStats(filePath: string): {
+  fileCreatedAt: Date | null;
+  fileModifiedAt: Date | null;
+} {
   try {
     if (existsSync(filePath)) {
       const stats = statSync(filePath);
@@ -126,7 +127,8 @@ function buildGameItems(
       translatedTitle: g.translatedTitle || null,
       translationSource: g.translationSource || null,
       rating: g.rating,
-      isFavorite: g.isFavorite !== undefined ? Boolean(g.isFavorite) : undefined,
+      isFavorite:
+        g.isFavorite !== undefined ? Boolean(g.isFavorite) : undefined,
       isHidden: g.isHidden !== undefined ? Boolean(g.isHidden) : undefined,
       isClear: g.isClear !== undefined ? Boolean(g.isClear) : undefined,
       provider: g.provider || null,
@@ -156,28 +158,29 @@ export async function findDuplicatesHandler(
 ): Promise<IpcMainEventMap["duplicatesFound"]> {
   // 모든 게임 조회 (숨김 포함)
   const games = await db("games")
+    .leftJoin("userGameData", "games.userGameDataId", "userGameData.id")
     .select(
-      "path",
-      "title",
-      "originalTitle",
-      "source",
-      "thumbnail",
-      "executablePath",
-      "isCompressFile",
-      "publishDate",
-      "isFavorite",
-      "isHidden",
-      "isClear",
-      "provider",
-      "externalId",
-      "lastPlayedAt",
-      "createdAt",
-      "translatedTitle",
-      "translationSource",
-      "rating",
-      "totalPlayTime",
+      "games.path",
+      "games.title",
+      "games.originalTitle",
+      "games.source",
+      "games.thumbnail",
+      "games.executablePath",
+      "games.isCompressFile",
+      "games.publishDate",
+      "games.isHidden",
+      "games.provider",
+      "games.externalId",
+      "games.createdAt",
+      "games.translatedTitle",
+      "games.translationSource",
+      "userGameData.isFavorite",
+      "userGameData.isClear",
+      "userGameData.lastPlayedAt",
+      "userGameData.rating",
+      "userGameData.totalPlayTime",
     )
-    .orderBy("createdAt", "asc");
+    .orderBy("games.createdAt", "asc");
 
   if (games.length === 0) {
     return { groups: [] };

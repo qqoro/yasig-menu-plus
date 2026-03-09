@@ -8,6 +8,7 @@
 import { ChildProcess, spawn } from "child_process";
 import type { BrowserWindow } from "electron";
 import { db } from "../db/db-manager.js";
+import { getOrCreateUserGameData } from "./user-game-data.js";
 
 interface ActiveSession {
   gamePath: string;
@@ -63,8 +64,11 @@ export class ProcessMonitor {
     // DB에 세션 시작 기록
     await db("games").where("path", gamePath).update({
       sessionStartAt: startedAt,
-      lastPlayedAt: startedAt,
       updatedAt: startedAt,
+    });
+    const userGameDataId = await getOrCreateUserGameData(gamePath);
+    await db("userGameData").where("id", userGameDataId).update({
+      lastPlayedAt: startedAt,
     });
 
     // spawn으로 실행
@@ -117,38 +121,45 @@ export class ProcessMonitor {
     // 최소 플레이 시간 확인
     if (durationSeconds >= this.MIN_PLAY_TIME_SECONDS) {
       try {
+        const game = await db("games")
+          .where("path", gamePath)
+          .select("userGameDataId")
+          .first();
+        if (!game?.userGameDataId) return; // 이론상 startSession에서 이미 생성됨
+
         // 세션 기록 저장
         await db("playSessions").insert({
-          gamePath,
+          userGameDataId: game.userGameDataId,
           startedAt: session.startedAt,
           endedAt,
           durationSeconds,
         });
 
         // 총 플레이 타임 업데이트
-        await db("games")
-          .where("path", gamePath)
-          .increment("totalPlayTime", durationSeconds)
-          .update({
-            sessionStartAt: null,
-            updatedAt: endedAt,
-          });
+        await db("userGameData")
+          .where("id", game.userGameDataId)
+          .increment("totalPlayTime", durationSeconds);
+
+        await db("games").where("path", gamePath).update({
+          sessionStartAt: null,
+          updatedAt: endedAt,
+        });
 
         // 업데이트된 총 플레이 타임 조회
-        const game = await db("games")
-          .where("path", gamePath)
+        const updatedData = await db("userGameData")
+          .where("id", game.userGameDataId)
           .select("totalPlayTime")
           .first();
 
         console.log(
-          `플레이 타임 기록: ${gamePath}, ${durationSeconds}초, 총 ${game?.totalPlayTime ?? 0}초`,
+          `플레이 타임 기록: ${gamePath}, ${durationSeconds}초, 총 ${updatedData?.totalPlayTime ?? 0}초`,
         );
 
         // 프론트엔드에 알림
         this.sendEvent("gameSessionEnded", {
           path: gamePath,
           durationSeconds,
-          totalPlayTime: game?.totalPlayTime ?? 0,
+          totalPlayTime: updatedData?.totalPlayTime ?? 0,
         });
       } catch (error) {
         console.error("플레이 타임 기록 실패:", error);

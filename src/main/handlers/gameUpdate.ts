@@ -8,6 +8,7 @@ import { copyFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { db } from "../db/db-manager.js";
 import { IpcRendererSend } from "../events.js";
+import { getOrCreateUserGameData } from "../services/user-game-data.js";
 import { downloadImage } from "../utils/downloader.js";
 import { validatePath, validateUrl } from "../utils/validator.js";
 
@@ -81,7 +82,8 @@ export async function updateRating(
     throw new Error("rating은 1-5 사이의 정수 또는 null이어야 합니다.");
   }
 
-  await db("games").where("path", path).update({ rating });
+  const userGameDataId = await getOrCreateUserGameData(path);
+  await db("userGameData").where("id", userGameDataId).update({ rating });
 }
 
 /**

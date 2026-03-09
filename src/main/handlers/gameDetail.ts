@@ -13,40 +13,69 @@ import { IpcRendererSend } from "../events.js";
 export async function getGameDetail(
   path: string,
 ): Promise<GameDetailItem | null> {
-  const game = await db("games").where("path", path).first();
+  // games 테이블과 userGameData 테이블을 LEFT JOIN하여 유저 데이터 포함
+  const game = await db("games")
+    .leftJoin("userGameData", "games.userGameDataId", "userGameData.id")
+    .where("games.path", path)
+    .select(
+      // games 테이블 컬럼 (명시적 선택으로 id 충돌 방지)
+      "games.path",
+      "games.title",
+      "games.originalTitle",
+      "games.translatedTitle",
+      "games.translationSource",
+      "games.source",
+      "games.thumbnail",
+      "games.executablePath",
+      "games.isCompressFile",
+      "games.publishDate",
+      "games.isHidden",
+      "games.provider",
+      "games.externalId",
+      "games.memo",
+      "games.createdAt",
+      "games.updatedAt",
+      // userGameData 테이블 컬럼
+      "userGameData.rating",
+      "userGameData.totalPlayTime",
+      "userGameData.isFavorite",
+      "userGameData.isClear",
+      "userGameData.lastPlayedAt",
+    )
+    .first();
 
   if (!game) {
     return null;
   }
 
   // 관계 데이터 조회
-  const makers = (await db("game_makers")
-    .join("makers", "game_makers.makerId", "makers.id")
-    .where("game_makers.gamePath", path)
+  const makers = (await db("gameMakers")
+    .join("makers", "gameMakers.makerId", "makers.id")
+    .where("gameMakers.gamePath", path)
     .select("makers.name")
     .pluck("name")) as string[];
 
-  const categories = (await db("game_categories")
-    .join("categories", "game_categories.categoryId", "categories.id")
-    .where("game_categories.gamePath", path)
+  const categories = (await db("gameCategories")
+    .join("categories", "gameCategories.categoryId", "categories.id")
+    .where("gameCategories.gamePath", path)
     .select("categories.name")
     .pluck("name")) as string[];
 
-  const tags = (await db("game_tags")
-    .join("tags", "game_tags.tagId", "tags.id")
-    .where("game_tags.gamePath", path)
+  const tags = (await db("gameTags")
+    .join("tags", "gameTags.tagId", "tags.id")
+    .where("gameTags.gamePath", path)
     .select("tags.name")
     .pluck("name")) as string[];
 
-// 날짜 필드 변환 (숫자 타임스탬프 또는 Date 객체 처리)
-const toDate = (value: unknown): Date | null => {
-  if (!value) return null;
-  if (value instanceof Date) return value;
-  if (typeof value === "number") return new Date(value);
-  return null;
-};
+  // 날짜 필드 변환 (숫자 타임스탬프 또는 Date 객체 처리)
+  const toDate = (value: unknown): Date | null => {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    if (typeof value === "number") return new Date(value);
+    return null;
+  };
 
-// GameDetailItem 타입으로 변환
+  // GameDetailItem 타입으로 변환
   return {
     path: game.path,
     title: game.title,

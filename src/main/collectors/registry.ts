@@ -1,5 +1,6 @@
 import { Page } from "puppeteer-core";
 import { db } from "../db/db-manager.js";
+import { linkExternalKey } from "../services/user-game-data.js";
 import { deleteImage, downloadImage } from "../utils/downloader.js";
 import { CienCollector } from "./cien-collector.js";
 import { DLSiteCollector } from "./dlsite-collector.js";
@@ -233,6 +234,11 @@ export async function saveInfo(path: string, info: CollectorResult) {
     }
 
     await tx.commit();
+
+    // user_game_data에 external_key 연결
+    if (provider && externalId) {
+      await linkExternalKey(path, provider, externalId);
+    }
   } catch (error) {
     console.error("saveInfo error:", error);
     await tx.rollback();

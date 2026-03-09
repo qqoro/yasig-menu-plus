@@ -40,6 +40,11 @@ import {
 } from "../lib/search-prefix.js";
 import { processMonitor } from "../services/ProcessMonitor.js";
 import {
+  findAndLinkUserGameData,
+  getOrCreateUserGameData,
+} from "../services/user-game-data.js";
+import { computeFingerprint } from "../lib/fingerprint.js";
+import {
   addExcludedExecutable,
   addLibraryPath as addLibraryPathToStore,
   DEFAULT_TITLE_DISPLAY_PRIORITY,
@@ -160,12 +165,14 @@ async function scanFolder(
       }
 
       // 게임 정보 생성
+      const fingerprint = computeFingerprint(fullPath, Boolean(isCompressFile));
       const gameData = {
         path: fullPath,
         title: title,
         originalTitle: name,
         source: sourcePath,
         isCompressFile: Boolean(isCompressFile),
+        fingerprint,
       };
 
       // 발견된 경로 기록
@@ -175,15 +182,24 @@ async function scanFolder(
       const existing = await db("games").where("path", fullPath).first();
       if (!existing) {
         await db("games").insert(gameData);
+        // user_game_data 연결 시도 (이전에 같은 fingerprint로 등록된 데이터가 있으면)
+        await findAndLinkUserGameData(fullPath);
         addedCount++;
       } else {
         // 기존 게임 정보 업데이트 (발견한 경우)
         // title은 정보 수집으로 변경된 값을 유지하고, originalTitle만 업데이트
-        await db("games").where("path", fullPath).update({
-          originalTitle: name,
-          source: sourcePath,
-          updatedAt: new Date(),
-        });
+        await db("games")
+          .where("path", fullPath)
+          .update({
+            originalTitle: name,
+            source: sourcePath,
+            fingerprint: fingerprint ?? existing.fingerprint,
+            updatedAt: new Date(),
+          });
+        // user_game_data 연결이 없으면 시도
+        if (!existing.userGameDataId) {
+          await findAndLinkUserGameData(fullPath);
+        }
       }
     }
 
@@ -388,24 +404,25 @@ export async function refreshListHandler(
 
   // 스캔 후 다시 목록 로드
   const games = await db("games")
+    .leftJoin("userGameData", "games.userGameDataId", "userGameData.id")
     .whereIn(
-      "source",
+      "games.source",
       sourcePaths.filter((p) => existsSync(p)),
     )
-    .where("isHidden", 0)
-    .orderBy("title", "asc")
+    .where("games.isHidden", 0)
+    .orderBy("games.title", "asc")
     .select(
-      "path",
-      "title",
-      "originalTitle",
-      "source",
-      "thumbnail",
-      "executablePath",
-      "isCompressFile",
-      "publishDate",
-      "translatedTitle",
-      "translationSource",
-      "rating",
+      "games.path",
+      "games.title",
+      "games.originalTitle",
+      "games.source",
+      "games.thumbnail",
+      "games.executablePath",
+      "games.isCompressFile",
+      "games.publishDate",
+      "games.translatedTitle",
+      "games.translationSource",
+      "userGameData.rating",
     );
 
   // 관계 데이터 조회 및 그룹화
@@ -470,10 +487,11 @@ export async function playGameHandler(
   }
 
   // 마지막 플레이 시간 업데이트 (.exe가 아니거나 spawn 실패 시)
-  await db("games").where("path", path).update({
+  const userGameDataId = await getOrCreateUserGameData(path);
+  await db("userGameData").where("id", userGameDataId).update({
     lastPlayedAt: new Date(),
-    updatedAt: new Date(),
   });
+  await db("games").where("path", path).update({ updatedAt: new Date() });
 
   // 게임 실행 (shell.openPath 사용)
   shell.openPath(executablePath);
@@ -616,28 +634,29 @@ export async function searchGamesHandler(
 
   // 기본 쿼리 빌더
   let query = db("games")
-    .whereIn("source", validPaths)
+    .leftJoin("userGameData", "games.userGameDataId", "userGameData.id")
+    .whereIn("games.source", validPaths)
     .select(
-      "path",
-      "title",
-      "originalTitle",
-      "source",
-      "thumbnail",
-      "executablePath",
-      "isCompressFile",
-      "publishDate",
-      "isFavorite",
-      "isHidden",
-      "isClear",
-      "provider",
-      "externalId",
-      "lastPlayedAt",
-      "createdAt",
-      "updatedAt",
-      "translatedTitle",
-      "translationSource",
-      "rating",
-      "totalPlayTime",
+      "games.path",
+      "games.title",
+      "games.originalTitle",
+      "games.source",
+      "games.thumbnail",
+      "games.executablePath",
+      "games.isCompressFile",
+      "games.publishDate",
+      "games.isHidden",
+      "games.provider",
+      "games.externalId",
+      "games.createdAt",
+      "games.updatedAt",
+      "games.translatedTitle",
+      "games.translationSource",
+      "userGameData.isFavorite",
+      "userGameData.isClear",
+      "userGameData.lastPlayedAt",
+      "userGameData.rating",
+      "userGameData.totalPlayTime",
     );
 
   // 필터 적용
@@ -645,21 +664,24 @@ export async function searchGamesHandler(
 
   // 숨김 게임 필터 (기본: 숨김 게임 제외, true면 숨겨진 게임만)
   if (filters.showHidden) {
-    query = query.where("isHidden", 1);
+    query = query.where("games.isHidden", 1);
   } else {
-    query = query.where("isHidden", 0);
+    query = query.where("games.isHidden", 0);
   }
 
   // 즐겨찾기 필터
   if (filters.showFavorites) {
-    query = query.where("isFavorite", 1);
+    query = query.where("userGameData.isFavorite", 1);
   }
 
   // 클리어 필터
   if (filters.showCleared && !filters.showNotCleared) {
-    query = query.where("isClear", 1);
+    query = query.where("userGameData.isClear", 1);
   } else if (!filters.showCleared && filters.showNotCleared) {
-    query = query.where("isClear", 0);
+    // 클리어하지 않음: isClear = 0 또는 유저 데이터 없음 (NULL)
+    query = query.where((qb) =>
+      qb.where("userGameData.isClear", 0).orWhereNull("userGameData.isClear"),
+    );
   }
   // 둘 다 true면 필터 적용 안 함 (모두 표시)
 
@@ -763,20 +785,22 @@ export async function searchGamesHandler(
       break;
     case "lastPlayedAt":
       query = query.orderByRaw(
-        `last_played_at IS NULL, last_played_at ${order}`,
+        `user_game_data.last_played_at IS NULL, user_game_data.last_played_at ${order}`,
       );
       break;
     case "createdAt":
-      query = query.orderBy("createdAt", order);
+      query = query.orderBy("games.createdAt", order);
       break;
     case "rating":
       // 별점 순으로 정렬 (별점 없는 게임은 뒤로)
-      query = query.orderByRaw("rating IS NULL, rating " + order);
+      query = query.orderByRaw(
+        "user_game_data.rating IS NULL, user_game_data.rating " + order,
+      );
       break;
     case "playTime":
       // 플레이 시간 순으로 정렬 (플레이 시간 없는 게임은 뒤로)
       query = query.orderByRaw(
-        `total_play_time IS NULL OR total_play_time = 0, total_play_time ${order}`,
+        `user_game_data.total_play_time IS NULL OR user_game_data.total_play_time = 0, user_game_data.total_play_time ${order}`,
       );
       break;
     default:
@@ -831,26 +855,27 @@ export async function getRandomGameHandler(
 
   // 기본 쿼리 빌더
   let query = db("games")
-    .whereIn("source", validPaths)
+    .leftJoin("userGameData", "games.userGameDataId", "userGameData.id")
+    .whereIn("games.source", validPaths)
     .select(
-      "path",
-      "title",
-      "originalTitle",
-      "source",
-      "thumbnail",
-      "executablePath",
-      "isCompressFile",
-      "publishDate",
-      "isFavorite",
-      "isHidden",
-      "isClear",
-      "provider",
-      "externalId",
-      "lastPlayedAt",
-      "createdAt",
-      "translatedTitle",
-      "translationSource",
-      "rating",
+      "games.path",
+      "games.title",
+      "games.originalTitle",
+      "games.source",
+      "games.thumbnail",
+      "games.executablePath",
+      "games.isCompressFile",
+      "games.publishDate",
+      "games.isHidden",
+      "games.provider",
+      "games.externalId",
+      "games.createdAt",
+      "games.translatedTitle",
+      "games.translationSource",
+      "userGameData.isFavorite",
+      "userGameData.isClear",
+      "userGameData.lastPlayedAt",
+      "userGameData.rating",
     );
 
   // 필터 적용
@@ -858,21 +883,24 @@ export async function getRandomGameHandler(
 
   // 숨김 게임 필터 (기본: 숨김 게임 제외, true면 숨겨진 게임만)
   if (filters.showHidden) {
-    query = query.where("isHidden", 1);
+    query = query.where("games.isHidden", 1);
   } else {
-    query = query.where("isHidden", 0);
+    query = query.where("games.isHidden", 0);
   }
 
   // 즐겨찾기 필터
   if (filters.showFavorites) {
-    query = query.where("isFavorite", 1);
+    query = query.where("userGameData.isFavorite", 1);
   }
 
   // 클리어 필터
   if (filters.showCleared && !filters.showNotCleared) {
-    query = query.where("isClear", 1);
+    query = query.where("userGameData.isClear", 1);
   } else if (!filters.showCleared && filters.showNotCleared) {
-    query = query.where("isClear", 0);
+    // 클리어하지 않음: isClear = 0 또는 유저 데이터 없음 (NULL)
+    query = query.where((qb) =>
+      qb.where("userGameData.isClear", 0).orWhereNull("userGameData.isClear"),
+    );
   }
 
   // 압축 파일 필터
@@ -1001,40 +1029,42 @@ export async function toggleGameHandler(
 ): Promise<IpcMainEventMap["gameToggled"]> {
   const { path } = payload;
 
-  // 현재 값 조회
-  const game = await db("games")
-    .where("path", path)
-    .select("path", "isFavorite", "isHidden", "isClear")
-    .first();
-
-  if (!game) {
-    throw new Error("게임을 찾을 수 없습니다.");
+  if (field === "is_hidden") {
+    // isHidden은 games 테이블에 유지
+    const game = await db("games")
+      .where("path", path)
+      .select("path", "isHidden")
+      .first();
+    if (!game) throw new Error("게임을 찾을 수 없습니다.");
+    const newValue = !(game.isHidden === 1);
+    await db("games")
+      .where("path", path)
+      .update({
+        isHidden: newValue ? 1 : 0,
+        updatedAt: new Date(),
+      });
+    return { path, field, value: newValue };
   }
 
-  // DB 컬럼명(snake_case) → Game 타입 프로퍼티명(camelCase) 매핑
+  // isFavorite, isClear → user_game_data
+  const userGameDataId = await getOrCreateUserGameData(path);
+  const userData = await db("userGameData").where("id", userGameDataId).first();
+
   const fieldMap = {
     is_favorite: "isFavorite" as const,
-    is_hidden: "isHidden" as const,
     is_clear: "isClear" as const,
   };
-
-  const camelField = fieldMap[field];
-  const currentValue = game[camelField] === 1;
+  const camelField = fieldMap[field as "is_favorite" | "is_clear"];
+  const currentValue = userData?.[camelField] === 1;
   const newValue = !currentValue;
 
-  // 값 토글 (SQLite는 0 또는 1 사용)
-  await db("games")
-    .where("path", path)
+  await db("userGameData")
+    .where("id", userGameDataId)
     .update({
-      [field]: newValue ? 1 : 0,
-      updatedAt: new Date(), // wrapIdentifier가 자동으로 snake_case로 변환
+      [camelField]: newValue ? 1 : 0,
     });
 
-  return {
-    path,
-    field,
-    value: newValue,
-  };
+  return { path, field, value: newValue };
 }
 
 /**
@@ -1468,8 +1498,9 @@ export async function getPlayTimeHandler(
   const { path } = payload;
 
   const game = await db("games")
-    .where("path", path)
-    .select("totalPlayTime")
+    .leftJoin("userGameData", "games.userGameDataId", "userGameData.id")
+    .where("games.path", path)
+    .select("userGameData.totalPlayTime")
     .first();
 
   return {
@@ -1487,8 +1518,14 @@ export async function getPlaySessionsHandler(
 ): Promise<IpcMainEventMap["playSessionsLoaded"]> {
   const { path, limit = 10 } = payload;
 
+  const game = await db("games")
+    .where("path", path)
+    .select("userGameDataId")
+    .first();
+  if (!game?.userGameDataId) return { sessions: [] };
+
   const sessions = await db("playSessions")
-    .where("gamePath", path)
+    .where("userGameDataId", game.userGameDataId)
     .orderBy("startedAt", "desc")
     .limit(limit);
 
