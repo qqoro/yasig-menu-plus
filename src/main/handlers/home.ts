@@ -19,6 +19,9 @@ import { existsSync, readdirSync, statSync } from "fs";
 import { join } from "path";
 import { COMPRESS_FILE_TYPE } from "../constants.js";
 import { db } from "../db/db-manager.js";
+import type { GameCandidate } from "../lib/scan-logic.js";
+import { EXECUTABLE_EXTENSIONS, hasExecutableFile } from "../lib/scan-logic.js";
+import { runScanWorker } from "../workers/run-scan-worker.js";
 import type { SqliteBoolean } from "../db/db.js";
 import type {
   GameItem,
@@ -54,11 +57,6 @@ import {
   validatePath,
   validateSearchQuery,
 } from "../utils/validator.js";
-
-/**
- * 실행 가능한 파일 확장자
- */
-const EXECUTABLE_EXTENSIONS = [".exe", ".lnk", ".url"];
 
 /**
  * 게임 경로에서 실행 파일 후보들을 찾음
@@ -116,151 +114,6 @@ function selectBestExecutable(executables: string[]): string | null {
 }
 
 /**
- * 재귀 스캔 컨텍스트
- */
-interface ScanContext {
-  sourcePath: string; // 원본 라이브러리 경로
-  existingPaths: Set<string>; // DB에 있는 게임 경로
-  foundPaths: Set<string>; // 이번 스캔에서 발견한 경로
-  maxDepth: number; // 최대 스캔 깊이
-}
-
-/**
- * 게임 후보 (폴더 또는 압축파일)
- */
-interface GameCandidate {
-  path: string;
-  name: string;
-  isCompressFile: boolean;
-}
-
-/**
- * 폴더에 실행 파일이 있는지 확인
- */
-function hasExecutableFile(folderPath: string): boolean {
-  try {
-    const entries = readdirSync(folderPath, { withFileTypes: true });
-    return entries.some(
-      (entry) =>
-        entry.isFile() &&
-        EXECUTABLE_EXTENSIONS.some((ext) =>
-          entry.name.toLowerCase().endsWith(ext),
-        ),
-    );
-  } catch {
-    return false;
-  }
-}
-
-/**
- * 단일 폴더를 스캔하여 게임 후보와 하위 폴더 목록 반환
- */
-function scanSingleFolder(
-  folderPath: string,
-  _ctx: ScanContext,
-): { candidates: GameCandidate[]; subFolders: string[] } {
-  const candidates: GameCandidate[] = [];
-  const subFolders: string[] = [];
-
-  if (!existsSync(folderPath)) {
-    return { candidates, subFolders };
-  }
-
-  try {
-    const entries = readdirSync(folderPath, { withFileTypes: true });
-
-    for (const entry of entries) {
-      // 숨김 파일/폴더 제외
-      if (entry.name.startsWith(".")) continue;
-
-      const fullPath = join(folderPath, entry.name);
-
-      // 압축파일 확인
-      const isCompressFile = COMPRESS_FILE_TYPE.some((ext) =>
-        entry.name.toLowerCase().endsWith(ext),
-      );
-
-      // 실행파일(.exe, .lnk, .url) 확인
-      const isExecutableFile =
-        entry.isFile() &&
-        EXECUTABLE_EXTENSIONS.some((ext) =>
-          entry.name.toLowerCase().endsWith(ext),
-        );
-
-      if (entry.isDirectory()) {
-        // 폴더인 경우: 실행파일 확인
-        const hasExecutable = hasExecutableFile(fullPath);
-
-        if (hasExecutable) {
-          // 실행파일이 있으면 게임 후보
-          candidates.push({
-            path: fullPath,
-            name: entry.name,
-            isCompressFile: false,
-          });
-        } else {
-          // 실행파일이 없으면 하위 폴더로 스캔 예약
-          subFolders.push(fullPath);
-        }
-      } else if (isCompressFile) {
-        // 압축파일은 게임 후보
-        candidates.push({
-          path: fullPath,
-          name: entry.name,
-          isCompressFile: true,
-        });
-      } else if (isExecutableFile) {
-        // 실행파일(.exe, .lnk, .url)도 게임 후보
-        candidates.push({
-          path: fullPath,
-          name: entry.name,
-          isCompressFile: false,
-        });
-      }
-    }
-  } catch (error) {
-    console.error(`폴더 스캔 오류 (${folderPath}):`, error);
-  }
-
-  return { candidates, subFolders };
-}
-
-/**
- * 폴더를 재귀적으로 스캔하여 모든 게임 후보 수집
- */
-async function scanFolderRecursive(
-  startPath: string,
-  ctx: ScanContext,
-): Promise<GameCandidate[]> {
-  const allCandidates: GameCandidate[] = [];
-  const queue: Array<{ path: string; depth: number }> = [
-    { path: startPath, depth: 0 },
-  ];
-
-  while (queue.length > 0) {
-    const { path: currentPath, depth } = queue.shift()!;
-
-    // 최대 깊이 초과 시 스킵
-    if (depth > ctx.maxDepth) {
-      console.log(`최대 깊이 초과로 스킵: ${currentPath}`);
-      continue;
-    }
-
-    const { candidates, subFolders } = scanSingleFolder(currentPath, ctx);
-
-    // 게임 후보 수집
-    allCandidates.push(...candidates);
-
-    // 하위 폴더를 큐에 추가
-    for (const subFolder of subFolders) {
-      queue.push({ path: subFolder, depth: depth + 1 });
-    }
-  }
-
-  return allCandidates;
-}
-
-/**
  * 폴더를 스캔하여 게임을 DB에 등록
  * - 새 게임 추가
  * - 기존 게임 정보 업데이트
@@ -283,16 +136,8 @@ async function scanFolder(
     const foundPaths = new Set<string>();
     let addedCount = 0;
 
-    // 스캔 컨텍스트 생성
-    const ctx: ScanContext = {
-      sourcePath,
-      existingPaths,
-      foundPaths,
-      maxDepth: 10, // 최대 10단계 깊이까지 스캔
-    };
-
-    // 재귀 스캔 실행
-    const candidates = await scanFolderRecursive(sourcePath, ctx);
+    // Worker Thread에서 스캔 실행
+    const candidates = await runScanWorker(sourcePath);
 
     // 발견한 게임 후보 등록
     for (const candidate of candidates) {
