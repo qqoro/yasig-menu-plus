@@ -176,25 +176,28 @@ export async function runCollectorHandler(
         const browser = await initBrowser();
         const page = await browser.newPage();
 
-        // 쿠키 설정
-        if (cookieValue) {
-          await page.setCookie({
-            name: "NID",
-            value: cookieValue,
-            domain: ".google.com",
-            path: "/",
-          });
-        }
+        try {
+          // 쿠키 설정
+          if (cookieValue) {
+            await page.setCookie({
+              name: "NID",
+              value: cookieValue,
+              domain: ".google.com",
+              path: "/",
+            });
+          }
 
-        const fetchResult = await collector.fetchInfo({
-          path: gamePath,
-          id,
-          page,
-        });
-        await page.close();
-        // CollectorResult 타입 검증
-        if (fetchResult && "thumbnailUrl" in fetchResult) {
-          info = fetchResult as CollectorResult;
+          const fetchResult = await collector.fetchInfo({
+            path: gamePath,
+            id,
+            page,
+          });
+          // CollectorResult 타입 검증
+          if (fetchResult && "thumbnailUrl" in fetchResult) {
+            info = fetchResult as CollectorResult;
+          }
+        } finally {
+          await page.close();
         }
       } catch (chromeError) {
         console.error(`[Collector] Chrome 에러:`, chromeError);
