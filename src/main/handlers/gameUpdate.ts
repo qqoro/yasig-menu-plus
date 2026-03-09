@@ -10,6 +10,7 @@ import { db } from "../db/db-manager.js";
 import { IpcRendererSend } from "../events.js";
 import { getOrCreateUserGameData } from "../services/user-game-data.js";
 import { downloadImage } from "../utils/downloader.js";
+import { toAbsolutePath, toRelativePath } from "../utils/image-path.js";
 import { validatePath, validateUrl } from "../utils/validator.js";
 
 /**
@@ -304,12 +305,17 @@ export async function setThumbnailFromFile(
   // 파일 복사
   await copyFile(sourceFilePath, destPath);
 
-  // DB 업데이트 (수동 수정 표시)
-  await db("games")
-    .where("path", path)
-    .update({ thumbnail: destPath, isLoadedInfo: true, updatedAt: new Date() });
+  // 상대 경로로 변환
+  const relativePath = toRelativePath(destPath) ?? destPath;
 
-  return destPath;
+  // DB 업데이트 (수동 수정 표시)
+  await db("games").where("path", path).update({
+    thumbnail: relativePath,
+    isLoadedInfo: true,
+    updatedAt: new Date(),
+  });
+
+  return relativePath;
 }
 
 /**
@@ -328,11 +334,11 @@ export async function hideThumbnail(path: string): Promise<void> {
     .where("path", path)
     .update({ thumbnail: null, isLoadedInfo: true, updatedAt: new Date() });
 
-  // 실제 파일 삭제
+  // 실제 파일 삭제 (절대 경로로 변환)
   if (thumbnailPath) {
     const { deleteThumbnail: deleteFile } =
       await import("../utils/downloader.js");
-    await deleteFile(thumbnailPath);
+    await deleteFile(toAbsolutePath(thumbnailPath) ?? thumbnailPath);
   }
 }
 

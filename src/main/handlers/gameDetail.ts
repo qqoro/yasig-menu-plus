@@ -6,6 +6,7 @@ import { ipcMain } from "electron";
 import { db } from "../db/db-manager.js";
 import type { GameDetailItem } from "../events.js";
 import { IpcRendererSend } from "../events.js";
+import { toAbsolutePath } from "../utils/image-path.js";
 
 /**
  * 게임 상세 정보 조회
@@ -83,7 +84,7 @@ export async function getGameDetail(
     translatedTitle: game.translatedTitle,
     translationSource: game.translationSource,
     source: game.source,
-    thumbnail: game.thumbnail,
+    thumbnail: toAbsolutePath(game.thumbnail),
     executablePath: game.executablePath,
     isCompressFile: Boolean(game.isCompressFile),
     publishDate: toDate(game.publishDate),

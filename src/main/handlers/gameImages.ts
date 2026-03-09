@@ -1,6 +1,7 @@
 import type { IpcMainInvokeEvent } from "electron";
 import { db } from "../db/db-manager.js";
 import type { IpcMainEventMap, IpcRendererEventMap } from "../events.js";
+import { toAbsolutePath } from "../utils/image-path.js";
 import { validatePath } from "../utils/validator.js";
 
 /**
@@ -20,5 +21,11 @@ export async function getGameImagesHandler(
     .orderBy("sort_order")
     .select();
 
-  return { images };
+  // 이미지 경로를 절대 경로로 변환
+  return {
+    images: images.map((img: { path: string; sortOrder: number }) => ({
+      path: toAbsolutePath(img.path) ?? img.path,
+      sortOrder: img.sortOrder,
+    })),
+  };
 }

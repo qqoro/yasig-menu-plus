@@ -62,6 +62,7 @@ import {
 } from "../store.js";
 import type { TitleDisplayMode } from "../store.js";
 import { deleteImage } from "../utils/downloader.js";
+import { toAbsolutePath } from "../utils/image-path.js";
 import {
   validateDirectoryPath,
   validatePath,
@@ -230,12 +231,12 @@ async function scanFolder(
       // 게임 삭제
       deletedCount = await db("games").whereIn("path", deletedPaths).delete();
 
-      // 실제 이미지 파일 삭제
+      // 실제 이미지 파일 삭제 (상대 경로를 절대 경로로 변환)
       for (const thumbnail of thumbnailsToDelete) {
-        await deleteImage(thumbnail);
+        await deleteImage(toAbsolutePath(thumbnail) ?? thumbnail);
       }
       for (const imagePath of imagesToDelete) {
-        await deleteImage(imagePath);
+        await deleteImage(toAbsolutePath(imagePath) ?? imagePath);
       }
     }
 
@@ -363,7 +364,7 @@ function buildGameItems(
     title: g.title,
     originalTitle: g.originalTitle,
     source: g.source,
-    thumbnail: g.thumbnail,
+    thumbnail: toAbsolutePath(g.thumbnail),
     executablePath: g.executablePath || null,
     isCompressFile: Boolean(g.isCompressFile),
     publishDate: g.publishDate ? new Date(g.publishDate) : null,

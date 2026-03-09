@@ -2,6 +2,7 @@ import { Page } from "puppeteer-core";
 import { db } from "../db/db-manager.js";
 import { linkExternalKey } from "../services/user-game-data.js";
 import { deleteImage, downloadImage } from "../utils/downloader.js";
+import { toAbsolutePath } from "../utils/image-path.js";
 import { CienCollector } from "./cien-collector.js";
 import { DLSiteCollector } from "./dlsite-collector.js";
 import { GetchuCollector } from "./getchu-collector.js";
@@ -108,13 +109,13 @@ export async function saveInfo(path: string, info: CollectorResult) {
     images,
   } = info;
 
-  // 1. 먼저 기존 이미지 파일들 삭제
+  // 1. 먼저 기존 이미지 파일들 삭제 (상대 경로를 절대 경로로 변환)
   const existingImages = await db("gameImages")
     .where({ game_path: path })
     .select("path");
   for (const image of existingImages) {
     try {
-      await deleteImage(image.path);
+      await deleteImage(toAbsolutePath(image.path) ?? image.path);
     } catch (error) {
       console.error("[saveInfo] 기존 이미지 파일 삭제 실패:", error);
     }

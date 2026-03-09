@@ -10,6 +10,7 @@ import {
   getThumbnailDir,
   optimizeImage,
 } from "../utils/downloader.js";
+import { toAbsolutePath } from "../utils/image-path.js";
 import { validatePath } from "../utils/validator.js";
 
 /**
@@ -49,7 +50,7 @@ export async function deleteThumbnailHandler(
   // DB에서 썸네일 경로 조회
   const game = await db("games").where("path", gamePath).first();
   if (game?.thumbnail) {
-    await deleteFile(game.thumbnail);
+    await deleteFile(toAbsolutePath(game.thumbnail) ?? game.thumbnail);
   }
 
   // DB 업데이트
@@ -80,13 +81,13 @@ export async function cleanUnusedThumbnailsHandler(
     .pluck("path")
     .select();
 
-  // 4. DB에 있는 경로에서 파일명만 추출
-  const nonNullThumbnails: string[] = gameThumbnails.filter(
-    (path: unknown): path is string => path !== null,
-  );
-  const nonNullImages: string[] = gameImages.filter(
-    (path: unknown): path is string => path !== null,
-  );
+  // 4. DB에 있는 경로에서 파일명만 추출 (절대 경로로 변환)
+  const nonNullThumbnails: string[] = gameThumbnails
+    .filter((path: unknown): path is string => path !== null)
+    .map((path: string) => toAbsolutePath(path) ?? path);
+  const nonNullImages: string[] = gameImages
+    .filter((path: unknown): path is string => path !== null)
+    .map((path: string) => toAbsolutePath(path) ?? path);
 
   const usedFilenames = new Set([
     ...nonNullThumbnails.map((path: string) => basename(path)),
@@ -260,12 +261,12 @@ export async function convertImagesToWebpHandler(
       // 원본 삭제
       await unlink(sourcePath);
 
-      // DB 경로 업데이트 (games 테이블)
+      // DB 경로 업데이트 (games 테이블) - 상대 경로로 저장
       await db("games")
         .where("thumbnail", sourcePath)
         .update({ thumbnail: destPath });
 
-      // DB 경로 업데이트 (gameImages 테이블)
+      // DB 경로 업데이트 (gameImages 테이블) - 상대 경로로 저장
       await db("gameImages")
         .where("path", sourcePath)
         .update({ path: destPath });

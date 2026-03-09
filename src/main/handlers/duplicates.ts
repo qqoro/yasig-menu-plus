@@ -17,6 +17,7 @@ import type {
   IpcRendererEventMap,
 } from "../events.js";
 import { deleteImage } from "../utils/downloader.js";
+import { toAbsolutePath } from "../utils/image-path.js";
 
 /**
  * 관계 데이터 조회 및 맵 생성
@@ -120,7 +121,7 @@ function buildGameItems(
       title: g.title,
       originalTitle: g.originalTitle,
       source: g.source,
-      thumbnail: g.thumbnail,
+      thumbnail: toAbsolutePath(g.thumbnail),
       executablePath: g.executablePath || null,
       isCompressFile: Boolean(g.isCompressFile),
       publishDate: g.publishDate || null,
@@ -301,12 +302,12 @@ export async function deleteGamesHandler(
     }
   }
 
-  // 썸네일 및 이미지 파일 삭제
+  // 썸네일 및 이미지 파일 삭제 (상대 경로를 절대 경로로 변환)
   for (const thumbnail of thumbnailsToDelete) {
-    await deleteImage(thumbnail);
+    await deleteImage(toAbsolutePath(thumbnail) ?? thumbnail);
   }
   for (const imagePath of imagesToDelete) {
-    await deleteImage(imagePath);
+    await deleteImage(toAbsolutePath(imagePath) ?? imagePath);
   }
 
   return { deletedCount };

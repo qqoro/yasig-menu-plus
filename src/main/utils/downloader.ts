@@ -14,6 +14,9 @@ import * as https from "https";
 import { join } from "path";
 import sharp from "sharp";
 import { validateUrl } from "./validator.js";
+import { toRelativePath } from "./image-path.js";
+
+export { toRelativePath } from "./image-path.js";
 
 /**
  * 썸네일 저장 디렉토리 경로
@@ -86,7 +89,7 @@ export async function downloadImage(
     const buffer = Buffer.from(matches[2], "base64");
     const optimized = await optimizeImage(buffer);
     await writeFile(filePath, optimized);
-    return filePath;
+    return toRelativePath(filePath) ?? filePath;
   }
 
   // URL 검증
@@ -115,7 +118,7 @@ export async function downloadImage(
             const buffer = Buffer.concat(chunks);
             const optimized = await optimizeImage(buffer);
             await writeFile(filePath, optimized);
-            resolve(filePath);
+            resolve(toRelativePath(filePath) ?? filePath);
           } catch (error) {
             reject(error);
           }
@@ -181,5 +184,5 @@ export async function copyImage(
   const optimized = await optimizeImage(buffer);
   await writeFile(destPath, optimized);
 
-  return destPath;
+  return toRelativePath(destPath) ?? destPath;
 }
