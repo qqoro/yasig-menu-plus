@@ -20,7 +20,11 @@ import { join } from "path";
 import { COMPRESS_FILE_TYPE } from "../constants.js";
 import { db } from "../db/db-manager.js";
 import type { GameCandidate } from "../lib/scan-logic.js";
-import { EXECUTABLE_EXTENSIONS, hasExecutableFile } from "../lib/scan-logic.js";
+import {
+  EXCLUDED_FOLDER_NAMES,
+  EXECUTABLE_EXTENSIONS,
+  hasExecutableFile,
+} from "../lib/scan-logic.js";
 import { runScanWorker } from "../workers/run-scan-worker.js";
 import type { SqliteBoolean } from "../db/db.js";
 import type {
@@ -44,6 +48,7 @@ import {
   getLastRefreshedAt,
   getLibraryPaths,
   getLibraryScanHistory,
+  getScanDepth,
   getTranslationSettings,
   removeExcludedExecutable,
   removeLibraryPath as removeLibraryPathFromStore,
@@ -137,7 +142,7 @@ async function scanFolder(
     let addedCount = 0;
 
     // Worker Thread에서 스캔 실행
-    const candidates = await runScanWorker(sourcePath);
+    const candidates = await runScanWorker(sourcePath, getScanDepth());
 
     // 발견한 게임 후보 등록
     for (const candidate of candidates) {
@@ -1336,7 +1341,7 @@ function countGames(sourcePath: string): number {
   const queue: Array<{ path: string; depth: number }> = [
     { path: sourcePath, depth: 0 },
   ];
-  const maxDepth = 10;
+  const maxDepth = getScanDepth();
 
   while (queue.length > 0) {
     const { path: currentPath, depth } = queue.shift()!;
@@ -1360,6 +1365,7 @@ function countGames(sourcePath: string): number {
           );
 
         if (entry.isDirectory()) {
+          if (EXCLUDED_FOLDER_NAMES.has(entry.name.toLowerCase())) continue;
           if (hasExecutableFile(fullPath)) {
             count++;
           } else {

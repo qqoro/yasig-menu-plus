@@ -26,7 +26,7 @@ function getWorkerPath(): string {
  */
 export function runScanWorker(
   sourcePath: string,
-  maxDepth = 10,
+  maxDepth = 5,
 ): Promise<GameCandidate[]> {
   return new Promise((resolve, reject) => {
     const worker = new Worker(getWorkerPath());

@@ -15,6 +15,27 @@ import { COMPRESS_FILE_TYPE } from "../constants.js";
 export const EXECUTABLE_EXTENSIONS = [".exe", ".lnk", ".url"];
 
 /**
+ * 스캔 제외 폴더명 (대소문자 무시)
+ */
+export const EXCLUDED_FOLDER_NAMES = new Set([
+  // Windows 시스템
+  "$recycle.bin",
+  "system volume information",
+  // 개발 도구
+  "node_modules",
+  "__pycache__",
+  // 게임 재배포 패키지
+  "_commonredist",
+  "directx",
+  "redist",
+  // 임시/캐시
+  "temp",
+  "tmp",
+  "cache",
+  "logs",
+]);
+
+/**
  * 게임 후보 (폴더 또는 압축파일)
  */
 export interface GameCandidate {
@@ -77,6 +98,7 @@ export function scanSingleFolder(folderPath: string): {
         );
 
       if (entry.isDirectory()) {
+        if (EXCLUDED_FOLDER_NAMES.has(entry.name.toLowerCase())) continue;
         // 폴더인 경우: 실행파일 확인
         const hasExecutable = hasExecutableFile(fullPath);
 

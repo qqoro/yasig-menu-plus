@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { Cookie, Loader2, Palette } from "lucide-vue-next";
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import { toast } from "vue-sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -32,6 +33,22 @@ const autoScanOnStartup = computed({
     });
   },
 });
+
+// 스캔 깊이 설정
+const scanDepthInput = ref(settings.value?.scanDepth ?? 5);
+
+watch(
+  () => settings.value?.scanDepth,
+  (val) => {
+    scanDepthInput.value = val ?? 5;
+  },
+);
+
+function handleScanDepthChange() {
+  const depth = Math.max(1, Math.min(10, Number(scanDepthInput.value) || 5));
+  scanDepthInput.value = depth;
+  updateSettingsMutation.mutate({ scanDepth: depth });
+}
 
 // 테마 설정
 const { data: themeSettings } = useThemeSettings();
@@ -92,6 +109,26 @@ async function handleGetNewCookie(): Promise<void> {
               </p>
             </div>
             <Switch v-model="autoScanOnStartup" />
+          </div>
+          <div class="border-border mt-4 border-t pt-4">
+            <div class="flex items-center justify-between">
+              <div class="space-y-0.5">
+                <label class="text-sm leading-none font-medium">
+                  스캔 깊이
+                </label>
+                <p class="text-muted-foreground text-xs">
+                  하위 폴더를 몇 단계까지 탐색할지 설정합니다 (1~10)
+                </p>
+              </div>
+              <Input
+                v-model.number="scanDepthInput"
+                type="number"
+                min="1"
+                max="10"
+                class="w-20"
+                @change="handleScanDepthChange"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>

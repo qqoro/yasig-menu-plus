@@ -62,6 +62,7 @@ export interface StoreSchema {
   colorTheme?: string; // 컬러 테마 (예: "default", "catppuccin", "cyberpunk")
   autoUpdateSettings?: AutoUpdateSettings; // 자동 업데이트 설정
   disabledLibraryPaths?: string[]; // 비활성화된 라이브러리 경로 목록
+  scanDepth?: number; // 재귀 스캔 최대 깊이 (기본값: 5)
 }
 
 /**
@@ -97,6 +98,7 @@ const DEFAULTS: StoreSchema = {
     checkOnStartup: true,
   },
   disabledLibraryPaths: [],
+  scanDepth: 5,
 };
 
 /**
@@ -276,6 +278,7 @@ export function getAllSettings(): StoreSchema {
     colorTheme: store.get("colorTheme"),
     autoUpdateSettings: store.get("autoUpdateSettings"),
     disabledLibraryPaths: store.get("disabledLibraryPaths"),
+    scanDepth: store.get("scanDepth"),
   };
 }
 
@@ -411,6 +414,14 @@ export function getDisabledLibraryPaths(): string[] {
 export function setDisabledLibraryPaths(paths: string[]): void {
   const store = getStore();
   store.set("disabledLibraryPaths", paths);
+}
+
+/**
+ * 스캔 깊이 가져오기
+ */
+export function getScanDepth(): number {
+  const store = getStore();
+  return store.get("scanDepth") ?? 5;
 }
 
 /**
