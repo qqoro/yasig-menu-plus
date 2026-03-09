@@ -377,6 +377,16 @@ export function getAllLibraryScanHistory(): Record<string, LibraryScanInfo> {
 }
 
 /**
+ * 라이브러리 스캔 기록 삭제
+ */
+export function removeLibraryScanHistory(path: string): void {
+  const store = getStore();
+  const history = store.get("libraryScanHistory") || {};
+  delete history[path];
+  store.set("libraryScanHistory", history);
+}
+
+/**
  * 자동 업데이트 설정 가져오기
  */
 export function getAutoUpdateSettings(): AutoUpdateSettings {

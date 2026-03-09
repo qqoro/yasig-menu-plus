@@ -600,7 +600,7 @@ export interface IpcMainEventMap {
   // 라이브러리 경로 관리
   libraryPaths: { paths: string[] };
   libraryPathAdded: { path: string };
-  libraryPathRemoved: { path: string };
+  libraryPathRemoved: { path: string; deletedGameCount: number };
 
   // 라이브러리 경로 표시 토글
   libraryPathVisibilityToggled: { path: string; isDisabled: boolean };

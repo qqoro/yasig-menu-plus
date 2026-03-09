@@ -57,6 +57,7 @@ import {
   getTranslationSettings,
   removeExcludedExecutable,
   removeLibraryPath as removeLibraryPathFromStore,
+  removeLibraryScanHistory,
   setLastRefreshedAt,
   updateLibraryScanHistory,
 } from "../store.js";
@@ -1297,14 +1298,68 @@ export async function addLibraryPathHandler(
 
 /**
  * 라이브러리 경로 제거 핸들러
+ * 해당 경로의 게임도 함께 삭제 (DB만, 실제 파일은 유지)
  */
 export async function removeLibraryPathHandler(
   _event: IpcMainInvokeEvent,
   payload: IpcRendererEventMap["removeLibraryPath"],
 ): Promise<IpcMainEventMap["libraryPathRemoved"]> {
   const { path } = payload;
+
+  // 해당 경로 하위의 게임 조회 (userGameDataId 포함)
+  const gamesToDelete = await db("games")
+    .where("path", "like", `${path}%`)
+    .select("path", "thumbnail", "userGameDataId");
+
+  const gamePaths = gamesToDelete.map((g) => g.path);
+  const deletedGameCount = gamePaths.length;
+
+  if (deletedGameCount > 0) {
+    // 썸네일 경로 조회
+    const thumbnailsToDelete = gamesToDelete
+      .map((g) => g.thumbnail)
+      .filter((t): t is string => t !== null);
+
+    // 이미지 경로 조회
+    const imagesToDelete = await db("gameImages")
+      .whereIn("gamePath", gamePaths)
+      .pluck("path");
+
+    // userGameData ID 목록 (null 제외)
+    const userGameDataIds = gamesToDelete
+      .map((g) => g.userGameDataId)
+      .filter((id): id is number => id !== null);
+
+    // 관계 데이터 삭제 (gamePath 기반)
+    await db("gameMakers").whereIn("gamePath", gamePaths).delete();
+    await db("gameCategories").whereIn("gamePath", gamePaths).delete();
+    await db("gameTags").whereIn("gamePath", gamePaths).delete();
+    await db("gameImages").whereIn("gamePath", gamePaths).delete();
+
+    // userGameData 삭제 (playSessions는 CASCADE로 자동 삭제됨)
+    if (userGameDataIds.length > 0) {
+      await db("userGameData").whereIn("id", userGameDataIds).delete();
+    }
+
+    // 게임 레코드 삭제
+    await db("games").whereIn("path", gamePaths).delete();
+
+    // 썸네일 및 이미지 파일 삭제
+    for (const thumbnail of thumbnailsToDelete) {
+      await deleteImage(toAbsolutePath(thumbnail) ?? thumbnail);
+    }
+    for (const imagePath of imagesToDelete) {
+      await deleteImage(toAbsolutePath(imagePath) ?? imagePath);
+    }
+  }
+
+  // 설정에서 경로 제거
   removeLibraryPathFromStore(path);
-  return { path };
+
+  // 스캔 기록 삭제
+  removeLibraryScanHistory(path);
+
+  return { path, deletedGameCount };
 }
 
 /**
