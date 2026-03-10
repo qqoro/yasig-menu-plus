@@ -198,12 +198,6 @@ export async function migrateThumbnailsHandler(
       continue;
     }
 
-    // 이미 썸네일이 있으면 건너뜀
-    if (game.thumbnail) {
-      skipCount++;
-      continue;
-    }
-
     try {
       // 파일 복사
       const destPath = await copyImage(sourcePath, game.path);

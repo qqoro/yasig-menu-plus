@@ -3,6 +3,7 @@ import {
   ChevronDown,
   ChevronUp,
   FolderOpen,
+  HardDriveUpload,
   Image,
   Languages,
   Loader2,
@@ -28,6 +29,8 @@ import {
 import { useCleanThumbnails } from "@/composables/useCleanThumbnails";
 import { useConvertImagesToWebp } from "@/composables/useConvertImagesToWebp";
 import { useCollector, useRunAllCollectors } from "@/composables/useCollector";
+import { useMigrateThumbnails } from "@/composables/useMigrateThumbnails";
+import { useSelectFolder } from "@/composables/useAllInOneRefresh";
 import {
   useTranslateAllTitlesMutation,
   useTranslationProgress,
@@ -132,6 +135,10 @@ const cleanThumbnailsMutation = useCleanThumbnails();
 // 이미지 WebP 변환
 const convertImagesMutation = useConvertImagesToWebp();
 
+// 썸네일 마이그레이션
+const migrateThumbnailsMutation = useMigrateThumbnails();
+const selectFolderMutation = useSelectFolder();
+
 // 데이터 폴더 열기
 const openDataFolderMutation = useOpenDataFolder();
 
@@ -186,6 +193,28 @@ async function handleConvertImagesToWebp(): Promise<void> {
     );
   } catch {
     toast.error("변환에 실패했습니다.");
+  }
+}
+
+/**
+ * 썸네일 마이그레이션 핸들러
+ */
+async function handleMigrateThumbnails(): Promise<void> {
+  try {
+    const filePaths = await selectFolderMutation.mutateAsync(undefined);
+    if (!filePaths || filePaths.length === 0) return;
+
+    const sourceFolder = filePaths[0];
+    const result = await migrateThumbnailsMutation.mutateAsync(sourceFolder);
+
+    toast.success(
+      `마이그레이션 완료: 성공 ${result.successCount}개, 스킵 ${result.skipCount}개, 실패 ${result.failCount}개`,
+    );
+  } catch (err) {
+    console.error("썸네일 마이그레이션 실패:", err);
+    toast.error(
+      err instanceof Error ? err.message : "마이그레이션에 실패했습니다.",
+    );
   }
 }
 
@@ -495,6 +524,51 @@ async function handleOpenDataFolder(): Promise<void> {
                 formatBytes(convertImagesMutation.data.value.freedBytes)
               }}
               절약)
+            </p>
+          </div>
+
+          <div class="border-t pt-2">
+            <div class="space-y-0.5">
+              <label class="text-sm leading-none font-medium"
+                >썸네일 마이그레이션</label
+              >
+              <p class="text-muted-foreground text-xs">
+                이전 버전의 썸네일 폴더에서 현재 데이터베이스로 가져옵니다
+              </p>
+            </div>
+            <Button
+              @click="handleMigrateThumbnails"
+              :disabled="
+                migrateThumbnailsMutation.isPending.value ||
+                selectFolderMutation.isPending.value
+              "
+              variant="outline"
+              class="mt-2 w-full"
+            >
+              <Loader2
+                v-if="
+                  migrateThumbnailsMutation.isPending.value ||
+                  selectFolderMutation.isPending.value
+                "
+                :size="18"
+                class="animate-spin"
+              />
+              <HardDriveUpload v-else :size="18" />
+              {{
+                migrateThumbnailsMutation.isPending.value
+                  ? "마이그레이션 중..."
+                  : selectFolderMutation.isPending.value
+                    ? "폴더 선택 중..."
+                    : "이전 버전 썸네일 가져오기"
+              }}
+            </Button>
+            <p
+              v-if="migrateThumbnailsMutation.data.value"
+              class="text-muted-foreground mt-1 text-xs"
+            >
+              성공 {{ migrateThumbnailsMutation.data.value.successCount }}개,
+              스킵 {{ migrateThumbnailsMutation.data.value.skipCount }}개, 실패
+              {{ migrateThumbnailsMutation.data.value.failCount }}개
             </p>
           </div>
         </CardContent>
