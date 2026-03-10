@@ -35,7 +35,7 @@ function getSteamId(path: string): string | undefined {
 // GetchuCollector 정규식
 // ============================================
 function getGetchuId(path: string): string | undefined {
-  const [, id] = /(?:GC|GETCHU)(\d{1,7})/i.exec(path) ?? [];
+  const [, id] = /\b(?:GC|GETCHU)(\d{1,7})\d*\b/i.exec(path) ?? [];
   return id;
 }
 
@@ -471,10 +471,10 @@ describe("GoogleCollector.getId", () => {
     ],
     [
       "C:/Games/異世界に転生したら奴隷だった",
-      "異世界に転생したら奴隷だった",
+      "異世界に転生したら奴隷だった",
       "긴 일본어",
     ],
-    ["C:/Games/Game ゲ임 게임", "Game ゲーム 게임", "영문 + 일본어 + 한글"],
+    ["C:/Games/Game ゲ임 게임", "Game ゲ임 게임", "영문 + 일본어 + 한글"],
     ["C:/Games/RJ123456 게임이름", "RJ123456 게임이름", "코드 포함"],
     ["C:/Games/[RJ123456] 게임이름", "[RJ123456] 게임이름", "대괄호 코드 포함"],
 

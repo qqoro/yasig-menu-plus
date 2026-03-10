@@ -9,7 +9,7 @@ const iconv = require("iconv-lite");
 export const GetchuCollector: Collector = {
   name: "Getchu",
   getId: async (path) => {
-    const [, id] = /(?:GC|GETCHU)(\d{1,7})/i.exec(path) ?? [];
+    const [, id] = /\b(?:GC|GETCHU)(\d{1,7})\d*\b/i.exec(path) ?? [];
     return id;
   },
   fetchInfo: async ({ id }) => {

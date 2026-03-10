@@ -36,7 +36,7 @@ commit_parsers = [
   { message = "^refactor", group = "🔧 리팩터링" },
   { message = "^perf", group = "⚡ 성능 개선" },
   { message = "^docs", group = "📝 문서" },
-  { message = "^test", group = "🧪 테스트" },
+  { message = "^test", skip = true },
   { message = "^build", group = "📦 빌드" },
   { message = "^ci", group = "👷 CI/CD" },
   { message = "^chore", group = "📦 기타" },

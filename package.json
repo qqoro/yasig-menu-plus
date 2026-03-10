@@ -22,9 +22,11 @@
     "postinstall": "electron-builder install-app-deps",
     "lint": "oxlint",
     "format": "prettier src/ --write",
-    "type-check": "tsc --noEmit -p src/main/tsconfig.json && vue-tsc -p src/renderer/tsconfig.json --noEmit",
+    "type-check": "tsc --noEmit -p src/main/tsconfig.json && tsc --noEmit -p src/main/tsconfig.test.json && vue-tsc -p src/renderer/tsconfig.json --noEmit",
     "lint-staged": "lint-staged",
+    "pretest": "pnpm rebuild better-sqlite3",
     "test": "vitest run",
+    "pretest:watch": "pnpm rebuild better-sqlite3",
     "test:watch": "vitest",
     "changelog": "git-cliff -o CHANGELOG.md",
     "changelog:latest": "git-cliff -l -o RELEASE_NOTES.md"

@@ -13,5 +13,5 @@
     "declaration": false
   },
   "include": ["./**/*.ts"],
-  "exclude": ["static"]
+  "exclude": ["static", "**/*.test.ts", "**/__tests__/**", "**/test-utils.ts"]
 }
