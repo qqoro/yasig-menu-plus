@@ -16,7 +16,7 @@ export async function getGameDetail(
 ): Promise<GameDetailItem | null> {
   // games 테이블과 userGameData 테이블을 LEFT JOIN하여 유저 데이터 포함
   const game = await db("games")
-    .leftJoin("userGameData", "games.userGameDataId", "userGameData.id")
+    .leftJoin("userGameData", "games.fingerprint", "userGameData.fingerprint")
     .where("games.path", path)
     .select(
       // games 테이블 컬럼 (명시적 선택으로 id 충돌 방지)

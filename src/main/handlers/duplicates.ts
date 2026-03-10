@@ -159,7 +159,7 @@ export async function findDuplicatesHandler(
 ): Promise<IpcMainEventMap["duplicatesFound"]> {
   // 모든 게임 조회 (숨김 포함)
   const games = await db("games")
-    .leftJoin("userGameData", "games.userGameDataId", "userGameData.id")
+    .leftJoin("userGameData", "games.fingerprint", "userGameData.fingerprint")
     .select(
       "games.path",
       "games.title",
@@ -285,7 +285,7 @@ export async function deleteGamesHandler(
   await db("gameCategories").whereIn("gamePath", paths).delete();
   await db("gameTags").whereIn("gamePath", paths).delete();
   await db("gameImages").whereIn("gamePath", paths).delete();
-  await db("playSessions").whereIn("gamePath", paths).delete();
+  // playSessions는 user_game_data에 속하므로 보존
 
   // 게임 레코드 삭제
   const deletedCount = await db("games").whereIn("path", paths).delete();

@@ -121,15 +121,11 @@ export class ProcessMonitor {
     // 최소 플레이 시간 확인
     if (durationSeconds >= this.MIN_PLAY_TIME_SECONDS) {
       try {
-        const game = await db("games")
-          .where("path", gamePath)
-          .select("userGameDataId")
-          .first();
-        if (!game?.userGameDataId) return; // 이론상 startSession에서 이미 생성됨
+        const userGameDataId = await getOrCreateUserGameData(gamePath);
 
         // 세션 기록 저장
         await db("playSessions").insert({
-          userGameDataId: game.userGameDataId,
+          userGameDataId,
           startedAt: session.startedAt,
           endedAt,
           durationSeconds,
@@ -137,7 +133,7 @@ export class ProcessMonitor {
 
         // 총 플레이 타임 업데이트
         await db("userGameData")
-          .where("id", game.userGameDataId)
+          .where("id", userGameDataId)
           .increment("totalPlayTime", durationSeconds);
 
         await db("games").where("path", gamePath).update({
@@ -147,7 +143,7 @@ export class ProcessMonitor {
 
         // 업데이트된 총 플레이 타임 조회
         const updatedData = await db("userGameData")
-          .where("id", game.userGameDataId)
+          .where("id", userGameDataId)
           .select("totalPlayTime")
           .first();
 

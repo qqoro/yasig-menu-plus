@@ -1,6 +1,6 @@
 import { Page } from "puppeteer-core";
 import { db } from "../db/db-manager.js";
-import { linkExternalKey } from "../services/user-game-data.js";
+import { updateUserGameDataExternalKey } from "../services/user-game-data.js";
 import { deleteImage, downloadImage } from "../utils/downloader.js";
 import { toAbsolutePath } from "../utils/image-path.js";
 import { CienCollector } from "./cien-collector.js";
@@ -238,7 +238,7 @@ export async function saveInfo(path: string, info: CollectorResult) {
 
     // user_game_data에 external_key 연결
     if (provider && externalId) {
-      await linkExternalKey(path, provider, externalId);
+      await updateUserGameDataExternalKey(path, provider, externalId);
     }
   } catch (error) {
     console.error("saveInfo error:", error);

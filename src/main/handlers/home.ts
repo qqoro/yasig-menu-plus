@@ -39,10 +39,7 @@ import {
   normalizeToEnglish,
 } from "../lib/search-prefix.js";
 import { processMonitor } from "../services/ProcessMonitor.js";
-import {
-  findAndLinkUserGameData,
-  getOrCreateUserGameData,
-} from "../services/user-game-data.js";
+import { getOrCreateUserGameData } from "../services/user-game-data.js";
 import { computeFingerprint } from "../lib/fingerprint.js";
 import {
   addExcludedExecutable,
@@ -184,24 +181,28 @@ async function scanFolder(
       const existing = await db("games").where("path", fullPath).first();
       if (!existing) {
         await db("games").insert(gameData);
-        // user_game_data 연결 시도 (이전에 같은 fingerprint로 등록된 데이터가 있으면)
-        await findAndLinkUserGameData(fullPath);
         addedCount++;
       } else {
         // 기존 게임 정보 업데이트 (발견한 경우)
         // title은 정보 수집으로 변경된 값을 유지하고, originalTitle만 업데이트
-        await db("games")
-          .where("path", fullPath)
-          .update({
-            originalTitle: name,
-            source: sourcePath,
-            fingerprint: fingerprint ?? existing.fingerprint,
-            updatedAt: new Date(),
-          });
-        // user_game_data 연결이 없으면 시도
-        if (!existing.userGameDataId) {
-          await findAndLinkUserGameData(fullPath);
+        // fingerprint 변경 시 user_game_data도 갱신
+        const oldFingerprint = existing.fingerprint;
+        const newFingerprint = fingerprint ?? existing.fingerprint;
+        if (
+          oldFingerprint &&
+          newFingerprint &&
+          oldFingerprint !== newFingerprint
+        ) {
+          await db("userGameData")
+            .where("fingerprint", oldFingerprint)
+            .update({ fingerprint: newFingerprint });
         }
+        await db("games").where("path", fullPath).update({
+          originalTitle: name,
+          source: sourcePath,
+          fingerprint: newFingerprint,
+          updatedAt: new Date(),
+        });
       }
     }
 
@@ -406,7 +407,7 @@ export async function refreshListHandler(
 
   // 스캔 후 다시 목록 로드
   const games = await db("games")
-    .leftJoin("userGameData", "games.userGameDataId", "userGameData.id")
+    .leftJoin("userGameData", "games.fingerprint", "userGameData.fingerprint")
     .whereIn(
       "games.source",
       sourcePaths.filter((p) => existsSync(p)),
@@ -636,7 +637,7 @@ export async function searchGamesHandler(
 
   // 기본 쿼리 빌더
   let query = db("games")
-    .leftJoin("userGameData", "games.userGameDataId", "userGameData.id")
+    .leftJoin("userGameData", "games.fingerprint", "userGameData.fingerprint")
     .whereIn("games.source", validPaths)
     .select(
       "games.path",
@@ -857,7 +858,7 @@ export async function getRandomGameHandler(
 
   // 기본 쿼리 빌더
   let query = db("games")
-    .leftJoin("userGameData", "games.userGameDataId", "userGameData.id")
+    .leftJoin("userGameData", "games.fingerprint", "userGameData.fingerprint")
     .whereIn("games.source", validPaths)
     .select(
       "games.path",
@@ -1306,10 +1307,10 @@ export async function removeLibraryPathHandler(
 ): Promise<IpcMainEventMap["libraryPathRemoved"]> {
   const { path } = payload;
 
-  // 해당 경로 하위의 게임 조회 (userGameDataId 포함)
+  // 해당 경로 하위의 게임 조회
   const gamesToDelete = await db("games")
     .where("source", path)
-    .select("path", "thumbnail", "userGameDataId");
+    .select("path", "thumbnail");
 
   const gamePaths = gamesToDelete.map((g) => g.path);
   const deletedGameCount = gamePaths.length;
@@ -1325,23 +1326,13 @@ export async function removeLibraryPathHandler(
       .whereIn("gamePath", gamePaths)
       .pluck("path");
 
-    // userGameData ID 목록 (null 제외)
-    const userGameDataIds = gamesToDelete
-      .map((g) => g.userGameDataId)
-      .filter((id): id is number => id !== null);
-
     // 관계 데이터 삭제 (gamePath 기반)
     await db("gameMakers").whereIn("gamePath", gamePaths).delete();
     await db("gameCategories").whereIn("gamePath", gamePaths).delete();
     await db("gameTags").whereIn("gamePath", gamePaths).delete();
     await db("gameImages").whereIn("gamePath", gamePaths).delete();
 
-    // userGameData 삭제 (playSessions는 CASCADE로 자동 삭제됨)
-    if (userGameDataIds.length > 0) {
-      await db("userGameData").whereIn("id", userGameDataIds).delete();
-    }
-
-    // 게임 레코드 삭제
+    // 게임 레코드 삭제 (userGameData는 보존됨)
     await db("games").whereIn("path", gamePaths).delete();
 
     // 썸네일 및 이미지 파일 삭제
@@ -1554,7 +1545,7 @@ export async function getPlayTimeHandler(
   const { path } = payload;
 
   const game = await db("games")
-    .leftJoin("userGameData", "games.userGameDataId", "userGameData.id")
+    .leftJoin("userGameData", "games.fingerprint", "userGameData.fingerprint")
     .where("games.path", path)
     .select("userGameData.totalPlayTime")
     .first();
@@ -1576,12 +1567,18 @@ export async function getPlaySessionsHandler(
 
   const game = await db("games")
     .where("path", path)
-    .select("userGameDataId")
+    .select("fingerprint")
     .first();
-  if (!game?.userGameDataId) return { sessions: [] };
+  if (!game?.fingerprint) return { sessions: [] };
+
+  const userData = await db("userGameData")
+    .where("fingerprint", game.fingerprint)
+    .select("id")
+    .first();
+  if (!userData) return { sessions: [] };
 
   const sessions = await db("playSessions")
-    .where("userGameDataId", game.userGameDataId)
+    .where("userGameDataId", userData.id)
     .orderBy("startedAt", "desc")
     .limit(limit);
 

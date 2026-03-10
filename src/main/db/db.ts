@@ -35,7 +35,6 @@ export interface Game extends Omit<TableBaseColumn, "createdAt" | "updatedAt"> {
   memo: string | null; // 메모
   publishDate: Date | null; // 발매일
   isLoadedInfo: SqliteBoolean; // 컬렉터 정보 수집 완료
-  userGameDataId: number | null; // FK → user_game_data.id
   fingerprint: string | null; // SHA-256 해시 (게임 식별용)
   isHidden: SqliteBoolean;
   isCompressFile: SqliteBoolean;
