@@ -10,7 +10,7 @@ import {
   getThumbnailDir,
   optimizeImage,
 } from "../utils/downloader.js";
-import { toAbsolutePath } from "../utils/image-path.js";
+import { toAbsolutePath, toRelativePath } from "../utils/image-path.js";
 import { validatePath } from "../utils/validator.js";
 
 /**
@@ -262,14 +262,17 @@ export async function convertImagesToWebpHandler(
       await unlink(sourcePath);
 
       // DB 경로 업데이트 (games 테이블) - 상대 경로로 저장
+      const relativeSource = toRelativePath(sourcePath) ?? sourcePath;
+      const relativeDest = toRelativePath(destPath) ?? destPath;
+
       await db("games")
-        .where("thumbnail", sourcePath)
-        .update({ thumbnail: destPath });
+        .where("thumbnail", relativeSource)
+        .update({ thumbnail: relativeDest });
 
       // DB 경로 업데이트 (gameImages 테이블) - 상대 경로로 저장
       await db("gameImages")
-        .where("path", sourcePath)
-        .update({ path: destPath });
+        .where("path", relativeSource)
+        .update({ path: relativeDest });
 
       freedBytes += beforeStat.size - afterStat.size;
       converted++;

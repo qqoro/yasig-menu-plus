@@ -1308,7 +1308,7 @@ export async function removeLibraryPathHandler(
 
   // 해당 경로 하위의 게임 조회 (userGameDataId 포함)
   const gamesToDelete = await db("games")
-    .where("path", "like", `${path}%`)
+    .where("source", path)
     .select("path", "thumbnail", "userGameDataId");
 
   const gamePaths = gamesToDelete.map((g) => g.path);
