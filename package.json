@@ -1,7 +1,7 @@
 {
   "name": "yasig-menu-plus",
   "displayName": "야식메뉴판 Plus",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "야식 관리에 도움이 되는 가벼운 앱",
   "license": "MIT",
   "repository": {
@@ -67,6 +67,7 @@
     "vue-tsc": "^3.2.4"
   },
   "dependencies": {
+    "@img/sharp-win32-x64": "^0.34.5",
     "@internationalized/date": "^3.11.0",
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.1.18",
@@ -111,7 +112,9 @@
       "@tailwindcss/oxide",
       "better-sqlite3",
       "electron",
-      "puppeteer"
+      "protobufjs",
+      "puppeteer",
+      "sharp"
     ],
     "overrides": {
       "node-abi": "^3.78.0"

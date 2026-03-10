@@ -39,7 +39,7 @@ commit_parsers = [
   { message = "^test", skip = true },
   { message = "^build", group = "📦 빌드" },
   { message = "^ci", group = "👷 CI/CD" },
-  { message = "^chore", group = "📦 기타" },
+  { message = "^chore", skip = true },
   { message = "^style", group = "🎨 스타일" },
 ]
 
