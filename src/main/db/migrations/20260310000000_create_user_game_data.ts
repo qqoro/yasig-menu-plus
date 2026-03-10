@@ -12,6 +12,12 @@ export async function up(knex: Knex): Promise<void> {
     table.boolean("is_clear").defaultTo(false);
     table.datetime("last_played_at").nullable();
     table.datetime("created_at").defaultTo(knex.fn.now());
+
+    // games 테이블에서 이동한 컬럼 인덱스
+    table.index("is_favorite");
+    table.index("is_clear");
+    table.index("last_played_at");
+    table.index("total_play_time");
   });
 
   // 2. 기존 games 데이터 → user_game_data로 마이그레이션
@@ -38,15 +44,13 @@ export async function up(knex: Knex): Promise<void> {
   `);
 
   // 3. games에 user_game_data_id FK 추가
-  await knex.schema.alterTable("games", (table) => {
-    table
-      .integer("user_game_data_id")
-      .nullable()
-      .references("id")
-      .inTable("user_game_data")
-      .onDelete("SET NULL");
-    table.string("fingerprint").nullable();
-  });
+  // Knex alterTable의 .references()는 테이블 재생성(DROP TABLE)을 유발하므로
+  // 네이티브 ALTER TABLE ADD COLUMN + inline REFERENCES 사용
+  await knex.raw(`
+    ALTER TABLE games ADD COLUMN user_game_data_id INTEGER
+    REFERENCES user_game_data(id) ON DELETE SET NULL
+  `);
+  await knex.raw("ALTER TABLE games ADD COLUMN fingerprint TEXT");
 
   // 4. games.user_game_data_id 연결 (external_key 기준)
   await knex.raw(`
@@ -109,14 +113,19 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.renameTable("play_sessions_new", "play_sessions");
 
   // 6. games 테이블에서 유저 데이터 컬럼 제거
-  // SQLite 3.35+ 지원 (better-sqlite3 번들 SQLite는 3.40+)
-  await knex.schema.alterTable("games", (table) => {
-    table.dropColumn("rating");
-    table.dropColumn("total_play_time");
-    table.dropColumn("is_favorite");
-    table.dropColumn("is_clear");
-    table.dropColumn("last_played_at");
-  });
+  // 네이티브 ALTER TABLE DROP COLUMN 사용 (SQLite 3.35+)
+  // Knex의 dropColumn은 테이블 재생성 방식이라 트랜잭션 내에서
+  // PRAGMA foreign_keys = OFF가 불가능해 CASCADE 삭제가 발생함
+  // 인덱스 제거 후 컬럼 삭제 (네이티브 DROP COLUMN은 인덱스가 있으면 실패)
+  await knex.raw("DROP INDEX IF EXISTS games_is_favorite_index");
+  await knex.raw("DROP INDEX IF EXISTS games_is_clear_index");
+  await knex.raw("DROP INDEX IF EXISTS games_last_played_at_index");
+  await knex.raw("DROP INDEX IF EXISTS games_total_play_time_index");
+  await knex.raw("ALTER TABLE games DROP COLUMN rating");
+  await knex.raw("ALTER TABLE games DROP COLUMN total_play_time");
+  await knex.raw("ALTER TABLE games DROP COLUMN is_favorite");
+  await knex.raw("ALTER TABLE games DROP COLUMN is_clear");
+  await knex.raw("ALTER TABLE games DROP COLUMN last_played_at");
 }
 
 export async function down(knex: Knex): Promise<void> {
@@ -162,11 +171,9 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTable("play_sessions");
   await knex.schema.renameTable("play_sessions_old", "play_sessions");
 
-  // FK 및 fingerprint 컬럼 제거
-  await knex.schema.alterTable("games", (table) => {
-    table.dropColumn("user_game_data_id");
-    table.dropColumn("fingerprint");
-  });
+  // FK 및 fingerprint 컬럼 제거 (네이티브 DROP COLUMN 사용)
+  await knex.raw("ALTER TABLE games DROP COLUMN user_game_data_id");
+  await knex.raw("ALTER TABLE games DROP COLUMN fingerprint");
 
   await knex.schema.dropTableIfExists("user_game_data");
 }
