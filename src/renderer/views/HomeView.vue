@@ -16,6 +16,18 @@ import FilterPanelComponent from "../components/FilterPanel.vue";
 import GameCard from "../components/GameCard.vue";
 import GameDetailDialog from "../components/GameDetailDialog.vue";
 import ImageCarouselDialog from "../components/ImageCarouselDialog.vue";
+import GameContextMenu from "../components/GameContextMenu.vue";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../components/ui/alert-dialog";
+import { useDeleteGames } from "../composables/useDuplicates";
 import SearchBar from "../components/SearchBar.vue";
 import { Button } from "../components/ui/button";
 import {
@@ -93,6 +105,36 @@ const selectedGamePath = ref<string | null>(null);
 const carouselOpen = ref(false);
 const carouselGamePath = ref<string>("");
 const { data: gameImages } = useGameImages(carouselGamePath);
+
+// 게임 삭제 상태
+const deleteTargetGame = ref<GameItem | null>(null);
+const showDeleteConfirm = ref(false);
+const deleteGamesMutation = useDeleteGames();
+
+/**
+ * 게임 삭제 요청 핸들러 (확인 다이얼로그 표시)
+ */
+function handleDeleteRequest(game: GameItem): void {
+  deleteTargetGame.value = game;
+  showDeleteConfirm.value = true;
+}
+
+/**
+ * 게임 삭제 확정 핸들러
+ * AlertDialogAction이 다이얼로그를 자동으로 닫으므로 별도 닫기 불필요
+ */
+async function handleDeleteConfirm(): Promise<void> {
+  if (!deleteTargetGame.value) return;
+
+  const path = deleteTargetGame.value.path;
+  deleteTargetGame.value = null;
+
+  try {
+    await deleteGamesMutation.mutateAsync([path]);
+  } catch (err) {
+    console.error("게임 삭제 실패:", err);
+  }
+}
 
 // useSearch composable로 검색 상태 관리
 const searchState = useSearch(() => activeLibraryPaths.value);
@@ -827,26 +869,38 @@ onUnmounted(() => {
             <!-- 게임 그리드 -->
             <div v-else>
               <div :class="['grid gap-4', gridColsClass]">
-                <GameCard
+                <GameContextMenu
                   v-for="game in games"
                   :key="game.path"
                   :game="game"
-                  :is-playing="playingGamePath === game.path"
-                  :is-active-tag="hasTag"
-                  :is-active-circle="hasCircle"
-                  :is-active-category="hasCategory"
                   @play="handlePlayGame"
                   @open-folder="handleOpenFolder"
                   @toggle-favorite="handleToggleFavorite"
                   @toggle-hidden="handleToggleHidden"
                   @toggle-clear="handleToggleClear"
-                  @click-tag="handleClickTag"
-                  @click-circle="handleClickCircle"
-                  @click-category="handleClickCategory"
                   @show-detail="handleShowDetail"
                   @open-original-site="handleOpenOriginalSite"
-                  @dblclick="handleGameDoubleClick(game)"
-                />
+                  @delete="handleDeleteRequest"
+                >
+                  <GameCard
+                    :game="game"
+                    :is-playing="playingGamePath === game.path"
+                    :is-active-tag="hasTag"
+                    :is-active-circle="hasCircle"
+                    :is-active-category="hasCategory"
+                    @play="handlePlayGame"
+                    @open-folder="handleOpenFolder"
+                    @toggle-favorite="handleToggleFavorite"
+                    @toggle-hidden="handleToggleHidden"
+                    @toggle-clear="handleToggleClear"
+                    @click-tag="handleClickTag"
+                    @click-circle="handleClickCircle"
+                    @click-category="handleClickCategory"
+                    @show-detail="handleShowDetail"
+                    @open-original-site="handleOpenOriginalSite"
+                    @dblclick="handleGameDoubleClick(game)"
+                  />
+                </GameContextMenu>
               </div>
 
               <!-- 무한 스크롤 트리거 & 로딩 표시 -->
@@ -897,5 +951,31 @@ onUnmounted(() => {
       :images="(gameImages ?? []).map((i) => i.path)"
       @update:open="carouselOpen = $event"
     />
+
+    <!-- 게임 삭제 확인 다이얼로그 -->
+    <AlertDialog v-model:open="showDeleteConfirm">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>게임을 삭제하시겠습니까?</AlertDialogTitle>
+          <AlertDialogDescription>
+            <span class="text-foreground font-medium">{{
+              deleteTargetGame?.title ?? deleteTargetGame?.originalTitle
+            }}</span>
+            <br />
+            게임 폴더가 휴지통으로 이동되며, 썸네일과 이미지도 삭제됩니다.
+            플레이 기록은 보존됩니다.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>취소</AlertDialogCancel>
+          <AlertDialogAction
+            class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            @click="handleDeleteConfirm"
+          >
+            삭제
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>
