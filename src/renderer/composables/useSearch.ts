@@ -407,6 +407,21 @@ export function useSearch(sourcePaths: () => string[]) {
     },
   });
 
+  // 배치 토글 mutation
+  const batchToggleMutation = useMutation({
+    mutationFn: async (params: {
+      paths: string[];
+      field: "is_favorite" | "is_hidden" | "is_clear";
+      value: boolean;
+    }) => {
+      const result = await window.api.invoke("batchToggleGames", params);
+      return result as { field: string; updatedCount: number };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.games.all });
+    },
+  });
+
   // 태그 토글
   function toggleTag(tag: string): void {
     // 띄어쓰기를 _로 변환
@@ -540,6 +555,10 @@ export function useSearch(sourcePaths: () => string[]) {
     isTogglingFavorite: favoriteMutation.isPending.value,
     isTogglingHidden: hiddenMutation.isPending.value,
     isTogglingClear: clearMutation.isPending.value,
+
+    // 배치 토글 작업
+    batchToggle: batchToggleMutation.mutateAsync,
+    isBatchToggling: batchToggleMutation.isPending,
 
     // 기타
     activeFilterCount,

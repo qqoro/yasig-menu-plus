@@ -120,6 +120,9 @@ export const enum IpcRendererSend {
   FindDuplicates = "findDuplicates", // 중복 게임 그룹 조회
   DeleteGames = "deleteGames", // 게임 삭제 (DB + 파일)
 
+  // 다중 선택 일괄 조작
+  BatchToggleGames = "batchToggleGames",
+
   // 체인지로그 관련
   GetChangelog = "getChangelog", // 체인지로그 조회
 
@@ -517,6 +520,13 @@ export interface IpcRendererEventMap {
 
   // 이미지 일괄 변환
   convertImagesToWebp: undefined;
+
+  // 다중 선택 일괄 조작
+  batchToggleGames: {
+    paths: string[];
+    field: "is_favorite" | "is_hidden" | "is_clear";
+    value: boolean;
+  };
 }
 
 // Main → Renderer 페이로드
@@ -688,5 +698,11 @@ export interface IpcMainEventMap {
     converted: number;
     failed: number;
     freedBytes: number;
+  };
+
+  // 다중 선택 일괄 조작
+  batchToggled: {
+    field: "is_favorite" | "is_hidden" | "is_clear";
+    updatedCount: number;
   };
 }

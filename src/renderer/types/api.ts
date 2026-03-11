@@ -89,6 +89,9 @@ type IpcInvokeReturn = {
   getAutoUpdateSettings: { settings: { checkOnStartup: boolean } };
   setAutoUpdateSettings: { settings: { checkOnStartup: boolean } };
 
+  // 다중 선택 일괄 조작
+  batchToggleGames: IpcMainEventMap["batchToggled"];
+
   // 중복 게임 관리
   findDuplicates: IpcMainEventMap["duplicatesFound"];
   deleteGames: IpcMainEventMap["gamesDeleted"];

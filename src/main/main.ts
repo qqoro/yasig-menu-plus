@@ -22,6 +22,7 @@ import {
   addExcludedExecutableHandler,
   addLibraryPathHandler,
   autoScanLibraries,
+  batchToggleGamesHandler,
   getAllLibraryScanHistoryHandler,
   getAutocompleteSuggestionsHandler,
   getExcludedExecutablesHandler,
@@ -271,6 +272,7 @@ function registerIpcHandlers() {
   ipcMain.handle(IpcRendererSend.ToggleClear, (event, payload) =>
     toggleGameHandler(event, payload, "is_clear"),
   );
+  ipcMain.handle(IpcRendererSend.BatchToggleGames, batchToggleGamesHandler);
   ipcMain.handle(
     IpcRendererSend.GetAutocompleteSuggestions,
     getAutocompleteSuggestionsHandler,

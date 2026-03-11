@@ -17,6 +17,8 @@ import GameCard from "../components/GameCard.vue";
 import GameDetailDialog from "../components/GameDetailDialog.vue";
 import ImageCarouselDialog from "../components/ImageCarouselDialog.vue";
 import GameContextMenu from "../components/GameContextMenu.vue";
+import BatchActionBar from "../components/BatchActionBar.vue";
+import { useMultiSelect } from "../composables/useMultiSelect";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -109,6 +111,7 @@ const { data: gameImages } = useGameImages(carouselGamePath);
 // 게임 삭제 상태
 const deleteTargetGame = ref<GameItem | null>(null);
 const showDeleteConfirm = ref(false);
+const showBatchDeleteConfirm = ref(false);
 const deleteGamesMutation = useDeleteGames();
 
 /**
@@ -194,6 +197,9 @@ const sortOrder = computed<SearchQuery["sortOrder"]>(
 
 // 게임 목록 등
 const games = computed(() => searchState.games.value);
+
+// 다중 선택 상태 관리
+const multiSelect = useMultiSelect(games);
 const totalCount = computed(() => searchState.totalCount.value);
 const specialOnlyTotalCount = computed(
   () => searchState.specialOnlyTotalCount.value,
@@ -350,6 +356,80 @@ async function handleOpenOriginalSite(game: GameItem): Promise<void> {
     toast.error(
       err instanceof Error ? err.message : "원본 사이트 열기에 실패했습니다.",
     );
+  }
+}
+
+/**
+ * 배치 토글 핸들러
+ */
+async function handleBatchToggle(
+  field: "is_favorite" | "is_hidden" | "is_clear",
+  value: boolean,
+): Promise<void> {
+  const paths = multiSelect.selectedPathsArray.value;
+  if (paths.length === 0) return;
+
+  try {
+    const result = await searchState.batchToggle({ paths, field, value });
+    const fieldNames = {
+      is_favorite: value ? "즐겨찾기 추가" : "즐겨찾기 해제",
+      is_hidden: value ? "숨기기" : "숨김 해제",
+      is_clear: value ? "클리어 표시" : "클리어 해제",
+    };
+    toast.success(
+      `${result.updatedCount}개의 게임을 ${fieldNames[field]}했습니다.`,
+    );
+    multiSelect.clearSelection();
+  } catch (err) {
+    console.error("배치 토글 실패:", err);
+    toast.error(
+      err instanceof Error ? err.message : "일괄 작업에 실패했습니다.",
+    );
+  }
+}
+
+/**
+ * 배치 삭제 요청 핸들러
+ */
+function handleBatchDeleteRequest(): void {
+  if (multiSelect.selectedCount.value === 0) return;
+  showBatchDeleteConfirm.value = true;
+}
+
+/**
+ * 배치 삭제 확정 핸들러
+ */
+async function handleBatchDeleteConfirm(): Promise<void> {
+  const paths = multiSelect.selectedPathsArray.value;
+  if (paths.length === 0) return;
+
+  try {
+    await deleteGamesMutation.mutateAsync(paths);
+    multiSelect.clearSelection();
+  } catch (err) {
+    console.error("배치 삭제 실패:", err);
+  }
+}
+
+/**
+ * 게임 카드 선택 핸들러
+ */
+function handleGameSelect(game: GameItem, event: MouseEvent): void {
+  if (event.shiftKey) {
+    multiSelect.rangeSelect(game.path);
+  } else {
+    multiSelect.toggleSelect(game.path);
+  }
+}
+
+/**
+ * 전체 선택/해제 토글 핸들러
+ */
+function handleToggleSelectAll(): void {
+  if (multiSelect.isAllSelected.value) {
+    multiSelect.clearSelection();
+  } else {
+    multiSelect.selectAll();
   }
 }
 
@@ -602,6 +682,17 @@ function handleKeydown(event: KeyboardEvent): void {
   if ((event.ctrlKey || event.metaKey) && event.key === "f") {
     event.preventDefault();
     searchBarRef.value?.focus();
+  }
+  // Ctrl+A: 전체 선택
+  if ((event.ctrlKey || event.metaKey) && event.key === "a") {
+    if (document.activeElement?.tagName === "INPUT") return;
+    event.preventDefault();
+    handleToggleSelectAll();
+  }
+  // Escape: 선택 해제
+  if (event.key === "Escape" && multiSelect.isSelectionMode.value) {
+    event.preventDefault();
+    multiSelect.clearSelection();
   }
 }
 
@@ -873,6 +964,8 @@ onUnmounted(() => {
                   v-for="game in games"
                   :key="game.path"
                   :game="game"
+                  :is-selection-mode="multiSelect.isSelectionMode.value"
+                  :selected-count="multiSelect.selectedCount.value"
                   @play="handlePlayGame"
                   @open-folder="handleOpenFolder"
                   @toggle-favorite="handleToggleFavorite"
@@ -881,10 +974,16 @@ onUnmounted(() => {
                   @show-detail="handleShowDetail"
                   @open-original-site="handleOpenOriginalSite"
                   @delete="handleDeleteRequest"
+                  @batch-favorite="(v) => handleBatchToggle('is_favorite', v)"
+                  @batch-clear="(v) => handleBatchToggle('is_clear', v)"
+                  @batch-hidden="(v) => handleBatchToggle('is_hidden', v)"
+                  @batch-delete="handleBatchDeleteRequest"
                 >
                   <GameCard
                     :game="game"
                     :is-playing="playingGamePath === game.path"
+                    :is-selected="multiSelect.isSelected(game.path)"
+                    :is-selection-mode="multiSelect.isSelectionMode.value"
                     :is-active-tag="hasTag"
                     :is-active-circle="hasCircle"
                     :is-active-category="hasCategory"
@@ -898,6 +997,7 @@ onUnmounted(() => {
                     @click-category="handleClickCategory"
                     @show-detail="handleShowDetail"
                     @open-original-site="handleOpenOriginalSite"
+                    @select="handleGameSelect"
                     @dblclick="handleGameDoubleClick(game)"
                   />
                 </GameContextMenu>
@@ -934,6 +1034,19 @@ onUnmounted(() => {
               </div>
             </div>
           </div>
+
+          <!-- 배치 작업 바 -->
+          <BatchActionBar
+            :selected-count="multiSelect.selectedCount.value"
+            :is-all-selected="multiSelect.isAllSelected.value"
+            :is-pending="searchState.isBatchToggling.value"
+            @select-all="handleToggleSelectAll"
+            @clear-selection="multiSelect.clearSelection"
+            @batch-favorite="(v) => handleBatchToggle('is_favorite', v)"
+            @batch-clear="(v) => handleBatchToggle('is_clear', v)"
+            @batch-hidden="(v) => handleBatchToggle('is_hidden', v)"
+            @batch-delete="handleBatchDeleteRequest"
+          />
         </div>
       </div>
     </div>
@@ -971,6 +1084,30 @@ onUnmounted(() => {
           <AlertDialogAction
             class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             @click="handleDeleteConfirm"
+          >
+            삭제
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <!-- 배치 삭제 확인 다이얼로그 -->
+    <AlertDialog v-model:open="showBatchDeleteConfirm">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {{ multiSelect.selectedCount.value }}개의 게임을 삭제하시겠습니까?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            선택한 게임의 폴더가 휴지통으로 이동되며, 썸네일과 이미지도
+            삭제됩니다. 플레이 기록은 보존됩니다.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>취소</AlertDialogCancel>
+          <AlertDialogAction
+            class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            @click="handleBatchDeleteConfirm"
           >
             삭제
           </AlertDialogAction>

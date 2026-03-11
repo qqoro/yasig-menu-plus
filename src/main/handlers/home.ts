@@ -1071,6 +1071,53 @@ export async function toggleGameHandler(
 }
 
 /**
+ * 게임 배치 토글 핸들러 (여러 게임 일괄 즐겨찾기/숨김/클리어)
+ */
+export async function batchToggleGamesHandler(
+  _event: IpcMainInvokeEvent,
+  payload: IpcRendererEventMap["batchToggleGames"],
+): Promise<IpcMainEventMap["batchToggled"]> {
+  const { paths, field, value } = payload;
+
+  if (paths.length === 0) {
+    return { field, updatedCount: 0 };
+  }
+
+  if (field === "is_hidden") {
+    // isHidden은 games 테이블
+    const updatedCount = await db("games")
+      .whereIn("path", paths)
+      .update({
+        isHidden: value ? 1 : 0,
+        updatedAt: new Date(),
+      });
+    return { field, updatedCount };
+  }
+
+  // isFavorite, isClear → user_game_data
+  const fieldMap = {
+    is_favorite: "isFavorite" as const,
+    is_clear: "isClear" as const,
+  };
+  const camelField = fieldMap[field as "is_favorite" | "is_clear"];
+
+  // 각 게임의 userGameData를 생성/확보
+  const userGameDataIds: number[] = [];
+  for (const path of paths) {
+    const id = await getOrCreateUserGameData(path);
+    userGameDataIds.push(id);
+  }
+
+  const updatedCount = await db("userGameData")
+    .whereIn("id", userGameDataIds)
+    .update({
+      [camelField]: value ? 1 : 0,
+    });
+
+  return { field, updatedCount };
+}
+
+/**
  * 자동완성 제안 핸들러
  * 두 단계 자동완성:
  * 1. 부분 입력 시 prefix 목록 반환 (t → tag:, 태 → 태그:)

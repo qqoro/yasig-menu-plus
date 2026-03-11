@@ -28,6 +28,8 @@ interface Props {
   isActiveCategory?: (category: string) => boolean;
   isPlaying?: boolean;
   isToggling?: boolean;
+  isSelected?: boolean;
+  isSelectionMode?: boolean;
 }
 
 interface Emits {
@@ -41,11 +43,14 @@ interface Emits {
   (e: "click-category", category: string): void;
   (e: "show-detail", game: GameItem): void;
   (e: "open-original-site", game: GameItem): void;
+  (e: "select", game: GameItem, event: MouseEvent): void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   isPlaying: false,
   isToggling: false,
+  isSelected: false,
+  isSelectionMode: false,
 });
 
 const emit = defineEmits<Emits>();
@@ -204,15 +209,54 @@ function handleOpenOriginalSite(event: MouseEvent): void {
   event.stopPropagation();
   emit("open-original-site", props.game);
 }
+
+// 카드 클릭 핸들러 (선택 모드 또는 Ctrl/Meta 클릭)
+function handleCardClick(event: MouseEvent): void {
+  if (props.isSelectionMode || event.ctrlKey || event.metaKey) {
+    event.stopPropagation();
+    event.preventDefault();
+    emit("select", props.game, event);
+  }
+}
 </script>
 
 <template>
   <Card
     class="group hover:border-primary/50 -py-6 flex flex-col overflow-hidden transition-colors"
-    :class="{ 'pointer-events-none opacity-75': isPlaying }"
+    :class="{
+      'pointer-events-none opacity-75': isPlaying,
+      'ring-primary border-primary ring-2': isSelected,
+      'cursor-pointer': isSelectionMode,
+    }"
+    @click="handleCardClick"
   >
     <!-- 썸네일 영역 -->
     <div class="bg-muted relative aspect-4/3 overflow-hidden">
+      <!-- 선택 체크박스 (선택 모드 시 표시) -->
+      <div v-if="isSelectionMode" class="absolute top-2 left-2 z-10">
+        <div
+          class="flex h-5 w-5 items-center justify-center rounded border-2 transition-colors"
+          :class="
+            isSelected
+              ? 'border-primary bg-primary text-primary-foreground'
+              : 'border-muted-foreground/50 bg-background/80'
+          "
+        >
+          <svg
+            v-if="isSelected"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="3"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="h-3 w-3"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </div>
+      </div>
       <!-- 썸네일 이미지 -->
       <img
         v-if="game.thumbnail"
@@ -247,8 +291,9 @@ function handleOpenOriginalSite(event: MouseEvent): void {
           game.rating
         }}</span>
       </div>
-      <!-- 오버레이 버튼들 (hover 시 표시) -->
+      <!-- 오버레이 버튼들 (hover 시 표시, 선택 모드에서 비활성화) -->
       <div
+        v-if="!isSelectionMode"
         class="bg-popover/60 absolute inset-0 flex flex-wrap content-center justify-center gap-1.5 p-2 opacity-0 transition-opacity group-hover:opacity-100"
       >
         <Button
