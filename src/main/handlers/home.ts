@@ -19,28 +19,27 @@ import { existsSync, readdirSync, statSync } from "fs";
 import { join } from "path";
 import { COMPRESS_FILE_TYPE } from "../constants.js";
 import { db } from "../db/db-manager.js";
-import type { GameCandidate } from "../lib/scan-logic.js";
-import {
-  EXCLUDED_FOLDER_NAMES,
-  EXECUTABLE_EXTENSIONS,
-  hasExecutableFile,
-} from "../lib/scan-logic.js";
-import { runScanWorker } from "../workers/run-scan-worker.js";
 import type { SqliteBoolean } from "../db/db.js";
 import type {
   GameItem,
   IpcMainEventMap,
   IpcRendererEventMap,
 } from "../events.js";
+import { computeFingerprint } from "../lib/fingerprint.js";
+import {
+  EXCLUDED_FOLDER_NAMES,
+  EXECUTABLE_EXTENSIONS,
+  hasExecutableFile,
+} from "../lib/scan-logic.js";
 import {
   ENGLISH_PREFIXES,
-  KOREAN_PREFIXES,
   KOREAN_PREFIX_PARTIALS,
+  KOREAN_PREFIXES,
   normalizeToEnglish,
 } from "../lib/search-prefix.js";
 import { processMonitor } from "../services/ProcessMonitor.js";
 import { getOrCreateUserGameData } from "../services/user-game-data.js";
-import { computeFingerprint } from "../lib/fingerprint.js";
+import type { TitleDisplayMode } from "../store.js";
 import {
   addExcludedExecutable,
   addLibraryPath as addLibraryPathToStore,
@@ -58,7 +57,6 @@ import {
   setLastRefreshedAt,
   updateLibraryScanHistory,
 } from "../store.js";
-import type { TitleDisplayMode } from "../store.js";
 import { deleteImage } from "../utils/downloader.js";
 import { toAbsolutePath } from "../utils/image-path.js";
 import {
@@ -66,6 +64,7 @@ import {
   validatePath,
   validateSearchQuery,
 } from "../utils/validator.js";
+import { runScanWorker } from "../workers/run-scan-worker.js";
 
 /**
  * 게임 경로에서 실행 파일 후보들을 찾음
@@ -230,7 +229,7 @@ async function scanFolder(
       await db("gameTags").whereIn("gamePath", deletedPaths).delete();
       await db("gameImages").whereIn("gamePath", deletedPaths).delete();
 
-      // 게임 삭제
+      // 게임 삭제 (userGameData는 의도적으로 보존 — 재스캔 시 플레이 시간·메모 등 복원용)
       deletedCount = await db("games").whereIn("path", deletedPaths).delete();
 
       // 실제 이미지 파일 삭제 (상대 경로를 절대 경로로 변환)
@@ -317,6 +316,11 @@ function buildTitleOrderParts(priority: TitleDisplayMode[]): string {
     collected: "title",
     original: "original_title",
   };
+
+  // 빈 배열이면 기본 우선순위 사용
+  if (priority.length === 0) {
+    priority = [...DEFAULT_TITLE_DISPLAY_PRIORITY];
+  }
 
   const parts = priority.map((mode, index, arr) => {
     const column = columnMap[mode];

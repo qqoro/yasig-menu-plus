@@ -20,9 +20,9 @@ export function computeFingerprint(
   isCompressFile: boolean,
 ): string | null {
   try {
-    if (isCompressFile || !statSync(gamePath).isDirectory()) {
+    const stat = statSync(gamePath);
+    if (isCompressFile || !stat.isDirectory()) {
       // 단일 파일: 파일명 + 크기
-      const stat = statSync(gamePath);
       const name = gamePath.split(/[\\/]/).pop() || "";
       const data = `${name}:${stat.size}`;
       return createHash("sha256").update(data).digest("hex");
