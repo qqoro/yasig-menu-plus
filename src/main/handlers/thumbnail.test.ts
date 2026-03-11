@@ -308,6 +308,31 @@ describe("migrateThumbnailsHandler", () => {
     );
   });
 
+  it("파일명 그룹핑 시 대소문자를 무시한다", async () => {
+    await seedGame(db, {
+      path: "/games/game1",
+      originalTitle: "MyGame",
+      thumbnail: null,
+    });
+
+    mockStat.mockResolvedValue({ isDirectory: () => true } as any);
+    // 대소문자가 다른 파일명들도 같은 그룹으로 묶여야 함
+    // MyGame.png와 mygame.jpg가 있으면 .png가 우선 선택
+    mockReaddir.mockResolvedValue(["mygame.jpg", "MYGAME.png"] as any);
+    mockCopyImage.mockResolvedValue("result.webp");
+
+    const result = await migrateThumbnailsHandler({} as any, {
+      sourceFolder: "/source",
+    });
+
+    expect(result.successCount).toBe(1);
+    // .png가 우선순위가 높으므로 MYGAME.png가 선택되어야 함
+    expect(mockCopyImage).toHaveBeenCalledWith(
+      join("/source", "MYGAME.png"),
+      "/games/game1",
+    );
+  });
+
   it("이미지가 아닌 파일은 무시된다", async () => {
     await seedGame(db, {
       path: "/games/game1",

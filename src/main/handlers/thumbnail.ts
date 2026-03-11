@@ -143,10 +143,10 @@ export async function migrateThumbnailsHandler(
     return IMAGE_EXTENSIONS.includes(ext);
   });
 
-  // 파일명(확장자 제외)으로 그룹핑
+  // 파일명(확장자 제외)으로 그룹핑 - 대소문자 무시
   const fileGroups = new Map<string, string[]>();
   for (const file of imageFiles) {
-    const nameWithoutExt = basename(file, extname(file));
+    const nameWithoutExt = basename(file, extname(file)).toLowerCase();
     const group = fileGroups.get(nameWithoutExt) || [];
     group.push(file);
     fileGroups.set(nameWithoutExt, group);
