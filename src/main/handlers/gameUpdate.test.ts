@@ -92,7 +92,7 @@ describe("updateGameMetadata", () => {
     await updateGameMetadata("/games/a", { title: "New Title" });
 
     const game = await db("games").where("path", "/games/a").first();
-    expect(game.title).toBe("New Title");
+    expect(game!.title).toBe("New Title");
   });
 
   it("복수 필드(title + memo)를 동시에 업데이트한다", async () => {
@@ -104,8 +104,8 @@ describe("updateGameMetadata", () => {
     });
 
     const game = await db("games").where("path", "/games/b").first();
-    expect(game.title).toBe("Updated");
-    expect(game.memo).toBe("메모 텍스트");
+    expect(game!.title).toBe("Updated");
+    expect(game!.memo).toBe("메모 텍스트");
   });
 
   it("빈 객체를 전달하면 DB가 변경되지 않는다", async () => {
@@ -114,9 +114,9 @@ describe("updateGameMetadata", () => {
     await updateGameMetadata("/games/c", {});
 
     const game = await db("games").where("path", "/games/c").first();
-    expect(game.title).toBe("Unchanged");
+    expect(game!.title).toBe("Unchanged");
     // 빈 객체이므로 isLoadedInfo도 변경되지 않아야 함
-    expect(game.isLoadedInfo).toBeFalsy();
+    expect(game!.isLoadedInfo).toBeFalsy();
   });
 
   it("업데이트 시 isLoadedInfo가 true로 설정된다", async () => {
@@ -129,7 +129,7 @@ describe("updateGameMetadata", () => {
     await updateGameMetadata("/games/d", { title: "Changed" });
 
     const game = await db("games").where("path", "/games/d").first();
-    expect(game.isLoadedInfo).toBeTruthy();
+    expect(game!.isLoadedInfo).toBeTruthy();
   });
 });
 
@@ -182,7 +182,7 @@ describe("addMaker / removeMaker", () => {
 
     const relation = await db("game_makers")
       .where("gamePath", "/games/m1")
-      .where("makerId", maker.id)
+      .where("makerId", maker!.id)
       .first();
     expect(relation).toBeDefined();
   });
@@ -210,7 +210,7 @@ describe("addMaker / removeMaker", () => {
     const maker = await db("makers").where("name", "DuplicateStudio").first();
     const relations = await db("game_makers")
       .where("gamePath", "/games/m3")
-      .where("makerId", maker.id);
+      .where("makerId", maker!.id);
     expect(relations.length).toBe(1);
   });
 
@@ -226,7 +226,7 @@ describe("addMaker / removeMaker", () => {
 
     const relation = await db("game_makers")
       .where("gamePath", "/games/m4")
-      .where("makerId", maker.id)
+      .where("makerId", maker!.id)
       .first();
     expect(relation).toBeUndefined();
   });
@@ -245,7 +245,7 @@ describe("addCategory / removeCategory", () => {
 
     const relation = await db("game_categories")
       .where("gamePath", "/games/c1")
-      .where("categoryId", category.id)
+      .where("categoryId", category!.id)
       .first();
     expect(relation).toBeDefined();
   });
@@ -262,7 +262,7 @@ describe("addCategory / removeCategory", () => {
 
     const relation = await db("game_categories")
       .where("gamePath", "/games/c2")
-      .where("categoryId", category.id)
+      .where("categoryId", category!.id)
       .first();
     expect(relation).toBeUndefined();
   });
@@ -276,7 +276,7 @@ describe("addCategory / removeCategory", () => {
     const category = await db("categories").where("name", "Puzzle").first();
     const relations = await db("game_categories")
       .where("gamePath", "/games/c3")
-      .where("categoryId", category.id);
+      .where("categoryId", category!.id);
     expect(relations.length).toBe(1);
   });
 });
@@ -294,7 +294,7 @@ describe("addTag / removeTag", () => {
 
     const relation = await db("game_tags")
       .where("gamePath", "/games/t1")
-      .where("tagId", tag.id)
+      .where("tagId", tag!.id)
       .first();
     expect(relation).toBeDefined();
   });
@@ -311,7 +311,7 @@ describe("addTag / removeTag", () => {
 
     const relation = await db("game_tags")
       .where("gamePath", "/games/t2")
-      .where("tagId", tag.id)
+      .where("tagId", tag!.id)
       .first();
     expect(relation).toBeUndefined();
   });
@@ -325,7 +325,7 @@ describe("addTag / removeTag", () => {
     const tag = await db("tags").where("name", "2d").first();
     const relations = await db("game_tags")
       .where("gamePath", "/games/t3")
-      .where("tagId", tag.id);
+      .where("tagId", tag!.id);
     expect(relations.length).toBe(1);
   });
 });

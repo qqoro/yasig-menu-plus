@@ -345,7 +345,7 @@ describe("searchGamesHandler — 정렬", () => {
     // createdAt을 직접 갱신하여 시간 차이 보장
     await db("games")
       .where("path", "/games/old-game")
-      .update({ created_at: "2024-01-01T00:00:00.000Z" });
+      .update({ createdAt: new Date("2024-01-01T00:00:00.000Z") });
 
     await seedGame(db, {
       path: "/games/new-game",
@@ -354,7 +354,7 @@ describe("searchGamesHandler — 정렬", () => {
     });
     await db("games")
       .where("path", "/games/new-game")
-      .update({ created_at: "2025-01-01T00:00:00.000Z" });
+      .update({ createdAt: new Date("2025-01-01T00:00:00.000Z") });
 
     const result = await searchGamesHandler(
       {} as any,
@@ -592,7 +592,7 @@ describe("toggleGameHandler — isHidden 토글", () => {
     const game1 = await db("games")
       .where("path", "/games/toggle-hidden")
       .first();
-    expect(game1.isHidden).toBe(1);
+    expect(game1!.isHidden).toBe(1);
 
     // 1 → 0
     const result2 = await toggleGameHandler(
@@ -606,7 +606,7 @@ describe("toggleGameHandler — isHidden 토글", () => {
     const game2 = await db("games")
       .where("path", "/games/toggle-hidden")
       .first();
-    expect(game2.isHidden).toBe(0);
+    expect(game2!.isHidden).toBe(0);
   });
 });
 

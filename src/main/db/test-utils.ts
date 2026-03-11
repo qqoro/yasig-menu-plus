@@ -216,7 +216,7 @@ export async function seedGameMaker(
     const [id] = await db("makers").insert({ name: makerName });
     maker = await db("makers").where("id", id).first();
   }
-  await db("gameMakers").insert({ gamePath, makerId: maker.id });
+  await db("gameMakers").insert({ gamePath, makerId: maker!.id });
 }
 
 /**
@@ -238,7 +238,7 @@ export async function seedGameCategory(
   }
   await db("gameCategories").insert({
     gamePath,
-    categoryId: category.id,
+    categoryId: category!.id,
   });
 }
 
@@ -256,7 +256,7 @@ export async function seedGameTag(
     const [id] = await db("tags").insert({ name: tagName });
     tag = await db("tags").where("id", id).first();
   }
-  await db("gameTags").insert({ gamePath, tagId: tag.id });
+  await db("gameTags").insert({ gamePath, tagId: tag!.id });
 }
 
 /**

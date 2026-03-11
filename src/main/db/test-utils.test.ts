@@ -102,7 +102,7 @@ describe("snake_case ↔ camelCase 변환", () => {
       .first();
 
     expect(game).toBeDefined();
-    expect(game.path).toBe("/test/game1");
+    expect(game!.path).toBe("/test/game1");
   });
 
   it("camelCase 컬럼명으로 orderBy를 사용할 수 있어야 한다", async () => {
@@ -269,7 +269,7 @@ describe("관계 테이블 시드 헬퍼", () => {
     // 제작사가 자동 생성되었는지 확인
     const maker = await db("makers").where("name", "Circle A").first();
     expect(maker).toBeDefined();
-    expect(relations[0].makerId).toBe(maker.id);
+    expect(relations[0].makerId).toBe(maker!.id);
   });
 
   it("seedGameMaker — 이미 존재하는 제작사를 재사용해야 한다", async () => {
@@ -298,7 +298,7 @@ describe("관계 테이블 시드 헬퍼", () => {
 
     const category = await db("categories").where("name", "RPG").first();
     expect(category).toBeDefined();
-    expect(relations[0].categoryId).toBe(category.id);
+    expect(relations[0].categoryId).toBe(category!.id);
   });
 
   it("seedGameTag — 이름으로 태그를 자동 생성하고 관계를 삽입해야 한다", async () => {
@@ -311,7 +311,7 @@ describe("관계 테이블 시드 헬퍼", () => {
 
     const tag = await db("tags").where("name", "fantasy").first();
     expect(tag).toBeDefined();
-    expect(relations[0].tagId).toBe(tag.id);
+    expect(relations[0].tagId).toBe(tag!.id);
   });
 
   it("seedGameImage — 게임 이미지를 삽입하고 반환해야 한다", async () => {

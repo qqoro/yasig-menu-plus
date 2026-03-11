@@ -63,8 +63,7 @@ export interface Maker {
   createdAt: Date | Knex.Raw;
 }
 
-export type InsertMaker = Partial<Omit<Maker, "id">> &
-  Pick<Maker, "name" | "createdAt">;
+export type InsertMaker = Partial<Omit<Maker, "id">> & Pick<Maker, "name">;
 
 // ========== categories 테이블 ==========
 export interface Category {
@@ -76,7 +75,7 @@ export interface Category {
 }
 
 export type InsertCategory = Partial<Omit<Category, "id">> &
-  Pick<Category, "name" | "createdAt" | "sortOrder">;
+  Pick<Category, "name" | "sortOrder">;
 
 // ========== tags 테이블 ==========
 export interface Tag {
@@ -85,7 +84,7 @@ export interface Tag {
   createdAt: Date | Knex.Raw;
 }
 
-export type InsertTag = Pick<Tag, "name" | "createdAt">;
+export type InsertTag = Pick<Tag, "name"> & Partial<Pick<Tag, "createdAt">>;
 
 // ========== 관계 테이블 ==========
 export interface GameMaker {
