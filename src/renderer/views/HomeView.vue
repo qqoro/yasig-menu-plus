@@ -1,24 +1,19 @@
 <script setup lang="ts">
-import { useIntersectionObserver } from "@vueuse/core";
 import {
   Loader2,
-  Minus,
   PanelLeftClose,
   PanelLeftOpen,
-  Plus,
-  RefreshCw,
   Settings,
-  Shuffle,
 } from "lucide-vue-next";
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { toast } from "vue-sonner";
-import FilterPanelComponent from "../components/FilterPanel.vue";
-import GameCard from "../components/GameCard.vue";
-import GameDetailDialog from "../components/GameDetailDialog.vue";
-import ImageCarouselDialog from "../components/ImageCarouselDialog.vue";
-import GameContextMenu from "../components/GameContextMenu.vue";
 import BatchActionBar from "../components/BatchActionBar.vue";
-import { useMultiSelect } from "../composables/useMultiSelect";
+import FilterPanelComponent from "../components/FilterPanel.vue";
+import GameDetailDialog from "../components/GameDetailDialog.vue";
+import GameGridSection from "../components/GameGridSection.vue";
+import HomeToolbar from "../components/HomeToolbar.vue";
+import ImageCarouselDialog from "../components/ImageCarouselDialog.vue";
+import SearchBar from "../components/SearchBar.vue";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,8 +24,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../components/ui/alert-dialog";
-import { useDeleteGames } from "../composables/useDuplicates";
-import SearchBar from "../components/SearchBar.vue";
 import { Button } from "../components/ui/button";
 import {
   Card,
@@ -53,6 +46,9 @@ import {
   usePlayGame,
   useRandomGameMutation,
 } from "../composables/useGames";
+import { useHomeKeyboard } from "../composables/useHomeKeyboard";
+import { useMultiSelect } from "../composables/useMultiSelect";
+import { useDeleteGames } from "../composables/useDuplicates";
 import { useSearch } from "../composables/useSearch";
 import {
   useLibraryPaths,
@@ -142,29 +138,8 @@ async function handleDeleteConfirm(): Promise<void> {
 // useSearch composable로 검색 상태 관리
 const searchState = useSearch(() => activeLibraryPaths.value);
 
-// 무한 스크롤 트리거용 ref
-const loadMoreTrigger = ref<HTMLElement | null>(null);
-
 // 검색창 ref
 const searchBarRef = ref<InstanceType<typeof SearchBar> | null>(null);
-
-// Intersection Observer로 무한 스크롤 구현
-const { stop } = useIntersectionObserver(
-  loadMoreTrigger,
-  ([{ isIntersecting }]) => {
-    if (
-      isIntersecting &&
-      searchState.hasNextPage.value &&
-      !searchState.isFetchingNextPage.value
-    ) {
-      searchState.fetchNextPage();
-    }
-  },
-  {
-    threshold: 0.1, // 10%가 보이면 트리거
-    rootMargin: "100px", // 미리 100px 전에 로드
-  },
-);
 
 // 검색 상태
 const searchQuery = computed({
@@ -651,6 +626,15 @@ async function handleAllInOneRefresh(): Promise<void> {
   await allInOneRefreshMutation.mutateAsync(activeLibraryPaths.value);
 }
 
+/**
+ * 무한 스크롤 로드 핸들러
+ */
+function handleLoadMore(): void {
+  if (searchState.hasNextPage.value && !searchState.isFetchingNextPage.value) {
+    searchState.fetchNextPage();
+  }
+}
+
 // 게임 목록 변경 시 store 업데이트
 watch(
   () => totalCount.value,
@@ -660,41 +644,19 @@ watch(
   { immediate: true },
 );
 
-/**
- * 휠 이벤트 핸들러 (Ctrl+휠로 줌 조절)
- */
-function handleWheel(event: WheelEvent): void {
-  if (event.ctrlKey || event.metaKey) {
-    event.preventDefault();
-
-    if (event.deltaY < 0 && uiStore.zoomLevel > 1) {
-      uiStore.decreaseZoom(); // 위로 스크롤: 축소 (내용이 더 적게 보임)
-    } else if (event.deltaY > 0 && uiStore.zoomLevel < 10) {
-      uiStore.increaseZoom(); // 아래로 스크롤: 확대
-    }
-  }
-}
-
-/**
- * 키보드 이벤트 핸들러 (Ctrl+F로 검색창 포커스)
- */
-function handleKeydown(event: KeyboardEvent): void {
-  if ((event.ctrlKey || event.metaKey) && event.key === "f") {
-    event.preventDefault();
-    searchBarRef.value?.focus();
-  }
-  // Ctrl+A: 전체 선택
-  if ((event.ctrlKey || event.metaKey) && event.key === "a") {
-    if (document.activeElement?.tagName === "INPUT") return;
-    event.preventDefault();
-    handleToggleSelectAll();
-  }
-  // Escape: 선택 해제
-  if (event.key === "Escape" && multiSelect.isSelectionMode.value) {
-    event.preventDefault();
-    multiSelect.clearSelection();
-  }
-}
+// 키보드 및 마우스 이벤트 핸들링
+useHomeKeyboard({
+  searchBarRef,
+  multiSelect: {
+    selectAll: multiSelect.selectAll,
+    clearSelection: multiSelect.clearSelection,
+    isSelectionMode: multiSelect.isSelectionMode,
+  },
+  toggleSelectAll: handleToggleSelectAll,
+  zoomIn: handleIncreaseZoom,
+  zoomOut: handleDecreaseZoom,
+  zoomLevel: computed(() => uiStore.zoomLevel),
+});
 
 onMounted(() => {
   // 마지막 갱신 시간 로드
@@ -708,21 +670,6 @@ onMounted(() => {
     },
     { immediate: true },
   );
-
-  // 휠 이벤트 리스너 등록 (Ctrl+휠 줌 조절)
-  window.addEventListener("wheel", handleWheel, { passive: false });
-
-  // 키보드 이벤트 리스너 등록 (Ctrl+F 검색창 포커스)
-  window.addEventListener("keydown", handleKeydown);
-});
-
-onUnmounted(() => {
-  // 휠 이벤트 리스너 제거
-  window.removeEventListener("wheel", handleWheel);
-  // 키보드 이벤트 리스너 제거
-  window.removeEventListener("keydown", handleKeydown);
-  // Intersection Observer 정리
-  stop();
 });
 </script>
 
@@ -754,75 +701,16 @@ onUnmounted(() => {
     <!-- 게임 목록 -->
     <div v-else class="flex flex-1 flex-col overflow-hidden">
       <!-- 상단 도구 모음 -->
-      <div class="flex items-center justify-between border-b px-4 py-2">
-        <h1 class="text-base font-semibold">게임 라이브러리</h1>
-        <div class="flex items-center gap-2">
-          <!-- 줌 컨트롤 -->
-          <div class="mr-2 flex items-center gap-1 border-r pr-2">
-            <Button
-              @click="handleDecreaseZoom"
-              variant="ghost"
-              size="icon"
-              :disabled="uiStore.zoomLevel <= 1"
-              class="h-7 w-7"
-              title="축소"
-            >
-              <Minus :size="14" />
-            </Button>
-            <span class="text-muted-foreground min-w-4 text-center text-xs">
-              {{ uiStore.zoomLevel }}
-            </span>
-            <Button
-              @click="handleIncreaseZoom"
-              variant="ghost"
-              size="icon"
-              :disabled="uiStore.zoomLevel >= 10"
-              class="h-7 w-7"
-              title="확대"
-            >
-              <Plus :size="14" />
-            </Button>
-          </div>
-
-          <!-- 전체 동기화 버튼 -->
-          <Button
-            @click="handleAllInOneRefresh"
-            :disabled="allInOneRefreshMutation.isPending.value || isSearching"
-            variant="default"
-            size="sm"
-            title="폴더 스캔 + 정보 수집 + 번역"
-          >
-            <RefreshCw
-              :size="14"
-              :class="{
-                'animate-spin': allInOneRefreshMutation.isPending.value,
-              }"
-            />
-            <span class="hidden sm:inline">전체 동기화</span>
-          </Button>
-
-          <!-- 랜덤 선택 버튼 -->
-          <Button
-            @click="handleRandomSelect"
-            :disabled="
-              specialOnlyTotalCount === 0 ||
-              allInOneRefreshMutation.isPending.value
-            "
-            variant="secondary"
-            size="sm"
-            title="랜덤 선택"
-          >
-            <Shuffle :size="14" />
-            <span class="hidden sm:inline">랜덤</span>
-          </Button>
-
-          <RouterLink to="/settings">
-            <Button variant="ghost" size="icon" class="shrink-0" title="설정">
-              <Settings :size="18" />
-            </Button>
-          </RouterLink>
-        </div>
-      </div>
+      <HomeToolbar
+        :zoom-level="uiStore.zoomLevel"
+        :is-syncing="allInOneRefreshMutation.isPending.value"
+        :is-searching="isSearching"
+        :special-only-total-count="specialOnlyTotalCount"
+        @zoom-in="handleIncreaseZoom"
+        @zoom-out="handleDecreaseZoom"
+        @sync="handleAllInOneRefresh"
+        @random-select="handleRandomSelect"
+      />
 
       <!-- 메인 컨텐츠 영역 -->
       <div class="flex flex-1 overflow-hidden">
@@ -922,118 +810,39 @@ onUnmounted(() => {
           </div>
 
           <!-- 게임 그리드 -->
-          <div class="flex-1 overflow-y-auto p-4">
-            <!-- 로딩 상태 -->
-            <div
-              v-if="isSearching && games.length === 0"
-              class="flex h-full items-center justify-center"
-            >
-              <div class="flex flex-col items-center gap-4">
-                <Loader2
-                  :size="32"
-                  class="text-muted-foreground animate-spin"
-                />
-                <p class="text-muted-foreground">검색 중...</p>
-              </div>
-            </div>
-
-            <!-- 에러 상태 -->
-            <div
-              v-else-if="searchError && games.length === 0"
-              class="flex h-full items-center justify-center"
-            >
-              <Card class="max-w-md">
-                <CardContent class="pt-6">
-                  <p class="text-destructive text-center">{{ searchError }}</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            <!-- 빈 결과 -->
-            <div
-              v-else-if="games.length === 0"
-              class="flex h-full items-center justify-center"
-            >
-              <p class="text-muted-foreground">검색 결과가 없습니다.</p>
-            </div>
-
-            <!-- 게임 그리드 -->
-            <div v-else>
-              <div :class="['grid gap-4', gridColsClass]">
-                <GameContextMenu
-                  v-for="game in games"
-                  :key="game.path"
-                  :game="game"
-                  :is-selection-mode="multiSelect.isSelectionMode.value"
-                  :selected-count="multiSelect.selectedCount.value"
-                  @play="handlePlayGame"
-                  @open-folder="handleOpenFolder"
-                  @toggle-favorite="handleToggleFavorite"
-                  @toggle-hidden="handleToggleHidden"
-                  @toggle-clear="handleToggleClear"
-                  @show-detail="handleShowDetail"
-                  @open-original-site="handleOpenOriginalSite"
-                  @delete="handleDeleteRequest"
-                  @batch-favorite="(v) => handleBatchToggle('is_favorite', v)"
-                  @batch-clear="(v) => handleBatchToggle('is_clear', v)"
-                  @batch-hidden="(v) => handleBatchToggle('is_hidden', v)"
-                  @batch-delete="handleBatchDeleteRequest"
-                >
-                  <GameCard
-                    :game="game"
-                    :is-playing="playingGamePath === game.path"
-                    :is-selected="multiSelect.isSelected(game.path)"
-                    :is-selection-mode="multiSelect.isSelectionMode.value"
-                    :is-active-tag="hasTag"
-                    :is-active-circle="hasCircle"
-                    :is-active-category="hasCategory"
-                    @play="handlePlayGame"
-                    @open-folder="handleOpenFolder"
-                    @toggle-favorite="handleToggleFavorite"
-                    @toggle-hidden="handleToggleHidden"
-                    @toggle-clear="handleToggleClear"
-                    @click-tag="handleClickTag"
-                    @click-circle="handleClickCircle"
-                    @click-category="handleClickCategory"
-                    @show-detail="handleShowDetail"
-                    @open-original-site="handleOpenOriginalSite"
-                    @select="handleGameSelect"
-                    @dblclick="handleGameDoubleClick(game)"
-                  />
-                </GameContextMenu>
-              </div>
-
-              <!-- 무한 스크롤 트리거 & 로딩 표시 -->
-              <div
-                ref="loadMoreTrigger"
-                class="flex justify-center py-4"
-                :class="{
-                  'opacity-0':
-                    !searchState.hasNextPage.value &&
-                    !searchState.isFetchingNextPage.value,
-                }"
-              >
-                <div
-                  v-if="searchState.isFetchingNextPage.value"
-                  class="flex items-center gap-2"
-                >
-                  <Loader2
-                    :size="16"
-                    class="text-muted-foreground animate-spin"
-                  />
-                  <span class="text-muted-foreground text-sm"
-                    >더 불러오는 중...</span
-                  >
-                </div>
-                <div
-                  v-else-if="!searchState.hasNextPage.value && games.length > 0"
-                  class="text-muted-foreground text-sm"
-                >
-                  모든 게임을 표시했습니다
-                </div>
-              </div>
-            </div>
-          </div>
+          <GameGridSection
+            :games="games"
+            :is-searching="isSearching"
+            :search-error="searchError"
+            :grid-cols-class="gridColsClass"
+            :has-next-page="searchState.hasNextPage.value"
+            :is-fetching-next-page="searchState.isFetchingNextPage.value"
+            :is-selection-mode="multiSelect.isSelectionMode.value"
+            :selected-count="multiSelect.selectedCount.value"
+            :playing-game-path="playingGamePath"
+            :is-selected="multiSelect.isSelected"
+            :is-active-tag="hasTag"
+            :is-active-circle="hasCircle"
+            :is-active-category="hasCategory"
+            @game-click="handleShowDetail"
+            @game-select="handleGameSelect"
+            @game-dblclick="handleGameDoubleClick"
+            @play="handlePlayGame"
+            @open-folder="handleOpenFolder"
+            @toggle-favorite="handleToggleFavorite"
+            @toggle-hidden="handleToggleHidden"
+            @toggle-clear="handleToggleClear"
+            @open-original-site="handleOpenOriginalSite"
+            @delete-request="handleDeleteRequest"
+            @click-tag="handleClickTag"
+            @click-circle="handleClickCircle"
+            @click-category="handleClickCategory"
+            @batch-favorite="(v) => handleBatchToggle('is_favorite', v)"
+            @batch-clear="(v) => handleBatchToggle('is_clear', v)"
+            @batch-hidden="(v) => handleBatchToggle('is_hidden', v)"
+            @batch-delete="handleBatchDeleteRequest"
+            @load-more="handleLoadMore"
+          />
 
           <!-- 배치 작업 바 -->
           <BatchActionBar
