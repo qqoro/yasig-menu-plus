@@ -369,7 +369,8 @@ export interface SearchQuery {
     | "lastPlayedAt"
     | "createdAt"
     | "rating"
-    | "playTime";
+    | "playTime"
+    | "maker";
   sortOrder?: "asc" | "desc";
   // 페이지네이션 파라미터
   offset?: number;

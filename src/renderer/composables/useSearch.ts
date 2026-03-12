@@ -166,7 +166,14 @@ function loadFromStorage(): {
     showWithExternalId: boolean;
     showWithoutExternalId: boolean;
   };
-  sortBy: "title" | "publishDate" | "lastPlayedAt" | "createdAt";
+  sortBy:
+    | "title"
+    | "publishDate"
+    | "lastPlayedAt"
+    | "createdAt"
+    | "rating"
+    | "playTime"
+    | "maker";
   sortOrder: "asc" | "desc";
 } | null {
   try {
@@ -195,7 +202,14 @@ function saveToStorage(
     showWithExternalId: boolean;
     showWithoutExternalId: boolean;
   },
-  sortBy: "title" | "publishDate" | "lastPlayedAt" | "createdAt",
+  sortBy:
+    | "title"
+    | "publishDate"
+    | "lastPlayedAt"
+    | "createdAt"
+    | "rating"
+    | "playTime"
+    | "maker",
   sortOrder: "asc" | "desc",
 ): void {
   try {
@@ -241,9 +255,15 @@ export function useSearch(sourcePaths: () => string[]) {
     },
   );
 
-  const sortBy = ref<"title" | "publishDate" | "lastPlayedAt" | "createdAt">(
-    stored?.sortBy ?? "title",
-  );
+  const sortBy = ref<
+    | "title"
+    | "publishDate"
+    | "lastPlayedAt"
+    | "createdAt"
+    | "rating"
+    | "playTime"
+    | "maker"
+  >(stored?.sortBy ?? "title");
   const sortOrder = ref<"asc" | "desc">(stored?.sortOrder ?? "asc");
 
   // 상태 변경 시 localStorage에 자동 저장
@@ -520,7 +540,13 @@ export function useSearch(sourcePaths: () => string[]) {
     searchQuery,
     filters,
     sortBy: sortBy as Ref<
-      "title" | "publishDate" | "lastPlayedAt" | "createdAt"
+      | "title"
+      | "publishDate"
+      | "lastPlayedAt"
+      | "createdAt"
+      | "rating"
+      | "playTime"
+      | "maker"
     >,
     sortOrder: sortOrder as Ref<"asc" | "desc">,
     parsedQuery,

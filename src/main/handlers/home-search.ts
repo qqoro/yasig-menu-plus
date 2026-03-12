@@ -300,6 +300,13 @@ export async function searchGamesHandler(
         `user_game_data.total_play_time IS NULL OR user_game_data.total_play_time = 0, user_game_data.total_play_time ${order}`,
       );
       break;
+    case "maker":
+      // 서클명 정렬 (서클 없는 게임은 뒤로)
+      query = query.orderByRaw(
+        `(SELECT MIN(m.name) FROM game_makers gm JOIN makers m ON gm.maker_id = m.id WHERE gm.game_path = games.path) IS NULL, ` +
+          `(SELECT MIN(m.name) FROM game_makers gm JOIN makers m ON gm.maker_id = m.id WHERE gm.game_path = games.path) ${order}`,
+      );
+      break;
     default:
       query = query.orderBy("title", "asc");
   }

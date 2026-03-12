@@ -476,6 +476,15 @@ function getSortButtonStyle(sortBy: SearchQuery["sortBy"]) {
           플레이 시간
           <ArrowUpDown v-if="sortBy === 'playTime'" :size="14" />
         </Button>
+        <Button
+          :class="getSortButtonStyle('maker')"
+          size="sm"
+          variant="secondary"
+          @click="setSortBy('maker')"
+        >
+          서클명
+          <ArrowUpDown v-if="sortBy === 'maker'" :size="14" />
+        </Button>
       </div>
       <Button
         variant="outline"
