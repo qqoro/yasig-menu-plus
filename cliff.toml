@@ -33,7 +33,7 @@ commit_parsers = [
   { body = ".*changelog-skip.*", skip = true },
   { message = "^feat", group = "✨ 새로운 기능" },
   { message = "^fix", group = "🐛 버그 수정" },
-  { message = "^refactor", group = "🔧 리팩터링" },
+  { message = "^refactor", skip = true },
   { message = "^perf", group = "⚡ 성능 개선" },
   { message = "^docs", group = "📝 문서" },
   { message = "^test", skip = true },
