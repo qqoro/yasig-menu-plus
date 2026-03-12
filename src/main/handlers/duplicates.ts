@@ -152,7 +152,8 @@ function buildGameItems(
  *
  * 중복 기준:
  * 1. provider + externalId 동일
- * 2. originalTitle 정확히 일치
+ * 2. fingerprint 동일 (같은 실행파일 구성)
+ * 3. originalTitle 정확히 일치
  */
 export async function findDuplicatesHandler(
   _event: IpcMainInvokeEvent,
@@ -172,6 +173,7 @@ export async function findDuplicatesHandler(
       "games.isHidden",
       "games.provider",
       "games.externalId",
+      "games.fingerprint",
       "games.createdAt",
       "games.translatedTitle",
       "games.translationSource",
@@ -224,7 +226,40 @@ export async function findDuplicatesHandler(
     }
   }
 
-  // 2. originalTitle 기준 그룹화 (이미 처리된 경로 제외)
+  // 2. fingerprint 기준 그룹화 (이미 처리된 경로 제외)
+  // raw 결과에서 path → fingerprint 맵 생성
+  const fingerprintByPath = new Map<string, string>();
+  for (const g of games) {
+    if (g.fingerprint) {
+      fingerprintByPath.set(g.path, g.fingerprint);
+    }
+  }
+
+  const fingerprintGroups = new Map<string, GameItem[]>();
+  for (const game of gameItems) {
+    const fp = fingerprintByPath.get(game.path);
+    if (!processedPaths.has(game.path) && fp) {
+      if (!fingerprintGroups.has(fp)) {
+        fingerprintGroups.set(fp, []);
+      }
+      fingerprintGroups.get(fp)!.push(game);
+    }
+  }
+
+  for (const [fp, groupGames] of fingerprintGroups) {
+    if (groupGames.length >= 2) {
+      groups.push({
+        id: fp,
+        type: "fingerprint",
+        games: groupGames,
+      });
+      for (const g of groupGames) {
+        processedPaths.add(g.path);
+      }
+    }
+  }
+
+  // 3. originalTitle 기준 그룹화 (이미 처리된 경로 제외)
   const titleGroups = new Map<string, GameItem[]>();
   for (const game of gameItems) {
     if (!processedPaths.has(game.path)) {

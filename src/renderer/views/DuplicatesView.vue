@@ -188,6 +188,9 @@ const selectedGames = computed(() => {
                   >
                   {{ group.id.split(":")[1] }}
                 </template>
+                <template v-else-if="group.type === 'fingerprint'">
+                  {{ group.games[0]?.title || group.id.slice(0, 12) }}
+                </template>
                 <template v-else>
                   {{ group.id }}
                 </template>
@@ -196,7 +199,9 @@ const selectedGames = computed(() => {
                 {{
                   group.type === "externalId"
                     ? "외부 ID 기준"
-                    : "파일/폴더명 기준"
+                    : group.type === "fingerprint"
+                      ? "핑거프린트 기준"
+                      : "파일/폴더명 기준"
                 }}
                 • {{ group.games.length }}개 중복
               </CardDescription>
