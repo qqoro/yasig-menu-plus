@@ -68,13 +68,10 @@ const showAllTags = ref(false);
 const formattedPublishDate = computed(() => {
   if (!props.game.publishDate) return null;
   const date = new Date(props.game.publishDate);
-  return date
-    .toLocaleDateString("ko-KR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    })
-    .replaceAll(".", "-");
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 });
 
 // 썸네일 URL (updatedAt으로 캐시 무효화)
