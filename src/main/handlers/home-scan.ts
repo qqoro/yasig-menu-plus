@@ -25,7 +25,11 @@ import { deleteImage } from "../utils/downloader.js";
 import { toAbsolutePath } from "../utils/image-path.js";
 import { validateDirectoryPath } from "../utils/validator.js";
 import { runScanWorker } from "../workers/run-scan-worker.js";
-import { buildGameItems, loadRelationsAndGroup } from "./home-utils.js";
+import {
+  buildGameItems,
+  leftJoinUserGameData,
+  loadRelationsAndGroup,
+} from "./home-utils.js";
 
 /**
  * 게임 경로에서 실행 파일 후보들을 찾음
@@ -148,14 +152,33 @@ export async function scanFolder(
         // fingerprint 변경 시 user_game_data도 갱신
         const oldFingerprint = existing.fingerprint;
         const newFingerprint = fingerprint ?? existing.fingerprint;
-        if (
-          oldFingerprint &&
-          newFingerprint &&
-          oldFingerprint !== newFingerprint
-        ) {
-          await db("userGameData")
-            .where("fingerprint", oldFingerprint)
-            .update({ fingerprint: newFingerprint });
+        if (newFingerprint && oldFingerprint !== newFingerprint) {
+          if (oldFingerprint) {
+            // fingerprint 변경: user_game_data도 같이 갱신
+            await db("userGameData")
+              .where("fingerprint", oldFingerprint)
+              .update({ fingerprint: newFingerprint });
+          } else {
+            // fingerprint 최초 설정 (마이그레이션 후 첫 스캔):
+            // external_key로 연결된 user_game_data의 fingerprint를 채운다
+            const game = await db("games")
+              .where("path", fullPath)
+              .select("provider", "externalId")
+              .first();
+            if (game?.provider && game?.externalId) {
+              const ek = `${game.provider}:${game.externalId}`;
+              // UNIQUE 충돌 방지: 해당 fingerprint를 가진 다른 레코드가 없는 경우만 갱신
+              const conflicting = await db("userGameData")
+                .where("fingerprint", newFingerprint)
+                .first();
+              if (!conflicting) {
+                await db("userGameData")
+                  .where("externalKey", ek)
+                  .whereNull("fingerprint")
+                  .update({ fingerprint: newFingerprint });
+              }
+            }
+          }
         }
         await db("games").where("path", fullPath).update({
           originalTitle: name,
@@ -235,8 +258,7 @@ export async function refreshListHandler(
   }
 
   // 스캔 후 다시 목록 로드
-  const games = await db("games")
-    .leftJoin("userGameData", "games.fingerprint", "userGameData.fingerprint")
+  const games = await leftJoinUserGameData(db("games"))
     .whereIn(
       "games.source",
       sourcePaths.filter((p) => existsSync(p)),

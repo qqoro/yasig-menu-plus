@@ -7,6 +7,7 @@ import { db } from "../db/db-manager.js";
 import type { GameDetailItem } from "../events.js";
 import { IpcRendererSend } from "../events.js";
 import { toAbsolutePath } from "../utils/image-path.js";
+import { leftJoinUserGameData } from "./home-utils.js";
 
 /**
  * 게임 상세 정보 조회
@@ -15,8 +16,7 @@ export async function getGameDetail(
   path: string,
 ): Promise<GameDetailItem | null> {
   // games 테이블과 userGameData 테이블을 LEFT JOIN하여 유저 데이터 포함
-  const game = await db("games")
-    .leftJoin("userGameData", "games.fingerprint", "userGameData.fingerprint")
+  const game = await leftJoinUserGameData(db("games"))
     .where("games.path", path)
     .select(
       // games 테이블 컬럼 (명시적 선택으로 id 충돌 방지)

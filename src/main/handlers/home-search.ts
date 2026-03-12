@@ -27,6 +27,7 @@ import {
 import {
   buildGameItems,
   buildTitleOrderParts,
+  leftJoinUserGameData,
   loadRelationsAndGroup,
 } from "./home-utils.js";
 
@@ -130,8 +131,7 @@ export async function searchGamesHandler(
   });
 
   // 기본 쿼리 빌더
-  let query = db("games")
-    .leftJoin("userGameData", "games.fingerprint", "userGameData.fingerprint")
+  let query = leftJoinUserGameData(db("games"))
     .whereIn("games.source", validPaths)
     .select(
       "games.path",
@@ -358,8 +358,7 @@ export async function getRandomGameHandler(
   });
 
   // 기본 쿼리 빌더
-  let query = db("games")
-    .leftJoin("userGameData", "games.fingerprint", "userGameData.fingerprint")
+  let query = leftJoinUserGameData(db("games"))
     .whereIn("games.source", validPaths)
     .select(
       "games.path",

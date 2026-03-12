@@ -18,6 +18,7 @@ import type {
 } from "../events.js";
 import { deleteImage } from "../utils/downloader.js";
 import { toAbsolutePath } from "../utils/image-path.js";
+import { leftJoinUserGameData } from "./home-utils.js";
 
 /**
  * 관계 데이터 조회 및 맵 생성
@@ -158,8 +159,7 @@ export async function findDuplicatesHandler(
   _payload: IpcRendererEventMap["findDuplicates"],
 ): Promise<IpcMainEventMap["duplicatesFound"]> {
   // 모든 게임 조회 (숨김 포함)
-  const games = await db("games")
-    .leftJoin("userGameData", "games.fingerprint", "userGameData.fingerprint")
+  const games = await leftJoinUserGameData(db("games"))
     .select(
       "games.path",
       "games.title",

@@ -6,6 +6,7 @@
  * - Knex 결과 → GameItem 변환
  */
 
+import type { Knex } from "knex";
 import { db } from "../db/db-manager.js";
 import type { SqliteBoolean } from "../db/db.js";
 import type { GameItem } from "../events.js";
@@ -147,4 +148,30 @@ export function buildGameItems(
     categories: relations.categories.get(g.path) || [],
     tags: relations.tags.get(g.path) || [],
   }));
+}
+
+/**
+ * games ↔ user_game_data LEFT JOIN 헬퍼
+ *
+ * 조회 우선순위 (getOrCreateUserGameData와 동일):
+ *   1. external_key 매칭 (provider || ':' || external_id)
+ *   2. fingerprint 매칭
+ */
+export function leftJoinUserGameData(
+  query: Knex.QueryBuilder,
+): Knex.QueryBuilder {
+  return query.joinRaw(`
+    LEFT JOIN user_game_data ON user_game_data.id = COALESCE(
+      (SELECT id FROM user_game_data
+       WHERE external_key = games.provider || ':' || games.external_id
+         AND games.provider IS NOT NULL
+         AND games.external_id IS NOT NULL
+         AND games.external_id != ''
+       LIMIT 1),
+      (SELECT id FROM user_game_data
+       WHERE fingerprint = games.fingerprint
+         AND games.fingerprint IS NOT NULL
+       LIMIT 1)
+    )
+  `);
 }
