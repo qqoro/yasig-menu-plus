@@ -102,6 +102,10 @@ type IpcInvokeReturn = {
   // 데이터 폴더 열기
   openDataFolder: IpcMainEventMap["dataFolderOpened"];
   convertImagesToWebp: IpcMainEventMap["imagesConvertedToWebp"];
+
+  // 대시보드 통계
+  getDashboardStats: IpcMainEventMap["dashboardStats"];
+  getLibraryStorageSize: IpcMainEventMap["libraryStorageSize"];
 };
 
 /**

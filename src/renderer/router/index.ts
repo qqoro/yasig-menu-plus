@@ -6,6 +6,7 @@ import {
 import HomeView from "../views/HomeView.vue";
 import SettingsView from "../views/SettingsView.vue";
 import DuplicatesView from "../views/DuplicatesView.vue";
+import DashboardView from "../views/DashboardView.vue";
 
 const routes: RouteRecordRaw[] = [
   {
@@ -22,6 +23,11 @@ const routes: RouteRecordRaw[] = [
     path: "/duplicates",
     name: "duplicates",
     component: DuplicatesView,
+  },
+  {
+    path: "/dashboard",
+    name: "dashboard",
+    component: DashboardView,
   },
 ];
 

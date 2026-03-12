@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { Minus, Plus, RefreshCw, Settings, Shuffle } from "lucide-vue-next";
+import {
+  BarChart3,
+  Minus,
+  Plus,
+  RefreshCw,
+  Settings,
+  Shuffle,
+} from "lucide-vue-next";
 import { Button } from "./ui/button";
 
 interface Props {
@@ -79,6 +86,13 @@ defineEmits<Emits>();
         <Shuffle :size="14" />
         <span class="hidden sm:inline">랜덤</span>
       </Button>
+
+      <!-- 대시보드 버튼 -->
+      <RouterLink to="/dashboard">
+        <Button variant="ghost" size="icon" class="shrink-0" title="대시보드">
+          <BarChart3 :size="18" />
+        </Button>
+      </RouterLink>
 
       <RouterLink to="/settings">
         <Button variant="ghost" size="icon" class="shrink-0" title="설정">

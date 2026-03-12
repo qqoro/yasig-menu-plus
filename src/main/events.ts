@@ -134,6 +134,10 @@ export const enum IpcRendererSend {
 
   // 이미지 일괄 변환
   ConvertImagesToWebp = "convertImagesToWebp", // 기존 이미지 WebP로 일괄 변환
+
+  // 대시보드 통계
+  GetDashboardStats = "getDashboardStats",
+  GetLibraryStorageSize = "getLibraryStorageSize",
 }
 
 // ========== Main → Renderer 이벤트 ==========
@@ -522,6 +526,10 @@ export interface IpcRendererEventMap {
   // 이미지 일괄 변환
   convertImagesToWebp: undefined;
 
+  // 대시보드 통계
+  getDashboardStats: undefined;
+  getLibraryStorageSize: undefined;
+
   // 다중 선택 일괄 조작
   batchToggleGames: {
     paths: string[];
@@ -706,4 +714,87 @@ export interface IpcMainEventMap {
     field: "is_favorite" | "is_hidden" | "is_clear";
     updatedCount: number;
   };
+
+  // 대시보드 통계
+  dashboardStats: { stats: DashboardStats };
+  libraryStorageSize: LibraryStorageInfo;
+}
+
+// 대시보드 통계
+export interface DashboardStats {
+  overview: {
+    totalGames: number;
+    favoriteCount: number;
+    clearedCount: number;
+    clearedRate: number; // 0~100
+    totalPlayTime: number; // 초
+    averageRating: number | null;
+    thisWeekPlayTime: number; // 초
+    thisMonthPlayTime: number; // 초
+  };
+  topPlayedGames: Array<{
+    path: string;
+    title: string;
+    thumbnail: string | null;
+    totalPlayTime: number;
+  }>;
+  longestSession: {
+    gameTitle: string;
+    durationSeconds: number;
+    startedAt: string;
+  } | null;
+  mostNeglectedGames: Array<{
+    path: string;
+    title: string;
+    thumbnail: string | null;
+    createdAt: string;
+  }>;
+  monthlyPlayTime: Array<{
+    month: string;
+    totalSeconds: number;
+    sessionCount: number;
+  }>;
+  hourlyPattern: Array<{
+    hour: number;
+    totalSeconds: number;
+    sessionCount: number;
+  }>;
+  weekdayPattern: Array<{
+    weekday: number;
+    totalSeconds: number;
+    sessionCount: number;
+  }>;
+  ratingDistribution: Array<{
+    rating: number;
+    count: number;
+  }>;
+  topMakers: Array<{
+    name: string;
+    count: number;
+  }>;
+  categoryDistribution: Array<{
+    name: string;
+    count: number;
+  }>;
+  tagDistribution: Array<{
+    name: string;
+    count: number;
+  }>;
+  providerDistribution: Array<{
+    provider: string;
+    count: number;
+  }>;
+  yearDistribution: Array<{
+    year: number;
+    count: number;
+  }>;
+}
+
+export interface LibraryStorageInfo {
+  totalSize: number;
+  libraries: Array<{
+    path: string;
+    size: number;
+    gameCount: number;
+  }>;
 }

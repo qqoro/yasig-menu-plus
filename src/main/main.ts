@@ -51,6 +51,10 @@ import {
 import * as ThumbnailHandlers from "./handlers/thumbnail.js";
 import * as TranslationHandlers from "./handlers/translation.js";
 import * as DuplicatesHandlers from "./handlers/duplicates.js";
+import {
+  getDashboardStatsHandler,
+  getLibraryStorageSizeHandler,
+} from "./handlers/dashboard.js";
 import { setupChangelogHandler } from "./handlers/changelog.js";
 import {
   closeWindowHandler,
@@ -386,6 +390,13 @@ function registerIpcHandlers() {
   ipcMain.handle(
     IpcRendererSend.DeleteGames,
     DuplicatesHandlers.deleteGamesHandler,
+  );
+
+  // ========== 대시보드 통계 ==========
+  ipcMain.handle(IpcRendererSend.GetDashboardStats, getDashboardStatsHandler);
+  ipcMain.handle(
+    IpcRendererSend.GetLibraryStorageSize,
+    getLibraryStorageSizeHandler,
   );
 
   // ========== 체인지로그 ==========

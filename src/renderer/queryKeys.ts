@@ -140,6 +140,15 @@ export const queryKeys = {
   },
 
   /**
+   * 대시보드 통계 쿼리 키
+   */
+  dashboard: {
+    all: ["dashboard"] as const,
+    stats: ["dashboard", "stats"] as const,
+    storageSize: ["dashboard", "storageSize"] as const,
+  },
+
+  /**
    * 체인지로그 쿼리 키
    */
   changelog: (currentVersion: string, mode: "afterVersion" | "recent") =>
