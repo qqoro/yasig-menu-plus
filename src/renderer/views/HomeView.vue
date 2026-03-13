@@ -153,6 +153,7 @@ const searchQuery = computed({
 const filters = computed<Required<SearchQuery["filters"]>>(() => ({
   showHidden: searchState.filters.value.showHidden ?? false,
   showFavorites: searchState.filters.value.showFavorites ?? false,
+  showNotFavorites: searchState.filters.value.showNotFavorites ?? false,
   showCleared: searchState.filters.value.showCleared ?? false,
   showNotCleared: searchState.filters.value.showNotCleared ?? false,
   showCompressed: searchState.filters.value.showCompressed ?? false,

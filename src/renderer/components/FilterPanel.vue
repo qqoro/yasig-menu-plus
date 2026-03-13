@@ -7,6 +7,8 @@ import {
   File,
   FileArchive,
   Folder,
+  Link,
+  Unlink,
   RotateCcw,
   Star,
   StarOff,
@@ -40,6 +42,7 @@ const emit = defineEmits<Emits>();
 const filters = computed<Required<SearchQuery["filters"]>>(() => ({
   showHidden: props.filters.showHidden ?? false,
   showFavorites: props.filters.showFavorites ?? false,
+  showNotFavorites: props.filters.showNotFavorites ?? false,
   showCleared: props.filters.showCleared ?? false,
   showNotCleared: props.filters.showNotCleared ?? false,
   showCompressed: props.filters.showCompressed ?? false,
@@ -74,137 +77,100 @@ function setSortBy(sortBy: SearchQuery["sortBy"]): void {
   }
 }
 
-// 즐겨찾기 필터 토글
-function toggleFavorites(): void {
-  const currentValue = filters.value.showFavorites;
-  toggleFilter("showFavorites", !currentValue);
+// 즐겨찾기 필터 사이클 (필터 없음 → 즐겨찾기만 → 비즐겨찾기만 → 필터 없음)
+function cycleFavorites(): void {
+  const { showFavorites, showNotFavorites } = filters.value;
+  if (!showFavorites && !showNotFavorites) {
+    emit("update:filters", {
+      ...props.filters,
+      showFavorites: true,
+      showNotFavorites: false,
+    });
+  } else if (showFavorites && !showNotFavorites) {
+    emit("update:filters", {
+      ...props.filters,
+      showFavorites: false,
+      showNotFavorites: true,
+    });
+  } else {
+    emit("update:filters", {
+      ...props.filters,
+      showFavorites: false,
+      showNotFavorites: false,
+    });
+  }
 }
 
-// 클리어 필터 토글
-function toggleCleared(only: "cleared" | "notCleared" | "both"): void {
+// 클리어 필터 사이클 (필터 없음 → 클리어만 → 미클리어만 → 필터 없음)
+function cycleCleared(): void {
   const { showCleared, showNotCleared } = filters.value;
-  let newCleared = showCleared;
-  let newNotCleared = showNotCleared;
-
-  if (only === "cleared") {
-    if (showCleared && showNotCleared) {
-      // 둘 다 true면 클리어만 true
-      newCleared = true;
-      newNotCleared = false;
-    } else if (showCleared && !showNotCleared) {
-      // 클리어만 true면 둘 다 false
-      newCleared = false;
-      newNotCleared = false;
-    } else {
-      // 그 외에는 클리어만 true
-      newCleared = true;
-      newNotCleared = false;
-    }
-  } else if (only === "notCleared") {
-    if (showCleared && showNotCleared) {
-      // 둘 다 true면 미클리어만 true
-      newCleared = false;
-      newNotCleared = true;
-    } else if (!showCleared && showNotCleared) {
-      // 미클리어만 true면 둘 다 false
-      newCleared = false;
-      newNotCleared = false;
-    } else {
-      // 그 외에는 미클리어만 true
-      newCleared = false;
-      newNotCleared = true;
-    }
+  if (!showCleared && !showNotCleared) {
+    emit("update:filters", {
+      ...props.filters,
+      showCleared: true,
+      showNotCleared: false,
+    });
+  } else if (showCleared && !showNotCleared) {
+    emit("update:filters", {
+      ...props.filters,
+      showCleared: false,
+      showNotCleared: true,
+    });
   } else {
-    // 둘 다 true
-    newCleared = true;
-    newNotCleared = true;
+    emit("update:filters", {
+      ...props.filters,
+      showCleared: false,
+      showNotCleared: false,
+    });
   }
-
-  emit("update:filters", {
-    ...filters.value,
-    showCleared: newCleared,
-    showNotCleared: newNotCleared,
-  });
 }
 
-// 압축 파일 필터 토글
-function toggleCompressed(only: "compressed" | "notCompressed" | "both"): void {
+// 압축 필터 사이클 (필터 없음 → 압축만 → 일반만 → 필터 없음)
+function cycleCompressed(): void {
   const { showCompressed, showNotCompressed } = filters.value;
-  let newCompressed = showCompressed;
-  let newNotCompressed = showNotCompressed;
-
-  if (only === "compressed") {
-    if (showCompressed && showNotCompressed) {
-      newCompressed = true;
-      newNotCompressed = false;
-    } else if (showCompressed && !showNotCompressed) {
-      newCompressed = false;
-      newNotCompressed = false;
-    } else {
-      newCompressed = true;
-      newNotCompressed = false;
-    }
-  } else if (only === "notCompressed") {
-    if (showCompressed && showNotCompressed) {
-      newCompressed = false;
-      newNotCompressed = true;
-    } else if (!showCompressed && showNotCompressed) {
-      newCompressed = false;
-      newNotCompressed = false;
-    } else {
-      newCompressed = false;
-      newNotCompressed = true;
-    }
+  if (!showCompressed && !showNotCompressed) {
+    emit("update:filters", {
+      ...props.filters,
+      showCompressed: true,
+      showNotCompressed: false,
+    });
+  } else if (showCompressed && !showNotCompressed) {
+    emit("update:filters", {
+      ...props.filters,
+      showCompressed: false,
+      showNotCompressed: true,
+    });
   } else {
-    newCompressed = true;
-    newNotCompressed = true;
+    emit("update:filters", {
+      ...props.filters,
+      showCompressed: false,
+      showNotCompressed: false,
+    });
   }
-
-  emit("update:filters", {
-    ...filters.value,
-    showCompressed: newCompressed,
-    showNotCompressed: newNotCompressed,
-  });
 }
 
-// 외부 ID 필터 토글
-function toggleExternalId(only: "with" | "without" | "both"): void {
+// 외부 ID 필터 사이클 (필터 없음 → ID 있음만 → ID 없음만 → 필터 없음)
+function cycleExternalId(): void {
   const { showWithExternalId, showWithoutExternalId } = filters.value;
-  let newWithExternalId = showWithExternalId;
-  let newWithoutExternalId = showWithoutExternalId;
-
-  if (only === "with") {
-    if (showWithExternalId && showWithoutExternalId) {
-      newWithExternalId = true;
-      newWithoutExternalId = false;
-    } else if (showWithExternalId && !showWithoutExternalId) {
-      newWithExternalId = false;
-      newWithoutExternalId = false;
-    } else {
-      newWithExternalId = true;
-      newWithoutExternalId = false;
-    }
-  } else if (only === "without") {
-    if (showWithExternalId && showWithoutExternalId) {
-      newWithExternalId = false;
-      newWithoutExternalId = true;
-    } else if (!showWithExternalId && showWithoutExternalId) {
-      newWithExternalId = false;
-      newWithoutExternalId = false;
-    } else {
-      newWithExternalId = false;
-      newWithoutExternalId = true;
-    }
+  if (!showWithExternalId && !showWithoutExternalId) {
+    emit("update:filters", {
+      ...props.filters,
+      showWithExternalId: true,
+      showWithoutExternalId: false,
+    });
+  } else if (showWithExternalId && !showWithoutExternalId) {
+    emit("update:filters", {
+      ...props.filters,
+      showWithExternalId: false,
+      showWithoutExternalId: true,
+    });
   } else {
-    newWithExternalId = true;
-    newWithoutExternalId = true;
+    emit("update:filters", {
+      ...props.filters,
+      showWithExternalId: false,
+      showWithoutExternalId: false,
+    });
   }
-
-  emit("update:filters", {
-    ...filters.value,
-    showWithExternalId: newWithExternalId,
-    showWithoutExternalId: newWithoutExternalId,
-  });
 }
 
 // 숨김 게임 표시 토글
@@ -230,7 +196,8 @@ function toggleLibraryPath(path: string): void {
 // 활성 필터 개수 계산
 const activeFilterCount = computed(() => {
   let count = 0;
-  if (filters.value.showFavorites) count++;
+  if (filters.value.showFavorites && !filters.value.showNotFavorites) count++;
+  if (!filters.value.showFavorites && filters.value.showNotFavorites) count++;
   if (filters.value.showCleared && !filters.value.showNotCleared) count++;
   if (!filters.value.showCleared && filters.value.showNotCleared) count++;
   if (filters.value.showCompressed && !filters.value.showNotCompressed) count++;
@@ -305,18 +272,96 @@ function getSortButtonStyle(sortBy: SearchQuery["sortBy"]) {
           </Button>
         </div>
       </div>
-      <!-- 즐겨찾기 -->
+      <!-- 즐겨찾기 / 클리어 -->
       <div class="flex gap-1">
         <Button
-          :variant="filters.showFavorites ? 'default' : 'outline'"
+          :variant="
+            filters.showFavorites || filters.showNotFavorites
+              ? 'default'
+              : 'outline'
+          "
           size="sm"
           class="flex-1"
-          @click="toggleFavorites"
+          @click="cycleFavorites"
         >
           <Star v-if="filters.showFavorites" :size="14" class="fill-current" />
           <StarOff v-else :size="14" />
-          즐겨찾기
+          {{
+            filters.showFavorites
+              ? "즐겨찾기"
+              : filters.showNotFavorites
+                ? "비즐겨찾기"
+                : "즐겨찾기"
+          }}
         </Button>
+        <Button
+          :variant="
+            filters.showCleared || filters.showNotCleared
+              ? 'default'
+              : 'outline'
+          "
+          size="sm"
+          class="flex-1"
+          @click="cycleCleared"
+        >
+          <Check v-if="!filters.showNotCleared" :size="14" />
+          <X v-else :size="14" />
+          {{
+            filters.showCleared
+              ? "클리어"
+              : filters.showNotCleared
+                ? "미클리어"
+                : "클리어"
+          }}
+        </Button>
+      </div>
+
+      <!-- 압축 / 외부 ID -->
+      <div class="flex gap-1">
+        <Button
+          :variant="
+            filters.showCompressed || filters.showNotCompressed
+              ? 'default'
+              : 'outline'
+          "
+          size="sm"
+          class="flex-1"
+          @click="cycleCompressed"
+        >
+          <FileArchive v-if="!filters.showNotCompressed" :size="14" />
+          <File v-else :size="14" />
+          {{
+            filters.showCompressed
+              ? "압축"
+              : filters.showNotCompressed
+                ? "일반"
+                : "압축"
+          }}
+        </Button>
+        <Button
+          :variant="
+            filters.showWithExternalId || filters.showWithoutExternalId
+              ? 'default'
+              : 'outline'
+          "
+          size="sm"
+          class="flex-1"
+          @click="cycleExternalId"
+        >
+          <Link v-if="!filters.showWithoutExternalId" :size="14" />
+          <Unlink v-else :size="14" />
+          {{
+            filters.showWithExternalId
+              ? "ID 있음"
+              : filters.showWithoutExternalId
+                ? "ID 없음"
+                : "외부 ID"
+          }}
+        </Button>
+      </div>
+
+      <!-- 숨김 -->
+      <div class="flex gap-1">
         <Button
           :variant="filters.showHidden ? 'default' : 'outline'"
           size="sm"
@@ -326,94 +371,6 @@ function getSortButtonStyle(sortBy: SearchQuery["sortBy"]) {
           <EyeOff v-if="filters.showHidden" :size="14" />
           <Eye v-else :size="14" />
           숨김
-        </Button>
-      </div>
-
-      <!-- 클리어 상태 -->
-      <div class="flex gap-1">
-        <Button
-          :variant="
-            filters.showCleared && !filters.showNotCleared
-              ? 'default'
-              : 'outline'
-          "
-          size="sm"
-          class="flex-1"
-          @click="toggleCleared('cleared')"
-        >
-          <Check :size="14" />
-          클리어
-        </Button>
-        <Button
-          :variant="
-            !filters.showCleared && filters.showNotCleared
-              ? 'default'
-              : 'outline'
-          "
-          size="sm"
-          class="flex-1"
-          @click="toggleCleared('notCleared')"
-        >
-          <X :size="14" />
-          미클리어
-        </Button>
-      </div>
-
-      <!-- 압축 파일 -->
-      <div class="flex gap-1">
-        <Button
-          :variant="
-            filters.showCompressed && !filters.showNotCompressed
-              ? 'default'
-              : 'outline'
-          "
-          size="sm"
-          class="flex-1"
-          @click="toggleCompressed('compressed')"
-        >
-          <FileArchive :size="14" />
-          압축
-        </Button>
-        <Button
-          :variant="
-            !filters.showCompressed && filters.showNotCompressed
-              ? 'default'
-              : 'outline'
-          "
-          size="sm"
-          class="flex-1"
-          @click="toggleCompressed('notCompressed')"
-        >
-          <File :size="14" />
-          일반
-        </Button>
-      </div>
-
-      <!-- 외부 ID -->
-      <div class="flex gap-1">
-        <Button
-          :variant="
-            filters.showWithExternalId && !filters.showWithoutExternalId
-              ? 'default'
-              : 'outline'
-          "
-          size="sm"
-          class="flex-1"
-          @click="toggleExternalId('with')"
-        >
-          ID 있음
-        </Button>
-        <Button
-          :variant="
-            !filters.showWithExternalId && filters.showWithoutExternalId
-              ? 'default'
-              : 'outline'
-          "
-          size="sm"
-          class="flex-1"
-          @click="toggleExternalId('without')"
-        >
-          ID 없음
         </Button>
       </div>
     </div>

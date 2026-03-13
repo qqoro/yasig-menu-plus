@@ -71,6 +71,7 @@ export interface SearchQuery {
   filters: {
     showHidden?: boolean;
     showFavorites?: boolean;
+    showNotFavorites?: boolean;
     showCleared?: boolean;
     showNotCleared?: boolean;
     showCompressed?: boolean;

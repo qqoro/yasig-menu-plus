@@ -167,8 +167,14 @@ export async function searchGamesHandler(
   }
 
   // 즐겨찾기 필터
-  if (filters.showFavorites) {
+  if (filters.showFavorites && !filters.showNotFavorites) {
     query = query.where("userGameData.isFavorite", 1);
+  } else if (!filters.showFavorites && filters.showNotFavorites) {
+    query = query.where((qb) =>
+      qb
+        .where("userGameData.isFavorite", 0)
+        .orWhereNull("userGameData.isFavorite"),
+    );
   }
 
   // 클리어 필터
@@ -392,8 +398,14 @@ export async function getRandomGameHandler(
   }
 
   // 즐겨찾기 필터
-  if (filters.showFavorites) {
+  if (filters.showFavorites && !filters.showNotFavorites) {
     query = query.where("userGameData.isFavorite", 1);
+  } else if (!filters.showFavorites && filters.showNotFavorites) {
+    query = query.where((qb) =>
+      qb
+        .where("userGameData.isFavorite", 0)
+        .orWhereNull("userGameData.isFavorite"),
+    );
   }
 
   // 클리어 필터

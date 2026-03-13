@@ -159,6 +159,7 @@ function loadFromStorage(): {
   filters: {
     showHidden: boolean;
     showFavorites: boolean;
+    showNotFavorites: boolean;
     showCleared: boolean;
     showNotCleared: boolean;
     showCompressed: boolean;
@@ -195,6 +196,7 @@ function saveToStorage(
   filters: {
     showHidden: boolean;
     showFavorites: boolean;
+    showNotFavorites: boolean;
     showCleared: boolean;
     showNotCleared: boolean;
     showCompressed: boolean;
@@ -236,6 +238,7 @@ export function useSearch(sourcePaths: () => string[]) {
   const filters = ref<{
     showHidden: boolean;
     showFavorites: boolean;
+    showNotFavorites: boolean;
     showCleared: boolean;
     showNotCleared: boolean;
     showCompressed: boolean;
@@ -246,6 +249,7 @@ export function useSearch(sourcePaths: () => string[]) {
     stored?.filters ?? {
       showHidden: false,
       showFavorites: false,
+      showNotFavorites: false,
       showCleared: false,
       showNotCleared: false,
       showCompressed: false,
@@ -500,6 +504,7 @@ export function useSearch(sourcePaths: () => string[]) {
     filters.value = {
       showHidden: false,
       showFavorites: false,
+      showNotFavorites: false,
       showCleared: false,
       showNotCleared: false,
       showCompressed: false,
@@ -515,7 +520,8 @@ export function useSearch(sourcePaths: () => string[]) {
   const activeFilterCount = computed(() => {
     let count = 0;
     if (searchQuery.value) count++;
-    if (filters.value.showFavorites) count++;
+    if (filters.value.showFavorites && !filters.value.showNotFavorites) count++;
+    if (!filters.value.showFavorites && filters.value.showNotFavorites) count++;
     if (filters.value.showCleared && !filters.value.showNotCleared) count++;
     if (!filters.value.showCleared && filters.value.showNotCleared) count++;
     if (filters.value.showCompressed && !filters.value.showNotCompressed)
