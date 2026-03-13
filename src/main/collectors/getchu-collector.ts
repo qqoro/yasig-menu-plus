@@ -13,14 +13,22 @@ export const GetchuCollector: Collector = {
     return id;
   },
   fetchInfo: async ({ id }) => {
-    const html = await fetch(`https://www.getchu.com/soft.phtml?id=${id}`, {
+    const response = await fetch(`https://www.getchu.com/item/${id}/`, {
       headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "ja,en-US;q=0.7,en;q=0.3",
+        Referer: "https://www.getchu.com/",
         cookie: "getchu_adalt_flag=getchu.com",
       },
-    }).then(
-      async (res) =>
-        iconv.decode(Buffer.from(await res.arrayBuffer()), "EUC-JP") as string,
-    );
+    });
+
+    const html = iconv.decode(
+      Buffer.from(await response.arrayBuffer()),
+      "EUC-JP",
+    ) as string;
 
     const body = parse(html, {
       blockTextElements: {
@@ -82,20 +90,31 @@ export const GetchuCollector: Collector = {
       : makerRow?.children[1].firstChild?.textContent.trim();
     const makers = makerName ? [makerName] : [];
 
-    // 카테고리 수집
-    // TODO: 구조가 복잡해서 나중에 구현 가능할지 판단
-    // サブジャンル 열의 각 a 태그에서 href 속성의 sub_genre_id의 값을 보고 가져올 수 있을 것 같음
+    // 카테고리 수집 (ジャンル)
     const categories: string[] = [];
-
-    // 태그 수집
-    const tagsRow = softInfoRows?.filter((e) =>
-      e.textContent.trim().startsWith("カテゴリ："),
+    const genreRow = softInfoRows?.filter((e) =>
+      e.textContent.trim().startsWith("ジャンル："),
     )[0];
-    const tags =
-      tagsRow?.children[1].children
-        .slice(0, -1)
-        .map((e) => e.textContent ?? "")
-        .filter((name): name is string => name !== "") ?? [];
+    if (genreRow) {
+      const genreText = genreRow.children[1]?.textContent.trim() ?? "";
+      if (genreText) {
+        categories.push(genreText);
+      }
+    }
+
+    // 태그 수집 (サブジャンル)
+    const tags: string[] = [];
+    const subGenreRow = softInfoRows?.filter((e) =>
+      e.textContent.trim().startsWith("サブジャンル："),
+    )[0];
+    if (subGenreRow) {
+      const genreText = subGenreRow.children[1]?.textContent.trim() ?? "";
+      // "アドベンチャー [一覧]" 형식에서 [一覧] 제거
+      const genreName = genreText.replace(/\s*\[一覧\]\s*$/, "").trim();
+      if (genreName) {
+        tags.push(genreName);
+      }
+    }
 
     return {
       title,
@@ -109,5 +128,5 @@ export const GetchuCollector: Collector = {
       provider: "getchu",
     } satisfies CollectorResult;
   },
-  getUrl: (id) => `https://www.getchu.com/soft.phtml?id=${id}`,
+  getUrl: (id) => `https://www.getchu.com/item/${id}/`,
 };
