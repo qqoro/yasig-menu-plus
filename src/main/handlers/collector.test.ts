@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 /**
  * ConcurrencyQueue 테스트
@@ -143,7 +143,7 @@ describe("ConcurrencyQueue", () => {
   });
 
   it("빈 큐에서도 정상 동작", async () => {
-    const queue = new ConcurrencyQueue(3);
+    const _queue = new ConcurrencyQueue(3);
 
     // 아무 태스크도 추가하지 않고 대기
     await new Promise((resolve) => setTimeout(resolve, 10));

@@ -12,7 +12,6 @@ import {
   createTestDb,
   truncateAll,
   seedGame,
-  seedUserGameData,
   seedGameMaker,
   seedGameCategory,
   seedGameTag,

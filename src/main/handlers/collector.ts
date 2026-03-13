@@ -49,7 +49,7 @@ async function initBrowser() {
         });
         browserInstance = browser;
         return browser;
-      } catch (error) {
+      } catch {
         continue;
       }
     }

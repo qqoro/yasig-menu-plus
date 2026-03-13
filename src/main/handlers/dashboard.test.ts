@@ -210,7 +210,7 @@ describe("getDashboardStatsHandler", () => {
     it("averageRating - 평균 별점을 반환해야 한다", async () => {
       const game1 = await seedGame(db, { path: "/game1", fingerprint: "fp1" });
       const game2 = await seedGame(db, { path: "/game2", fingerprint: "fp2" });
-      const game3 = await seedGame(db, { path: "/game3", fingerprint: "fp3" });
+      const _game3 = await seedGame(db, { path: "/game3", fingerprint: "fp3" });
 
       await seedUserGameData(db, game1.path, { rating: 4 });
       await seedUserGameData(db, game2.path, { rating: 5 });

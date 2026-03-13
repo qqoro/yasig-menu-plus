@@ -213,7 +213,7 @@ export async function findDuplicatesHandler(
   // 2개 이상인 그룹만 추가
   for (const [key, groupGames] of externalIdGroups) {
     if (groupGames.length >= 2) {
-      const [provider, externalId] = key.split(":");
+      const [provider, _externalId] = key.split(":");
       groups.push({
         id: key,
         type: "externalId",

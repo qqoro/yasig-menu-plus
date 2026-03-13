@@ -119,7 +119,7 @@ export async function translateAllTitlesHandler(
       });
 
       success++;
-    } catch (error) {
+    } catch {
       failed++;
     }
   }

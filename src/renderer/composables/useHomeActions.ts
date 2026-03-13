@@ -1,4 +1,4 @@
-import { ref, type Ref } from "vue";
+import { ref } from "vue";
 import { toast } from "vue-sonner";
 import { useAddExcludedExecutable } from "./useExcludedExecutables";
 import { useOpenOriginalSite } from "./useGameDetail";

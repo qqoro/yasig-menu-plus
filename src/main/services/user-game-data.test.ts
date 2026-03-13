@@ -233,7 +233,7 @@ describe("getOrCreateUserGameData", () => {
       });
       // fp-dup fingerprint를 가진 user_game_data (external_key 없음)
       // — external_key로는 찾히지 않아야 하므로 externalKey null로 명시
-      const ugd = await seedUserGameData(db, "/games/fp3", {
+      const _ugd = await seedUserGameData(db, "/games/fp3", {
         externalKey: null,
         fingerprint: "fp-dup",
       });
@@ -305,7 +305,7 @@ describe("getOrCreateUserGameData", () => {
         fingerprint: "fp-skip",
       });
       // external_key null, fingerprint fp-skip인 user_game_data
-      const ugd = await seedUserGameData(db, "/games/fp3c", {
+      const _ugd = await seedUserGameData(db, "/games/fp3c", {
         externalKey: null,
         fingerprint: "fp-skip",
       });

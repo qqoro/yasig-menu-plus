@@ -147,7 +147,7 @@ function makeSearchPayload(overrides: Record<string, any> = {}): any {
       ...overrides.searchQuery,
       filters: {
         ...defaults.searchQuery.filters,
-        ...(overrides.searchQuery.filters ?? {}),
+        ...overrides.searchQuery.filters,
       },
     };
     delete overrides.searchQuery;
