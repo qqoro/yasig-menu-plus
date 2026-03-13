@@ -223,6 +223,15 @@ function handleCardClick(event: MouseEvent): void {
     emit("select", props.game, event);
   }
 }
+
+// 휠 클릭(중간 버튼) 핸들러 - 디테일 모달 열기
+function handleMouseDown(event: MouseEvent): void {
+  // 휠 클릭 (button === 1)이면 디테일 모달 열기
+  if (event.button === 1 && !props.isSelectionMode) {
+    event.preventDefault();
+    emit("show-detail", props.game);
+  }
+}
 </script>
 
 <template>
@@ -234,6 +243,7 @@ function handleCardClick(event: MouseEvent): void {
       'cursor-pointer': isSelectionMode,
     }"
     @click="handleCardClick"
+    @mousedown="handleMouseDown"
   >
     <!-- 썸네일 영역 -->
     <div class="bg-muted relative aspect-4/3 overflow-hidden">
