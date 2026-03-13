@@ -2,6 +2,7 @@
 import {
   ChevronDown,
   ChevronUp,
+  Clock,
   Eye,
   EyeOff,
   Flag,
@@ -16,6 +17,7 @@ import {
 } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import { useAllSettings } from "../composables/useAllSettings";
+import { formatPlayTime } from "../composables/usePlayTime";
 import { useTranslationSettings } from "../composables/useTranslationSettings";
 import type { GameItem } from "../types";
 import { Button } from "./ui/button";
@@ -63,6 +65,12 @@ const { data: settings } = useAllSettings();
 
 // 태그 전체 보기 상태
 const showAllTags = ref(false);
+
+// 플레이 시간 포맷팅
+const formattedPlayTime = computed(() => {
+  if (!props.game.totalPlayTime) return null;
+  return formatPlayTime(props.game.totalPlayTime);
+});
 
 // 발매일 포맷팅
 const formattedPublishDate = computed(() => {
@@ -254,6 +262,26 @@ function handleCardClick(event: MouseEvent): void {
           </svg>
         </div>
       </div>
+      <!-- 즐겨찾기/클리어 배지 (선택 모드가 아닐 때) -->
+      <div
+        v-if="!isSelectionMode && (game.isFavorite || game.isClear)"
+        class="absolute top-2 left-2 z-10 flex gap-1"
+      >
+        <div
+          v-if="game.isFavorite"
+          class="bg-popover/80 flex items-center rounded-md p-1 backdrop-blur-sm"
+          title="즐겨찾기"
+        >
+          <Star :size="12" class="shrink-0 fill-yellow-400 text-yellow-400" />
+        </div>
+        <div
+          v-if="game.isClear"
+          class="bg-popover/80 flex items-center rounded-md p-1 backdrop-blur-sm"
+          title="클리어"
+        >
+          <Flag :size="12" class="shrink-0 fill-green-400 text-green-400" />
+        </div>
+      </div>
       <!-- 썸네일 이미지 -->
       <img
         v-if="game.thumbnail"
@@ -277,6 +305,16 @@ function handleCardClick(event: MouseEvent): void {
         >
           압축
         </span>
+      </div>
+      <!-- 플레이 시간 배지 -->
+      <div
+        v-if="formattedPlayTime"
+        class="bg-popover/80 absolute bottom-2 left-2 flex items-center gap-1 rounded-md px-2 py-1 backdrop-blur-sm"
+      >
+        <Clock :size="12" class="text-popover-foreground shrink-0" />
+        <span class="text-popover-foreground text-xs font-medium">{{
+          formattedPlayTime
+        }}</span>
       </div>
       <!-- 별점 배지 -->
       <div
