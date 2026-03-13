@@ -80,7 +80,12 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
       normalizedPrefix === "tag" ||
       normalizedPrefix === "category"
     ) {
-      const field = `${normalizedPrefix}s` as "circles" | "tags" | "categories";
+      const fieldMap: Record<string, "circles" | "tags" | "categories"> = {
+        circle: "circles",
+        tag: "tags",
+        category: "categories",
+      };
+      const field = fieldMap[normalizedPrefix];
       result[field].push(value);
     } else if (normalizedPrefix === "provider") {
       result.provider = value;
