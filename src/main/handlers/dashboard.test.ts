@@ -528,8 +528,8 @@ describe("getDashboardStatsHandler", () => {
         (r: any) => r.rating === 3,
       );
 
-      expect(rating5.count).toBe(2);
-      expect(rating3.count).toBe(1);
+      expect(rating5!.count).toBe(2);
+      expect(rating3!.count).toBe(1);
     });
   });
 
@@ -615,8 +615,8 @@ describe("getDashboardStatsHandler", () => {
         (c: any) => c.name === "Adventure",
       );
 
-      expect(rpg.count).toBe(2);
-      expect(adventure.count).toBe(1);
+      expect(rpg!.count).toBe(2);
+      expect(adventure!.count).toBe(1);
     });
 
     it("숨김 게임의 카테고리는 제외해야 한다", async () => {
@@ -662,8 +662,8 @@ describe("getDashboardStatsHandler", () => {
         (t: any) => t.name === "fantasy",
       );
 
-      expect(pixelArt.count).toBe(2);
-      expect(fantasy.count).toBe(1);
+      expect(pixelArt!.count).toBe(2);
+      expect(fantasy!.count).toBe(1);
     });
 
     it("숨김 게임의 태그는 제외해야 한다", async () => {
@@ -718,8 +718,8 @@ describe("getDashboardStatsHandler", () => {
         (p: any) => p.provider === "steam",
       );
 
-      expect(dlsite.count).toBe(2);
-      expect(steam.count).toBe(1);
+      expect(dlsite!.count).toBe(2);
+      expect(steam!.count).toBe(1);
     });
 
     it("provider가 null이면 'unknown'으로 분류해야 한다", async () => {
@@ -740,7 +740,7 @@ describe("getDashboardStatsHandler", () => {
         (p: any) => p.provider === "unknown",
       );
       expect(unknown).toBeDefined();
-      expect(unknown.count).toBe(1);
+      expect(unknown!.count).toBe(1);
     });
 
     it("숨김 게임은 제외해야 한다", async () => {
@@ -761,7 +761,7 @@ describe("getDashboardStatsHandler", () => {
       const dlsite = result.stats.providerDistribution.find(
         (p: any) => p.provider === "dlsite",
       );
-      expect(dlsite.count).toBe(1);
+      expect(dlsite!.count).toBe(1);
     });
   });
 
@@ -800,8 +800,8 @@ describe("getDashboardStatsHandler", () => {
         (y: any) => y.year === 2024,
       );
 
-      expect(y2023.count).toBe(2);
-      expect(y2024.count).toBe(1);
+      expect(y2023!.count).toBe(2);
+      expect(y2024!.count).toBe(1);
     });
 
     it("publishDate가 null인 게임은 제외해야 한다", async () => {
@@ -836,7 +836,7 @@ describe("getDashboardStatsHandler", () => {
       const y2023 = result.stats.yearDistribution.find(
         (y: any) => y.year === 2023,
       );
-      expect(y2023.count).toBe(1);
+      expect(y2023!.count).toBe(1);
     });
   });
 
@@ -869,8 +869,8 @@ describe("getDashboardStatsHandler", () => {
         (m: any) => m.month === expectedMonth,
       );
       expect(thisMonthData).toBeDefined();
-      expect(thisMonthData.totalSeconds).toBe(3000);
-      expect(thisMonthData.sessionCount).toBe(2);
+      expect(thisMonthData!.totalSeconds).toBe(3000);
+      expect(thisMonthData!.sessionCount).toBe(2);
     });
   });
 
@@ -904,13 +904,13 @@ describe("getDashboardStatsHandler", () => {
 
       const hour14 = result.stats.hourlyPattern.find((h: any) => h.hour === 14);
       expect(hour14).toBeDefined();
-      expect(hour14.totalSeconds).toBe(4000);
-      expect(hour14.sessionCount).toBe(2);
+      expect(hour14!.totalSeconds).toBe(4000);
+      expect(hour14!.sessionCount).toBe(2);
 
       const hour20 = result.stats.hourlyPattern.find((h: any) => h.hour === 20);
       expect(hour20).toBeDefined();
-      expect(hour20.totalSeconds).toBe(500);
-      expect(hour20.sessionCount).toBe(1);
+      expect(hour20!.totalSeconds).toBe(500);
+      expect(hour20!.sessionCount).toBe(1);
     });
   });
 
@@ -942,13 +942,13 @@ describe("getDashboardStatsHandler", () => {
         (w: any) => w.weekday === 0,
       );
       expect(sunday).toBeDefined();
-      expect(sunday.totalSeconds).toBe(1000);
+      expect(sunday!.totalSeconds).toBe(1000);
 
       const monday = result.stats.weekdayPattern.find(
         (w: any) => w.weekday === 1,
       );
       expect(monday).toBeDefined();
-      expect(monday.totalSeconds).toBe(2000);
+      expect(monday!.totalSeconds).toBe(2000);
     });
   });
 });
