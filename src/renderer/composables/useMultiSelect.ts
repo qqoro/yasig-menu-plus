@@ -111,3 +111,5 @@ export function useMultiSelect(items: Ref<SelectableItem[]>) {
     clearSelection,
   };
 }
+
+export type UseMultiSelectReturn = ReturnType<typeof useMultiSelect>;

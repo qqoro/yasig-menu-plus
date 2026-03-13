@@ -37,18 +37,13 @@ import {
   useAllInOneRefreshMutation,
   useLastRefreshed,
 } from "../composables/useAllInOneRefresh";
-import { useAddExcludedExecutable } from "../composables/useExcludedExecutables";
-import { useOpenOriginalSite } from "../composables/useGameDetail";
-import { useGameImages } from "../composables/useGameImages";
-import {
-  useAutoScanListener,
-  useOpenFolder,
-  usePlayGame,
-  useRandomGameMutation,
-} from "../composables/useGames";
+import { useAutoScanListener } from "../composables/useGames";
+import { useGridLayout } from "../composables/useGridLayout";
+import { useHomeActions } from "../composables/useHomeActions";
+import { useHomeBatchActions } from "../composables/useHomeBatchActions";
 import { useHomeKeyboard } from "../composables/useHomeKeyboard";
 import { useMultiSelect } from "../composables/useMultiSelect";
-import { useDeleteGames } from "../composables/useDuplicates";
+import { useRandomSelect } from "../composables/useRandomSelect";
 import { useSearch } from "../composables/useSearch";
 import {
   useLibraryPaths,
@@ -56,7 +51,7 @@ import {
   useToggleLibraryPathVisibility,
 } from "../composables/useSettings";
 import { useUIStore } from "../stores/uiStore";
-import type { GameItem, SearchQuery } from "../types";
+import type { SearchQuery } from "../types";
 
 // 라이브러리 경로 관리 (electron-store)
 const { data: libraryPaths } = useLibraryPaths();
@@ -71,14 +66,9 @@ const activeLibraryPaths = computed(() => {
 });
 
 const uiStore = useUIStore();
-const addExcludedExecutable = useAddExcludedExecutable();
-const playGameMutation = usePlayGame();
-const openFolderMutation = useOpenFolder();
-const randomGameMutation = useRandomGameMutation();
 
 // 자동 스캔 완료 리스너 (포커스/시작 시 스캔 후 캐시 무효화)
 useAutoScanListener();
-const openOriginalSite = useOpenOriginalSite();
 
 // 전체 동기화 composable
 const {
@@ -94,46 +84,6 @@ const lastRefreshedAt = ref<Date | null>(null);
 
 // 현재 실행 중인 게임 경로
 const playingGamePath = computed(() => null as string | null);
-
-// 게임 상세 다이얼로그 상태
-const showGameDetail = ref(false);
-const selectedGamePath = ref<string | null>(null);
-
-// 이미지 캐러셀 상태
-const carouselOpen = ref(false);
-const carouselGamePath = ref<string>("");
-const { data: gameImages } = useGameImages(carouselGamePath);
-
-// 게임 삭제 상태
-const deleteTargetGame = ref<GameItem | null>(null);
-const showDeleteConfirm = ref(false);
-const showBatchDeleteConfirm = ref(false);
-const deleteGamesMutation = useDeleteGames();
-
-/**
- * 게임 삭제 요청 핸들러 (확인 다이얼로그 표시)
- */
-function handleDeleteRequest(game: GameItem): void {
-  deleteTargetGame.value = game;
-  showDeleteConfirm.value = true;
-}
-
-/**
- * 게임 삭제 확정 핸들러
- * AlertDialogAction이 다이얼로그를 자동으로 닫으므로 별도 닫기 불필요
- */
-async function handleDeleteConfirm(): Promise<void> {
-  if (!deleteTargetGame.value) return;
-
-  const path = deleteTargetGame.value.path;
-  deleteTargetGame.value = null;
-
-  try {
-    await deleteGamesMutation.mutateAsync([path]);
-  } catch (err) {
-    console.error("게임 삭제 실패:", err);
-  }
-}
 
 // useSearch composable로 검색 상태 관리
 const searchState = useSearch(() => activeLibraryPaths.value);
@@ -184,252 +134,49 @@ const isSearching = computed(() => searchState.isSearching.value);
 const searchError = computed(() => searchState.searchError.value);
 const activeFilterCount = computed(() => searchState.activeFilterCount.value);
 
-/**
- * 게임 실행 핸들러
- */
-async function handlePlayGame(game: GameItem): Promise<void> {
-  if (playingGamePath.value) return;
+// 게임 액션 composable
+const {
+  showGameDetail,
+  selectedGamePath,
+  carouselOpen,
+  carouselGamePath,
+  gameImages,
+  deleteTargetGame,
+  showDeleteConfirm,
+  handlePlayGame,
+  handleOpenFolder,
+  handleToggleFavorite,
+  handleToggleHidden,
+  handleToggleClear,
+  handleDeleteRequest,
+  handleDeleteConfirm,
+  handleOpenOriginalSite,
+  handleShowDetail,
+  handleGameDoubleClick,
+} = useHomeActions({ searchState });
 
-  try {
-    const executablePath = await playGameMutation.mutateAsync(game.path);
+// 배치 액션 composable
+const {
+  showBatchDeleteConfirm,
+  handleBatchToggle,
+  handleBatchDeleteRequest,
+  handleBatchDeleteConfirm,
+  handleGameSelect,
+  handleToggleSelectAll,
+} = useHomeBatchActions({ searchState, multiSelect });
 
-    // 실행 파일명만 추출
-    const fileName = executablePath.split(/[/\\]/).pop() || executablePath;
+// 그리드 레이아웃 composable
+const { gridColsClass, handleIncreaseZoom, handleDecreaseZoom } =
+  useGridLayout();
 
-    toast.success(`${game.title} 실행했습니다.`, {
-      description: fileName,
-      action: {
-        label: "제외 목록에 추가",
-        onClick: async () => {
-          try {
-            await addExcludedExecutable.mutateAsync(fileName);
-            toast.success(
-              `"${fileName}"이(가) 실행 제외 목록에 추가되었습니다.`,
-            );
-          } catch {
-            toast.error("실행 제외 목록 추가에 실패했습니다.");
-          }
-        },
-      },
-    });
-  } catch (err) {
-    console.error("게임 실행 실패:", err);
-    toast.error(
-      err instanceof Error ? err.message : "게임 실행에 실패했습니다.",
-    );
-  }
-}
-
-/**
- * 폴더 열기 핸들러
- */
-async function handleOpenFolder(game: GameItem): Promise<void> {
-  try {
-    await openFolderMutation.mutateAsync(game.path);
-    toast.success("폴더를 열었습니다.");
-  } catch (err) {
-    console.error("폴더 열기 실패:", err);
-    toast.error(
-      err instanceof Error ? err.message : "폴더 열기에 실패했습니다.",
-    );
-  }
-}
-
-/**
- * 즐겨찾기 토글 핸들러
- */
-async function handleToggleFavorite(game: GameItem): Promise<void> {
-  try {
-    const result = await searchState.toggleFavorite(game.path);
-    toast.success(
-      result.value ? "즐겨찾기에 추가했습니다." : "즐겨찾기에서 제거했습니다.",
-    );
-  } catch (err) {
-    console.error("즐겨찾기 토글 실패:", err);
-    toast.error(
-      err instanceof Error ? err.message : "즐겨찾기 토글에 실패했습니다.",
-    );
-  }
-}
-
-/**
- * 숨김 토글 핸들러
- */
-async function handleToggleHidden(game: GameItem): Promise<void> {
-  try {
-    const result = await searchState.toggleHidden(game.path);
-    toast.success(result.value ? "게임을 숨겼습니다." : "숨김을 해제했습니다.");
-  } catch (err) {
-    console.error("숨김 토글 실패:", err);
-    toast.error(
-      err instanceof Error ? err.message : "숨김 토글에 실패했습니다.",
-    );
-  }
-}
-
-/**
- * 클리어 토글 핸들러
- */
-async function handleToggleClear(game: GameItem): Promise<void> {
-  try {
-    const result = await searchState.toggleClear(game.path);
-    toast.success(
-      result.value ? "클리어로 표시했습니다." : "클리어를 취소했습니다.",
-    );
-  } catch (err) {
-    console.error("클리어 토글 실패:", err);
-    toast.error(
-      err instanceof Error ? err.message : "클리어 토글에 실패했습니다.",
-    );
-  }
-}
-
-/**
- * 태그 클릭 핸들러
- */
-function handleClickTag(tag: string): void {
-  searchState.toggleTag(tag);
-}
-
-/**
- * 서클 클릭 핸들러
- */
-function handleClickCircle(circle: string): void {
-  searchState.toggleCircle(circle);
-}
-
-/**
- * 카테고리 클릭 핸들러
- */
-function handleClickCategory(category: string): void {
-  searchState.toggleCategory(category);
-}
-
-/**
- * 게임 상세 보기 핸들러
- */
-function handleShowDetail(game: GameItem): void {
-  selectedGamePath.value = game.path;
-  showGameDetail.value = true;
-}
-
-/**
- * 게임 더블클릭 핸들러 (이미지 캐러셀)
- */
-function handleGameDoubleClick(game: GameItem): void {
-  carouselGamePath.value = game.path;
-  carouselOpen.value = true;
-}
-
-/**
- * 원본 사이트 열기 핸들러
- */
-async function handleOpenOriginalSite(game: GameItem): Promise<void> {
-  try {
-    await openOriginalSite.mutateAsync(game.path);
-  } catch (err) {
-    console.error("원본 사이트 열기 실패:", err);
-    toast.error(
-      err instanceof Error ? err.message : "원본 사이트 열기에 실패했습니다.",
-    );
-  }
-}
-
-/**
- * 배치 토글 핸들러
- */
-async function handleBatchToggle(
-  field: "is_favorite" | "is_hidden" | "is_clear",
-  value: boolean,
-): Promise<void> {
-  const paths = multiSelect.selectedPathsArray.value;
-  if (paths.length === 0) return;
-
-  try {
-    const result = await searchState.batchToggle({ paths, field, value });
-    const fieldNames = {
-      is_favorite: value ? "즐겨찾기 추가" : "즐겨찾기 해제",
-      is_hidden: value ? "숨기기" : "숨김 해제",
-      is_clear: value ? "클리어 표시" : "클리어 해제",
-    };
-    toast.success(
-      `${result.updatedCount}개의 게임을 ${fieldNames[field]}했습니다.`,
-    );
-    multiSelect.clearSelection();
-  } catch (err) {
-    console.error("배치 토글 실패:", err);
-    toast.error(
-      err instanceof Error ? err.message : "일괄 작업에 실패했습니다.",
-    );
-  }
-}
-
-/**
- * 배치 삭제 요청 핸들러
- */
-function handleBatchDeleteRequest(): void {
-  if (multiSelect.selectedCount.value === 0) return;
-  showBatchDeleteConfirm.value = true;
-}
-
-/**
- * 배치 삭제 확정 핸들러
- */
-async function handleBatchDeleteConfirm(): Promise<void> {
-  const paths = multiSelect.selectedPathsArray.value;
-  if (paths.length === 0) return;
-
-  try {
-    await deleteGamesMutation.mutateAsync(paths);
-    multiSelect.clearSelection();
-  } catch (err) {
-    console.error("배치 삭제 실패:", err);
-  }
-}
-
-/**
- * 게임 카드 선택 핸들러
- */
-function handleGameSelect(game: GameItem, event: MouseEvent): void {
-  if (event.shiftKey) {
-    multiSelect.rangeSelect(game.path);
-  } else {
-    multiSelect.toggleSelect(game.path);
-  }
-}
-
-/**
- * 전체 선택/해제 토글 핸들러
- */
-function handleToggleSelectAll(): void {
-  if (multiSelect.isAllSelected.value) {
-    multiSelect.clearSelection();
-  } else {
-    multiSelect.selectAll();
-  }
-}
-
-/**
- * 게임 상세 업데이트 핸들러
- */
-function handleGameDetailUpdated(): void {
-  // 검색 결과 자동 리페칭 (Vue Query에 의해 처리됨)
-}
-
-/**
- * 필터 포함 확인
- */
-function hasTag(tag: string): boolean {
-  return searchState.hasTag(tag);
-}
-
-function hasCircle(circle: string): boolean {
-  return searchState.hasCircle(circle);
-}
-
-function hasCategory(category: string): boolean {
-  return searchState.hasCategory(category);
-}
+// 랜덤 선택 composable
+const { handleRandomSelect } = useRandomSelect({
+  activeLibraryPaths,
+  searchQuery: searchState.searchQuery,
+  filters,
+  sortBy,
+  sortOrder,
+});
 
 /**
  * 필터 패널 표시 토글
@@ -442,51 +189,6 @@ const showFilterPanel = computed(() => !uiStore.sidebarCollapsed);
 function handleToggleSidebar(): void {
   uiStore.toggleSidebar();
 }
-
-/**
- * 줌 레벨 증가 핸들러
- */
-function handleIncreaseZoom(): void {
-  uiStore.increaseZoom();
-}
-
-/**
- * 줌 레벨 감소 핸들러
- */
-function handleDecreaseZoom(): void {
-  uiStore.decreaseZoom();
-}
-
-/**
- * 그리드 컬럼 클래스 계산
- */
-const gridColsClass = computed(() => {
-  const level = uiStore.zoomLevel;
-  switch (level) {
-    case 1:
-      return "grid-cols-2 sm:grid-cols-3 lg:grid-cols-3";
-    case 2:
-      return "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4";
-    case 3:
-      return "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5";
-    case 4:
-      return "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5";
-    case 5:
-      return "grid-cols-4 sm:grid-cols-5 lg:grid-cols-6";
-    case 6:
-      return "grid-cols-5 sm:grid-cols-6 lg:grid-cols-7";
-    case 7:
-      return "grid-cols-6 sm:grid-cols-7 lg:grid-cols-8";
-    case 8:
-      return "grid-cols-7 sm:grid-cols-8 lg:grid-cols-9";
-    case 9:
-      return "grid-cols-8 sm:grid-cols-9 lg:grid-cols-10";
-    case 10:
-      return "grid-cols-9 sm:grid-cols-10 lg:grid-cols-11";
-    default:
-      return "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5";
-  }
-});
 
 /**
  * 필터 업데이트 핸들러
@@ -525,75 +227,6 @@ async function handleToggleLibraryPath(path: string): Promise<void> {
   } catch (err) {
     console.error("라이브러리 경로 토글 실패:", err);
     toast.error("표시 설정 변경에 실패했습니다.");
-  }
-}
-
-/**
- * 랜덤 선택 핸들러
- */
-async function handleRandomSelect(): Promise<void> {
-  if (!activeLibraryPaths.value || activeLibraryPaths.value.length === 0) {
-    toast.warning("라이브러리 경로가 없습니다.");
-    return;
-  }
-
-  try {
-    // 현재 검색어에서 특별 검색어(tag:, circle:, category:, provider:, id:)만 추출
-    const currentQuery = searchQuery.value;
-    const specialFilters: string[] = [];
-
-    const patterns = [
-      /provider:\S+/g,
-      /id:\S+/g,
-      /circle:\S+/g,
-      /tag:\S+/g,
-      /category:\S+/g,
-    ];
-
-    for (const pattern of patterns) {
-      const matches = currentQuery.match(pattern);
-      if (matches) {
-        specialFilters.push(...matches);
-      }
-    }
-
-    // 특별 검색어만 포함된 검색어로 DB 조회 (텍스트 검색어 제외)
-    const randomQuery =
-      specialFilters.length > 0 ? specialFilters.join(" ") : "";
-
-    const result = await randomGameMutation.mutateAsync({
-      sourcePaths: activeLibraryPaths.value,
-      searchQuery: {
-        query: randomQuery || undefined,
-        filters: filters.value,
-        sortBy: sortBy.value,
-        sortOrder: sortOrder.value,
-      },
-    });
-
-    if (!result.game) {
-      toast.warning("랜덤 선택할 게임이 없습니다.");
-      return;
-    }
-
-    const randomGame = result.game;
-
-    // 번역제목 > 제목 > 원본이름 순서로 검색어 구성
-    const newTitle = (
-      randomGame.translatedTitle ||
-      randomGame.title ||
-      randomGame.originalTitle
-    ).trim();
-    if (specialFilters.length > 0) {
-      searchQuery.value = `${specialFilters.join(" ")} ${newTitle}`;
-    } else {
-      searchQuery.value = newTitle;
-    }
-
-    toast.success(`${randomGame.title}을(를) 선택했습니다.`);
-  } catch (err) {
-    console.error("랜덤 선택 오류:", err);
-    toast.error("랜덤 선택에 실패했습니다.");
   }
 }
 
@@ -822,9 +455,9 @@ onMounted(() => {
             :selected-count="multiSelect.selectedCount.value"
             :playing-game-path="playingGamePath"
             :is-selected="multiSelect.isSelected"
-            :is-active-tag="hasTag"
-            :is-active-circle="hasCircle"
-            :is-active-category="hasCategory"
+            :is-active-tag="searchState.hasTag"
+            :is-active-circle="searchState.hasCircle"
+            :is-active-category="searchState.hasCategory"
             @game-click="handleShowDetail"
             @game-select="handleGameSelect"
             @game-dblclick="handleGameDoubleClick"
@@ -835,9 +468,9 @@ onMounted(() => {
             @toggle-clear="handleToggleClear"
             @open-original-site="handleOpenOriginalSite"
             @delete-request="handleDeleteRequest"
-            @click-tag="handleClickTag"
-            @click-circle="handleClickCircle"
-            @click-category="handleClickCategory"
+            @click-tag="searchState.toggleTag"
+            @click-circle="searchState.toggleCircle"
+            @click-category="searchState.toggleCategory"
             @batch-favorite="(v) => handleBatchToggle('is_favorite', v)"
             @batch-clear="(v) => handleBatchToggle('is_clear', v)"
             @batch-hidden="(v) => handleBatchToggle('is_hidden', v)"
@@ -865,7 +498,6 @@ onMounted(() => {
     <GameDetailDialog
       v-model:open="showGameDetail"
       :game-path="selectedGamePath"
-      @updated="handleGameDetailUpdated"
     />
 
     <!-- 이미지 캐러셀 다이얼로그 -->

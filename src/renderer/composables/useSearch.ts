@@ -596,3 +596,5 @@ export function useSearch(sourcePaths: () => string[]) {
     activeFilterCount,
   };
 }
+
+export type SearchState = ReturnType<typeof useSearch>;
