@@ -174,15 +174,29 @@ export async function migrateThumbnailsHandler(
     .select("path", "originalTitle", "thumbnail")
     .whereNotNull("originalTitle");
 
-  // originalTitle → game 매핑 (대소문자 무시)
-  const gameMap = new Map<string, { path: string; thumbnail: string | null }>();
-  for (const game of games) {
-    const title = game.originalTitle?.toLowerCase();
-    if (title) {
-      gameMap.set(title, {
+  // originalTitle → game 매핑 (대소문자 무시, 파일이면 확장자 제거)
+  const gameEntries = await Promise.all(
+    games.map(async (game) => {
+      let title = game.originalTitle ?? "";
+      try {
+        const stats = await stat(game.path);
+        if (stats.isFile()) {
+          title = basename(title, extname(title));
+        }
+      } catch {
+        // 경로 접근 불가 시 원본 그대로 사용
+      }
+      return {
+        key: title.toLowerCase(),
         path: game.path,
         thumbnail: game.thumbnail,
-      });
+      };
+    }),
+  );
+  const gameMap = new Map<string, { path: string; thumbnail: string | null }>();
+  for (const entry of gameEntries) {
+    if (entry.key) {
+      gameMap.set(entry.key, { path: entry.path, thumbnail: entry.thumbnail });
     }
   }
 
