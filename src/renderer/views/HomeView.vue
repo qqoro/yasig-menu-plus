@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  CircleHelp,
   Loader2,
   PanelLeftClose,
   PanelLeftOpen,
@@ -9,6 +10,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { toast } from "vue-sonner";
 import BatchActionBar from "../components/BatchActionBar.vue";
 import FilterPanelComponent from "../components/FilterPanel.vue";
+import HelpDialog from "../components/HelpDialog.vue";
 import GameDetailDialog from "../components/GameDetailDialog.vue";
 import GameGridSection from "../components/GameGridSection.vue";
 import HomeToolbar from "../components/HomeToolbar.vue";
@@ -81,6 +83,9 @@ const allInOneRefreshMutation = useAllInOneRefreshMutation();
 
 // 마지막 갱신 시간
 const lastRefreshedAt = ref<Date | null>(null);
+
+// 도움말 다이얼로그
+const showHelpDialog = ref(false);
 
 // 현재 실행 중인 게임 경로
 const playingGamePath = computed(() => null as string | null);
@@ -314,20 +319,24 @@ onMounted(() => {
       v-if="(libraryPaths?.length ?? 0) === 0"
       class="flex flex-1 items-center justify-center"
     >
-      <Card class="max-w-md p-6 text-center">
+      <Card class="w-full max-w-xl p-6 text-center">
         <CardHeader>
           <CardTitle>라이브러리 경로가 설정되지 않았습니다</CardTitle>
           <CardDescription>
             설정에서 게임 폴더 경로를 추가해주세요.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent class="flex justify-center gap-2">
           <RouterLink to="/settings">
             <Button>
               <Settings :size="16" />
               설정 열기
             </Button>
           </RouterLink>
+          <Button variant="outline" @click="showHelpDialog = true">
+            <CircleHelp :size="16" />
+            도움말 보기
+          </Button>
         </CardContent>
       </Card>
     </div>
@@ -556,5 +565,8 @@ onMounted(() => {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    <!-- 도움말 다이얼로그 -->
+    <HelpDialog v-model:open="showHelpDialog" />
   </div>
 </template>

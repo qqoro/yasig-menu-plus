@@ -10,7 +10,8 @@
 [![Downloads](https://img.shields.io/github/downloads/qqoro/yasig-menu-plus/total?style=flat-square&label=Downloads&color=blue)](https://github.com/qqoro/yasig-menu-plus/releases)
 [![License](https://img.shields.io/badge/License-MIT-purple?style=flat-square)](LICENSE)
 
-<img src=".github/screenshots/1.png" alt="야식메뉴판 Plus 메인 화면" width="100%">
+<img src=".github/screenshots/1.png" alt="메인 화면" width="49%">
+<img src=".github/screenshots/2.png" alt="통계 페이지" width="49%">
 
 </div>
 
@@ -22,6 +23,18 @@
 - 🔍 **찾고 싶은 게 바로** - 고급 검색, 태그/필터, 랜덤 선택
 - ✨ **정보 자동 수집** - Steam, DLSite, Getchu에서 썸네일·메타데이터
 - ⭐ **나만의 정리** - 별점, 태그, 즐겨찾기, 플레이 시간
+
+## 지원 콜렉터
+
+게임 정보를 자동으로 수집하는 콜렉터 목록입니다:
+
+| 콜렉터   | 설명                                     | 인식 접두어           |
+| -------- | ---------------------------------------- | --------------------- |
+| Steam    | Steam 스토어에서 썸네일·메타데이터 수집  | `ST` + 숫자           |
+| DLSite   | DLSite에서 썸네일·메타데이터 수집        | `RJ`, `BJ`, `VJ` + 숫자 |
+| Getchu   | Getchu에서 썸네일·메타데이터 수집        | `GC`, `GETCHU` + 숫자 |
+| Ci-en    | Ci-en에서 썸네일·메타데이터 수집         | `CE`, `CIEN`, `CI-EN` |
+| Google   | Google 이미지 검색으로 썸네일 수집       | (폴더명으로 검색)     |
 
 ## 왜 야식메뉴판 Plus인가?
 

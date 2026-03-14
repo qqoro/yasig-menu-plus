@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { CircleHelp, Info, Keyboard, Mouse } from "lucide-vue-next";
+import { CircleHelp, Keyboard, Mouse, Package, Search } from "lucide-vue-next";
 
 defineProps<{
   open: boolean;
@@ -16,6 +16,14 @@ defineProps<{
 const emit = defineEmits<{
   (e: "update:open", value: boolean): void;
 }>();
+
+// 사용법
+const usageSteps = [
+  "설정에서 게임이 있는 폴더를 라이브러리 경로로 추가하세요",
+  "폴더명에 접두어를 포함하면 자동으로 썸네일·메타데이터를 수집합니다",
+  "게임 카드를 더블클릭하면 이미지 캐러셀을 볼 수 있습니다",
+  "우클릭 메뉴로 게임 실행, 정보 수정, 새로고침 등을 할 수 있습니다",
+];
 
 // 키보드 단축키
 const keyboardShortcuts = [
@@ -36,6 +44,7 @@ const mouseInteractions = [
     action: "게임 카드 더블클릭",
     description: "이미지 캐러셀 다이얼로그 열기",
   },
+  { action: "게임 카드 휠 클릭", description: "게임 상세 정보 모달 열기" },
   { action: "Ctrl+클릭", description: "다중 선택 모드 진입 / 개별 선택·해제" },
   { action: "Shift+클릭", description: "범위 선택 (마지막 선택~현재)" },
   { action: "우클릭", description: "컨텍스트 메뉴" },
@@ -43,12 +52,12 @@ const mouseInteractions = [
   { action: "이미지 캐러셀 휠", description: "이전/다음 이미지 이동" },
 ];
 
-// 기타 기능
-const otherFeatures = [
-  {
-    feature: "입력 필드에서 Enter",
-    description: "태그/제작사/카테고리 빠른 추가",
-  },
+// 콜렉터 정보
+const collectors = [
+  { prefix: "ST", description: "Steam" },
+  { prefix: "RJ, BJ, VJ", description: "DLSite" },
+  { prefix: "GC, GETCHU", description: "Getchu" },
+  { prefix: "CE, CIEN", description: "Ci-en" },
 ];
 </script>
 
@@ -63,9 +72,57 @@ const otherFeatures = [
       </DialogHeader>
 
       <div class="flex flex-col gap-4">
+        <!-- 사용법 -->
+        <Card>
+          <CardHeader class="pb-0">
+            <CardTitle class="flex items-center gap-2 text-base">
+              <Package class="size-4" />
+              사용법
+            </CardTitle>
+          </CardHeader>
+          <CardContent class="pt-0">
+            <ol class="text-muted-foreground flex flex-col gap-1.5 text-sm">
+              <li v-for="(step, index) in usageSteps" :key="index">
+                {{ index + 1 }}. {{ step }}
+              </li>
+            </ol>
+          </CardContent>
+        </Card>
+
+        <!-- 정보 자동 수집 -->
+        <Card>
+          <CardHeader class="pb-0">
+            <CardTitle class="flex items-center gap-2 text-base">
+              <Search class="size-4" />
+              정보 자동 수집
+            </CardTitle>
+          </CardHeader>
+          <CardContent class="pt-0">
+            <p class="text-muted-foreground mb-3 text-sm">
+              폴더/파일명에 아래 접두어가 포함되면 자동으로 정보를 수집합니다
+            </p>
+            <div class="flex flex-col gap-2">
+              <div
+                v-for="collector in collectors"
+                :key="collector.prefix"
+                class="flex items-center justify-between"
+              >
+                <span class="text-muted-foreground text-sm">{{
+                  collector.description
+                }}</span>
+                <kbd
+                  class="bg-muted text-muted-foreground inline-flex min-w-12 items-center justify-center rounded border px-2 py-0.5 text-xs font-medium"
+                >
+                  {{ collector.prefix }}
+                </kbd>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <!-- 키보드 단축키 -->
         <Card>
-          <CardHeader class="pb-2">
+          <CardHeader class="pb-0">
             <CardTitle class="flex items-center gap-2 text-base">
               <Keyboard class="size-4" />
               키보드 단축키
@@ -93,7 +150,7 @@ const otherFeatures = [
 
         <!-- 마우스 인터랙션 -->
         <Card>
-          <CardHeader class="pb-2">
+          <CardHeader class="pb-0">
             <CardTitle class="flex items-center gap-2 text-base">
               <Mouse class="size-4" />
               마우스 인터랙션
@@ -113,34 +170,6 @@ const otherFeatures = [
                   class="bg-muted text-muted-foreground inline-flex min-w-12 items-center justify-center rounded border px-2 py-0.5 text-xs font-medium"
                 >
                   {{ interaction.action }}
-                </kbd>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <!-- 기타 기능 -->
-        <Card>
-          <CardHeader class="pb-2">
-            <CardTitle class="flex items-center gap-2 text-base">
-              <Info class="size-4" />
-              기타
-            </CardTitle>
-          </CardHeader>
-          <CardContent class="pt-0">
-            <div class="flex flex-col gap-2">
-              <div
-                v-for="feature in otherFeatures"
-                :key="feature.feature"
-                class="flex items-center justify-between"
-              >
-                <span class="text-muted-foreground text-sm">{{
-                  feature.description
-                }}</span>
-                <kbd
-                  class="bg-muted text-muted-foreground inline-flex min-w-12 items-center justify-center rounded border px-2 py-0.5 text-xs font-medium"
-                >
-                  {{ feature.feature }}
                 </kbd>
               </div>
             </div>
