@@ -235,6 +235,10 @@ function registerIpcHandlers() {
     CollectorHandlers.runAllCollectorsHandler,
   );
   ipcMain.handle(IpcRendererSend.GetNewCookie, CollectorHandlers.getNewCookie);
+  ipcMain.handle(
+    IpcRendererSend.ResolveBotBlock,
+    CollectorHandlers.resolveBotBlockHandler,
+  );
 
   // ========== 썸네일 관련 ==========
   ipcMain.handle(

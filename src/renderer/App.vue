@@ -4,6 +4,7 @@ import { CircleHelp, Minus, Moon, Square, Sun, X } from "lucide-vue-next";
 import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { toast, Toaster } from "vue-sonner";
+import BotBlockDialog from "./components/BotBlockDialog.vue";
 import { Button } from "./components/ui/button";
 import ChangelogDialog from "./components/ChangelogDialog.vue";
 import HelpDialog from "./components/HelpDialog.vue";
@@ -38,6 +39,10 @@ const showHelpDialog = ref(false);
 // 체인지로그 다이얼로그 상태
 const showChangelogDialog = ref(false);
 const changelogMode = ref<"afterVersion" | "recent">("afterVersion");
+
+// 봇 차단 다이얼로그 상태
+const showBotBlockDialog = ref(false);
+const botBlockGameTitle = ref("");
 
 onMounted(async () => {
   // 컬러 테마 초기화 (설정에서 불러오기)
@@ -205,6 +210,15 @@ onMounted(async () => {
       description: data.error,
     });
   });
+
+  // 봇 차단 감지 이벤트
+  window.api.on(
+    "botBlockDetected",
+    (data: { gamePath: string; gameTitle: string }) => {
+      botBlockGameTitle.value = data.gameTitle;
+      showBotBlockDialog.value = true;
+    },
+  );
 });
 </script>
 
@@ -282,6 +296,12 @@ onMounted(async () => {
       v-model:open="showChangelogDialog"
       :current-version="APP_VERSION"
       :mode="changelogMode"
+    />
+
+    <!-- 봇 차단 다이얼로그 -->
+    <BotBlockDialog
+      v-model:open="showBotBlockDialog"
+      :game-title="botBlockGameTitle"
     />
   </div>
 </template>

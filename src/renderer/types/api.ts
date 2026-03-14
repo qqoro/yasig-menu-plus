@@ -34,6 +34,7 @@ type IpcInvokeReturn = {
   runCollector: IpcMainEventMap["collectorDone"];
   runAllCollectors: IpcMainEventMap["allCollectorsDone"];
   getNewCookie: string | undefined;
+  resolveBotBlock: void; // 봇 차단 해결 완료/취소
   downloadThumbnail: IpcMainEventMap["thumbnailDone"];
   deleteThumbnail: void;
   searchGames: IpcMainEventMap["searchedGames"];

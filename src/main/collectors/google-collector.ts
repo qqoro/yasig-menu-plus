@@ -1,5 +1,72 @@
 import { basename } from "path";
+import type { Page } from "puppeteer-core";
 import { Collector, type CollectorResult } from "./registry.js";
+
+// 봇 차단 감지 결과 타입
+export interface BotBlockResult {
+  blocked: boolean;
+  reason?: string;
+}
+
+/**
+ * Google 봇 차단 감지
+ * URL, CAPTCHA 요소, 페이지 내용을 종합적으로 분석
+ */
+export async function detectBotBlock(page: Page): Promise<BotBlockResult> {
+  try {
+    const url = page.url();
+
+    // 1. URL 기반 감지
+    const blockedUrls = ["/sorry/", "/recaptcha/"];
+    if (blockedUrls.some((blocked) => url.includes(blocked))) {
+      return { blocked: true, reason: "차단 페이지로 리다이렉트됨" };
+    }
+
+    // 2. CAPTCHA 요소 감지
+    const captchaSelectors = [
+      'iframe[src*="recaptcha"]',
+      ".g-recaptcha",
+      "#captcha-form",
+      "#recaptcha",
+      'form[action*="sorry"]',
+    ];
+    for (const selector of captchaSelectors) {
+      const element = await page.$(selector);
+      if (element) {
+        return { blocked: true, reason: "CAPTCHA 요소 감지됨" };
+      }
+    }
+
+    // 3. 페이지 내용 분석
+    const pageContent = await page.content();
+    // 실제 Google 차단 페이지에서 확인된 텍스트 기반 키워드
+    const blockedKeywords = [
+      // 한국어 키워드 (실제 차단 페이지에서 확인됨)
+      "Google의 시스템이 컴퓨터 네트워크에서 비정상적인 트래픽을 감지했습니다",
+      "로봇이 아니라 실제 사용자가 요청을 보내고 있는지를 확인하는 페이지입니다",
+      "비정상적인 트래픽",
+      "로봇이 아니라 실제 사용자",
+      "자동 요청",
+      "로봇이 아닙니다",
+      "잠시 후 다시 시도",
+      // 영어 키워드
+      "unusual traffic",
+      "not a robot",
+      "CAPTCHA",
+      "Our systems have detected",
+    ];
+    for (const keyword of blockedKeywords) {
+      if (pageContent.toLowerCase().includes(keyword.toLowerCase())) {
+        return { blocked: true, reason: `키워드 감지: ${keyword}` };
+      }
+    }
+
+    return { blocked: false };
+  } catch (error) {
+    console.error("[GoogleCollector] 봇 차단 감지 중 오류:", error);
+    return { blocked: false };
+  }
+}
 
 export const GoogleCollector: Collector = {
   name: "Google",

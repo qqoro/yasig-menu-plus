@@ -33,6 +33,7 @@ export const enum IpcRendererSend {
   RunCollector = "runCollector", // 단일 게임 컬렉터 실행
   RunAllCollectors = "runAllCollectors", // 전체 게임 컬렉터 실행
   GetNewCookie = "getNewCookie", // Google 세이프서치 해제 쿠키 획득
+  ResolveBotBlock = "resolveBotBlock", // 봇 차단 해결 완료/취소
 
   // 썸네일 관련
   DownloadThumbnail = "downloadThumbnail", // 썸네일 다운로드
@@ -160,6 +161,7 @@ export const enum IpcMainSend {
   CollectorProgress = "collectorProgress", // { current, total, gameTitle }
   CollectorDone = "collectorDone", // { gamePath, success, error? }
   AllCollectorsDone = "allCollectorsDone", // { total, success, failed }
+  BotBlockDetected = "botBlockDetected", // 봇 차단 감지 (CAPTCHA)
 
   // 썸네일
   ThumbnailDone = "thumbnailDone", // { gamePath, thumbnailPath }
@@ -251,6 +253,7 @@ export type IpcMainSendChannel =
   | "collectorProgress"
   | "collectorDone"
   | "allCollectorsDone"
+  | "botBlockDetected"
   | "thumbnailDone"
   | "searchedGames"
   | "gameToggled"
@@ -397,6 +400,7 @@ export interface IpcRendererEventMap {
   runCollector: { gamePath: string; force?: boolean };
   runAllCollectors: { force?: boolean };
   getNewCookie: undefined; // 반환값: string | undefined (쿠키 값)
+  resolveBotBlock: { resolved: boolean }; // 봇 차단 해결 완료/취소
 
   // 썸네일 관련
   downloadThumbnail: { gamePath: string; url: string };
@@ -559,6 +563,7 @@ export interface IpcMainEventMap {
     alreadyCollected?: boolean;
   };
   allCollectorsDone: { total: number; success: number; failed: number };
+  botBlockDetected: { gamePath: string; gameTitle: string }; // 봇 차단 감지
 
   // 썸네일 관련
   thumbnailDone: { gamePath: string; thumbnailPath: string };
