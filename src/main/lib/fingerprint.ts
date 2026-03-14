@@ -6,7 +6,7 @@
  */
 
 import { createHash } from "crypto";
-import { readdirSync, statSync } from "fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "fs";
 import { join } from "path";
 import { EXECUTABLE_EXTENSIONS } from "./scan-logic.js";
 
@@ -31,6 +31,7 @@ export function computeFingerprint(
     // 폴더: 실행파일 목록
     const entries = readdirSync(gamePath, { withFileTypes: true });
     const execEntries: string[] = [];
+    let firstExecSize = 0;
 
     for (const entry of entries) {
       const lowerName = entry.name.toLowerCase();
@@ -40,10 +41,27 @@ export function computeFingerprint(
       ) {
         const fileStat = statSync(join(gamePath, entry.name));
         execEntries.push(`${entry.name}:${fileStat.size}`);
+        if (firstExecSize === 0) firstExecSize = fileStat.size;
       }
     }
 
     if (execEntries.length === 0) return null;
+
+    // NW.js 게임: package.json의 window.title 사용
+    const pkgPath = join(gamePath, "package.json");
+    if (existsSync(pkgPath)) {
+      try {
+        const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as {
+          window?: { title?: string };
+        };
+        if (pkg?.window?.title) {
+          const data = `${pkg.window.title}:${firstExecSize}`;
+          return createHash("sha256").update(data).digest("hex");
+        }
+      } catch {
+        // package.json 파싱 실패 시 기존 방식 사용
+      }
+    }
 
     execEntries.sort();
     const data = execEntries.join("|");

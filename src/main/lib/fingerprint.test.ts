@@ -12,6 +12,8 @@ import { computeFingerprint } from "./fingerprint.js";
 vi.mock("fs", () => ({
   readdirSync: vi.fn(),
   statSync: vi.fn(),
+  existsSync: vi.fn(() => false), // NW.js package.json 감지 비활성화
+  readFileSync: vi.fn(),
 }));
 
 // fs 모킹 함수 가져오기
