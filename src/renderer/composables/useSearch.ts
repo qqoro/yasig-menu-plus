@@ -67,13 +67,12 @@ function parseSearchQuery(query: string): ParsedSearchQuery {
     const normalizedPrefix = normalizeToEnglish(rawPrefix);
     if (!normalizedPrefix) continue;
 
-    if (
-      normalizedPrefix === "circle" ||
-      normalizedPrefix === "tag" ||
-      normalizedPrefix === "category"
-    ) {
-      const field = `${normalizedPrefix}s` as "circles" | "tags" | "categories";
-      result[field].push(value);
+    if (normalizedPrefix === "circle") {
+      result.circles.push(value);
+    } else if (normalizedPrefix === "tag") {
+      result.tags.push(value);
+    } else if (normalizedPrefix === "category") {
+      result.categories.push(value);
     } else if (normalizedPrefix === "provider") {
       result.provider = value;
     } else if (normalizedPrefix === "id") {
