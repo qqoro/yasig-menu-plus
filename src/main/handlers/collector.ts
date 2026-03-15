@@ -10,7 +10,12 @@ import {
 } from "../collectors/registry.js";
 import { db } from "../db/db-manager.js";
 import type { IpcMainEventMap, IpcRendererEventMap } from "../events.js";
-import { getGoogleCookie, setGoogleCookie } from "../store.js";
+import {
+  getGoogleCookie,
+  getGoogleCollectorIgnoreUntil,
+  setGoogleCollectorIgnoreUntil,
+  setGoogleCookie,
+} from "../store.js";
 import { downloadImage } from "../utils/downloader.js";
 
 /**
@@ -28,6 +33,25 @@ let botBlockResolveCallback: ((resolved: boolean) => void) | null = null;
 let visibleBrowserInstance: Awaited<
   ReturnType<typeof puppeteer.launch>
 > | null = null;
+
+/**
+ * Google 컬렉터 무시 중인지 확인
+ */
+function isGoogleCollectorIgnored(): boolean {
+  const ignoreUntil = getGoogleCollectorIgnoreUntil();
+  if (!ignoreUntil) return false;
+
+  const expireTime = new Date(ignoreUntil).getTime();
+  const now = Date.now();
+
+  if (now >= expireTime) {
+    // 만료됨 - 설정 삭제
+    setGoogleCollectorIgnoreUntil(undefined);
+    return false;
+  }
+
+  return true;
+}
 
 /**
  * Puppeteer browser 초기화 (Chrome 설치 경로 자동 검색)
@@ -138,6 +162,13 @@ export async function resolveBotBlockHandler(
   _event: IpcMainInvokeEvent,
   payload: IpcRendererEventMap["resolveBotBlock"],
 ): Promise<void> {
+  // 무시 시간 설정
+  if (payload.ignoreMinutes && payload.ignoreMinutes > 0) {
+    const expireTime = new Date(Date.now() + payload.ignoreMinutes * 60 * 1000);
+    setGoogleCollectorIgnoreUntil(expireTime.toISOString());
+    console.log(`[Collector] 봇 차단 ${payload.ignoreMinutes}분간 무시 설정됨`);
+  }
+
   if (botBlockResolveCallback) {
     botBlockResolveCallback(payload.resolved);
     botBlockResolveCallback = null;
@@ -271,68 +302,10 @@ export async function runCollectorHandler(
           const searchUrl = "https://www.google.com/search?" + params;
           await page.goto(searchUrl, { waitUntil: "networkidle2" });
 
-          // 봇 차단 감지
-          const botBlockResult = await detectBotBlock(page);
-
-          if (botBlockResult.blocked) {
-            console.log(`[Collector] 봇 차단 감지: ${botBlockResult.reason}`);
-
-            // headless 브라우저 페이지 닫기
-            await page.close();
-
-            // non-headless 브라우저 실행
-            const visibleBrowser = await launchVisibleBrowser();
-            const visiblePage = await visibleBrowser.newPage();
-
-            try {
-              // 쿠키 설정
-              if (cookieValue) {
-                await visiblePage.setCookie({
-                  name: "NID",
-                  value: cookieValue,
-                  domain: ".google.com",
-                  path: "/",
-                });
-              }
-
-              // 같은 페이지로 이동
-              await visiblePage.goto(searchUrl, { waitUntil: "networkidle2" });
-
-              // 해결 대기 (사용자가 "해결 완료" 버튼 클릭 시까지)
-              const mainWindow = BrowserWindow.getAllWindows()[0];
-              const resolved = await waitForBotBlockResolution(
-                mainWindow,
-                gamePath,
-                game?.title ?? id,
-              );
-
-              if (!resolved) {
-                return {
-                  gamePath,
-                  success: false,
-                  error: "CAPTCHA 해결 시간 초과 또는 취소됨",
-                };
-              }
-
-              // 해결됨 - 다시 정보 수집
-              const fetchResult = await collector.fetchInfo({
-                path: gamePath,
-                id,
-                page: visiblePage,
-              });
-              if (fetchResult && "thumbnailUrl" in fetchResult) {
-                info = fetchResult as CollectorResult;
-              }
-            } finally {
-              await visiblePage.close();
-              // CAPTCHA 해결 후 visible 브라우저 닫기
-              if (visibleBrowserInstance) {
-                await visibleBrowserInstance.close();
-                visibleBrowserInstance = null;
-              }
-            }
-          } else {
-            // 차단되지 않음 - 기존 로직대로 수집
+          // 봇 차단 무시 중이면 감지 건너뛰기
+          if (isGoogleCollectorIgnored()) {
+            console.log("[Collector] 봇 차단 무시 중 - 감지 건너뜀");
+            // 차단되지 않은 것으로 처리하고 계속 진행
             const fetchResult = await collector.fetchInfo({
               path: gamePath,
               id,
@@ -340,6 +313,80 @@ export async function runCollectorHandler(
             });
             if (fetchResult && "thumbnailUrl" in fetchResult) {
               info = fetchResult as CollectorResult;
+            }
+          } else {
+            // 봇 차단 감지
+            const botBlockResult = await detectBotBlock(page);
+
+            if (botBlockResult.blocked) {
+              console.log(`[Collector] 봇 차단 감지: ${botBlockResult.reason}`);
+
+              // headless 브라우저 페이지 닫기
+              await page.close();
+
+              // non-headless 브라우저 실행
+              const visibleBrowser = await launchVisibleBrowser();
+              const visiblePage = await visibleBrowser.newPage();
+
+              try {
+                // 쿠키 설정
+                if (cookieValue) {
+                  await visiblePage.setCookie({
+                    name: "NID",
+                    value: cookieValue,
+                    domain: ".google.com",
+                    path: "/",
+                  });
+                }
+
+                // 같은 페이지로 이동
+                await visiblePage.goto(searchUrl, {
+                  waitUntil: "networkidle2",
+                });
+
+                // 해결 대기 (사용자가 "해결 완료" 버튼 클릭 시까지)
+                const mainWindow = BrowserWindow.getAllWindows()[0];
+                const resolved = await waitForBotBlockResolution(
+                  mainWindow,
+                  gamePath,
+                  game?.title ?? id,
+                );
+
+                if (!resolved) {
+                  return {
+                    gamePath,
+                    success: false,
+                    error: "CAPTCHA 해결 시간 초과 또는 취소됨",
+                  };
+                }
+
+                // 해결됨 - 다시 정보 수집
+                const fetchResult = await collector.fetchInfo({
+                  path: gamePath,
+                  id,
+                  page: visiblePage,
+                });
+                if (fetchResult && "thumbnailUrl" in fetchResult) {
+                  info = fetchResult as CollectorResult;
+                }
+              } finally {
+                await visiblePage.close();
+                // CAPTCHA 해결 후 visible 브라우저 닫기
+                if (visibleBrowserInstance) {
+                  await visibleBrowserInstance.close();
+                  visibleBrowserInstance = null;
+                }
+              }
+            } else {
+              // 차단되지 않음 - 기존 로직대로 수집
+              const fetchResult = await collector.fetchInfo({
+                path: gamePath,
+                id,
+                page,
+              });
+              if (fetchResult && "thumbnailUrl" in fetchResult) {
+                info = fetchResult as CollectorResult;
+              }
             }
           }
         } finally {
