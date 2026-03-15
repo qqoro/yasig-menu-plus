@@ -47,6 +47,7 @@ export const DEFAULT_TITLE_DISPLAY_PRIORITY: TitleDisplayMode[] = [
 export interface StoreSchema {
   excludedExecutables: string[];
   googleCookie?: string; // Google NID 쿠키 (세이프서치 해제용)
+  googleCollectorIgnoreUntil?: string; // Google 컬렉터 봇 차단 일시 무시 만료 시간 (ISO 8601)
   libraryPaths: string[]; // 라이브러리 경로 목록
   translationSettings: {
     showTranslated: boolean; // 번역 제목 표시 여부 (하위 호환성 유지)
@@ -66,11 +67,12 @@ export interface StoreSchema {
 }
 
 /**
- * 전역 스토어 인스턴스 타입 (get, set 메서드 추가)
+ * 전역 스토어 인스턴스 타입 (get, set, delete 메서드 추가)
  */
 interface StoreInstance {
   get<K extends keyof StoreSchema>(key: K): StoreSchema[K];
   set<K extends keyof StoreSchema>(key: K, value: StoreSchema[K]): void;
+  delete<K extends keyof StoreSchema>(key: K): void;
 }
 
 /**
@@ -175,6 +177,28 @@ export function setGoogleCookie(cookie: string): void {
 }
 
 /**
+ * Google 컬렉터 무시 만료 시간 가져오기
+ */
+export function getGoogleCollectorIgnoreUntil(): string | undefined {
+  const store = getStore();
+  return store.get("googleCollectorIgnoreUntil");
+}
+
+/**
+ * Google 컬렉터 무시 만료 시간 설정
+ */
+export function setGoogleCollectorIgnoreUntil(
+  timestamp: string | undefined,
+): void {
+  const store = getStore();
+  if (timestamp === undefined) {
+    store.delete("googleCollectorIgnoreUntil");
+  } else {
+    store.set("googleCollectorIgnoreUntil", timestamp);
+  }
+}
+
+/**
  * 라이브러리 경로 목록 가져오기
  */
 export function getLibraryPaths(): string[] {
@@ -269,6 +293,7 @@ export function getAllSettings(): StoreSchema {
   return {
     excludedExecutables: store.get("excludedExecutables"),
     googleCookie: store.get("googleCookie"),
+    googleCollectorIgnoreUntil: store.get("googleCollectorIgnoreUntil"),
     libraryPaths: store.get("libraryPaths"),
     translationSettings: store.get("translationSettings"),
     thumbnailSettings: store.get("thumbnailSettings"),
