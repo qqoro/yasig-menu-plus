@@ -1,4 +1,5 @@
 import type { IpcMainInvokeEvent } from "electron";
+import { normalizePath } from "../lib/normalize-path.js";
 import {
   getDisabledLibraryPaths,
   toggleLibraryPathDisabled,
@@ -21,6 +22,7 @@ export async function toggleLibraryPathVisibilityHandler(
   _event: IpcMainInvokeEvent,
   { path }: { path: string },
 ): Promise<{ path: string; isDisabled: boolean }> {
-  const isDisabled = toggleLibraryPathDisabled(path);
-  return { path, isDisabled };
+  const normalizedPath = normalizePath(path);
+  const isDisabled = toggleLibraryPathDisabled(normalizedPath);
+  return { path: normalizedPath, isDisabled };
 }

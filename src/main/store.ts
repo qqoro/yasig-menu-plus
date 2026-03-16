@@ -7,6 +7,7 @@
 
 import { app } from "electron";
 import ElectronStore from "electron-store";
+import { normalizePath } from "./lib/normalize-path.js";
 
 /**
  * 라이브러리 스캔 정보
@@ -217,19 +218,26 @@ export function setLibraryPaths(paths: string[]): void {
 /**
  * 라이브러리 경로 추가
  */
-export function addLibraryPath(path: string): void {
+export function addLibraryPath(inputPath: string): void {
+  const normalized = normalizePath(inputPath);
   const current = getLibraryPaths();
-  if (!current.includes(path)) {
-    setLibraryPaths([...current, path]);
+  const isDuplicate = current.some(
+    (p) => normalizePath(p).toLowerCase() === normalized.toLowerCase(),
+  );
+  if (!isDuplicate) {
+    setLibraryPaths([...current, normalized]);
   }
 }
 
 /**
  * 라이브러리 경로 제거
  */
-export function removeLibraryPath(path: string): void {
+export function removeLibraryPath(inputPath: string): void {
+  const normalized = normalizePath(inputPath);
   const current = getLibraryPaths();
-  const filtered = current.filter((p) => p !== path);
+  const filtered = current.filter(
+    (p) => normalizePath(p).toLowerCase() !== normalized.toLowerCase(),
+  );
   setLibraryPaths(filtered);
 }
 
@@ -370,23 +378,25 @@ export function setAutoScanOnStartup(value: boolean): void {
  * 라이브러리 스캔 기록 조회
  */
 export function getLibraryScanHistory(
-  path: string,
+  inputPath: string,
 ): LibraryScanInfo | undefined {
   const store = getStore();
+  const normalized = normalizePath(inputPath);
   const history = store.get("libraryScanHistory") || {};
-  return history[path];
+  return history[normalized];
 }
 
 /**
  * 라이브러리 스캔 기록 업데이트
  */
 export function updateLibraryScanHistory(
-  path: string,
+  inputPath: string,
   gameCount: number,
 ): void {
   const store = getStore();
+  const normalized = normalizePath(inputPath);
   const history = store.get("libraryScanHistory") || {};
-  history[path] = {
+  history[normalized] = {
     lastScannedAt: new Date().toISOString(),
     lastGameCount: gameCount,
   };
@@ -402,12 +412,23 @@ export function getAllLibraryScanHistory(): Record<string, LibraryScanInfo> {
 }
 
 /**
+ * 모든 라이브러리 스캔 기록 일괄 설정
+ */
+export function setAllLibraryScanHistory(
+  history: Record<string, LibraryScanInfo>,
+): void {
+  const store = getStore();
+  store.set("libraryScanHistory", history);
+}
+
+/**
  * 라이브러리 스캔 기록 삭제
  */
-export function removeLibraryScanHistory(path: string): void {
+export function removeLibraryScanHistory(inputPath: string): void {
   const store = getStore();
+  const normalized = normalizePath(inputPath);
   const history = store.get("libraryScanHistory") || {};
-  delete history[path];
+  delete history[normalized];
   store.set("libraryScanHistory", history);
 }
 
@@ -462,14 +483,17 @@ export function getScanDepth(): number {
 /**
  * 라이브러리 경로 비활성화 토글
  */
-export function toggleLibraryPathDisabled(path: string): boolean {
+export function toggleLibraryPathDisabled(inputPath: string): boolean {
+  const normalized = normalizePath(inputPath);
   const current = getDisabledLibraryPaths();
-  const index = current.indexOf(path);
+  const index = current.findIndex(
+    (p) => normalizePath(p).toLowerCase() === normalized.toLowerCase(),
+  );
   if (index === -1) {
-    setDisabledLibraryPaths([...current, path]);
+    setDisabledLibraryPaths([...current, normalized]);
     return true; // 비활성화됨
   } else {
-    const filtered = current.filter((p) => p !== path);
+    const filtered = current.filter((_, i) => i !== index);
     setDisabledLibraryPaths(filtered);
     return false; // 활성화됨
   }

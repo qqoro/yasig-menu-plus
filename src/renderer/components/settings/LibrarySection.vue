@@ -57,6 +57,17 @@ const { data: libraryScanHistories } = useLibraryScanHistory();
 const selectFolderMutation = useSelectFolder();
 const folderInput = ref("");
 
+/**
+ * 대소문자 무시 경로 중복 체크
+ */
+function isDuplicatePath(newPath: string): boolean {
+  return (
+    libraryPaths.value?.some(
+      (p) => p.toLowerCase() === newPath.toLowerCase(),
+    ) ?? false
+  );
+}
+
 // 실행 제외 목록 관리
 const { data: excludedExecutables } = useExcludedExecutables();
 const addExcludedExecutable = useAddExcludedExecutable();
@@ -70,7 +81,7 @@ function handleAddPath(): void {
   const path = folderInput.value.trim();
   if (!path) return;
 
-  if (libraryPaths.value?.includes(path)) {
+  if (isDuplicatePath(path)) {
     toast.warning("이미 추가된 경로입니다.");
     return;
   }
@@ -110,7 +121,7 @@ async function handleSelectFolder(): Promise<void> {
     if (filePaths && filePaths.length > 0) {
       const selectedPath = filePaths[0];
 
-      if (libraryPaths.value?.includes(selectedPath)) {
+      if (isDuplicatePath(selectedPath)) {
         toast.warning("이미 추가된 경로입니다.");
         return;
       }

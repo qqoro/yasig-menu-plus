@@ -31,6 +31,7 @@ import {
 } from "../store.js";
 import { deleteImage } from "../utils/downloader.js";
 import { toAbsolutePath } from "../utils/image-path.js";
+import { normalizePath } from "../lib/normalize-path.js";
 import { scanFolder } from "./home-scan.js";
 
 /**
@@ -52,8 +53,9 @@ export async function addLibraryPathHandler(
   payload: IpcRendererEventMap["addLibraryPath"],
 ): Promise<IpcMainEventMap["libraryPathAdded"]> {
   const { path } = payload;
-  addLibraryPathToStore(path);
-  return { path };
+  const normalizedPath = normalizePath(path);
+  addLibraryPathToStore(normalizedPath);
+  return { path: normalizedPath };
 }
 
 /**
@@ -65,10 +67,11 @@ export async function removeLibraryPathHandler(
   payload: IpcRendererEventMap["removeLibraryPath"],
 ): Promise<IpcMainEventMap["libraryPathRemoved"]> {
   const { path } = payload;
+  const normalizedPath = normalizePath(path);
 
   // 해당 경로 하위의 게임 조회
   const gamesToDelete = await db("games")
-    .where("source", path)
+    .where("source", normalizedPath)
     .select("path", "thumbnail");
 
   const gamePaths = gamesToDelete.map((g) => g.path);
@@ -104,12 +107,12 @@ export async function removeLibraryPathHandler(
   }
 
   // 설정에서 경로 제거
-  removeLibraryPathFromStore(path);
+  removeLibraryPathFromStore(normalizedPath);
 
   // 스캔 기록 삭제
-  removeLibraryScanHistory(path);
+  removeLibraryScanHistory(normalizedPath);
 
-  return { path, deletedGameCount };
+  return { path: normalizedPath, deletedGameCount };
 }
 
 /**

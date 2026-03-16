@@ -82,6 +82,11 @@ vi.mock("../utils/downloader.js", () => ({
   deleteImage: vi.fn(),
 }));
 
+// normalizePath 모킹 — 테스트에서는 입력 경로를 그대로 반환
+vi.mock("../lib/normalize-path.js", () => ({
+  normalizePath: (p: string) => p,
+}));
+
 // db-manager 모킹: testDb를 동적 참조
 const dbRef: { current: Knex | null } = { current: null };
 vi.mock("../db/db-manager.js", () => ({
