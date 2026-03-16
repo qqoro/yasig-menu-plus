@@ -1,24 +1,69 @@
 /**
  * 게임 폴더의 콘텐츠 핑거프린트 계산
  *
- * 폴더 내 실행파일(EXECUTABLE_EXTENSIONS)의 이름+크기를 정렬하여 SHA-256 해시 생성.
+ * 폴더 내 파일의 이름+크기를 정렬하여 SHA-256 해시 생성.
  * 파일 내용을 읽지 않으므로 매우 빠름.
  *
  * 우선순위 (높은 순):
  * 1. www/data/System.json의 gameTitle (RPG Maker MV/MZ NW.js 패키징)
  * 2. data/System.json의 gameTitle (RPG Maker MV/MZ 직접 배포)
  * 3. RGSS 파일 (.rgss3a/.rgss2a/.rgssad) (RPG Maker VX/Ace/XP)
- * 4. package.json의 window.title (일반 NW.js)
- * 5. 실행파일 목록 (일반 게임)
+ * 4. 블랙리스트 기반 전체 파일 목록 (루트 + 1단계 하위)
  */
 
 import { createHash } from "crypto";
-import { existsSync, readdirSync, readFileSync, statSync } from "fs";
+import {
+  type Dirent,
+  existsSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+} from "fs";
 import { join } from "path";
 import { EXECUTABLE_EXTENSIONS } from "./scan-logic.js";
 
 /** RGSS 확장자 목록 (RPG Maker VX/Ace/XP) */
 const RGSS_EXTENSIONS = [".rgss3a", ".rgss2a", ".rgssad"];
+
+/** 블랙리스트 — 제외 디렉토리 (소문자) */
+const EXCLUDED_DIRS = new Set([
+  "save",
+  "saves",
+  "log",
+  "logs",
+  "screenshot",
+  "screenshots",
+  "backup",
+  "backups",
+  "crash",
+  "crashes",
+  "temp",
+  "tmp",
+  "cache",
+  "node_modules",
+  "__pycache__",
+  "_commonredist",
+  "directx",
+  "redist",
+]);
+
+/** 블랙리스트 — 제외 파일 확장자 (소문자) */
+const EXCLUDED_FILE_EXTENSIONS = new Set([
+  ".sav",
+  ".save",
+  ".rpgsave",
+  ".log",
+  ".bak",
+  ".tmp",
+  ".dmp",
+  ".crashdump",
+]);
+
+/** 블랙리스트 — 제외 파일명 (소문자) */
+const EXCLUDED_FILE_NAMES = new Set(["thumbs.db", "desktop.ini", ".ds_store"]);
+
+/** 디렉토리당 최대 수집 파일 수 */
+const MAX_FILES_PER_DIR = 100;
 
 /**
  * System.json에서 gameTitle 추출 시도
@@ -39,8 +84,48 @@ function tryGetGameTitle(systemJsonPath: string): { gameTitle: string } | null {
 }
 
 /**
+ * 파일이 블랙리스트에 해당하는지 확인
+ */
+function isExcludedFile(fileName: string): boolean {
+  const lower = fileName.toLowerCase();
+  if (lower.startsWith(".")) return true;
+  if (EXCLUDED_FILE_NAMES.has(lower)) return true;
+  const dotIdx = lower.lastIndexOf(".");
+  if (dotIdx >= 0 && EXCLUDED_FILE_EXTENSIONS.has(lower.slice(dotIdx)))
+    return true;
+  return false;
+}
+
+/**
+ * Dirent 배열에서 블랙리스트 제외 후 파일 엔트리 수집
+ *
+ * @param dirPath 파일들이 위치한 디렉토리 절대경로 (statSync용)
+ * @param entries 이미 읽은 Dirent 배열
+ * @param prefix 상대경로 프리픽스 (루트이면 "", 하위이면 "subdir/")
+ * @returns "상대경로:크기" 형식의 엔트리 배열 (정렬+상한 적용)
+ */
+function collectFileEntries(
+  dirPath: string,
+  entries: Dirent[],
+  prefix: string,
+): string[] {
+  const fileEntries: string[] = [];
+
+  for (const entry of entries) {
+    if (!entry.isFile()) continue;
+    if (isExcludedFile(entry.name)) continue;
+
+    const fileStat = statSync(join(dirPath, entry.name));
+    fileEntries.push(`${prefix}${entry.name}:${fileStat.size}`);
+  }
+
+  fileEntries.sort();
+  return fileEntries.slice(0, MAX_FILES_PER_DIR);
+}
+
+/**
  * 게임 경로의 핑거프린트 계산
- * - 폴더: 내부 실행파일(.exe, .lnk, .url 등)들의 이름:크기 목록을 SHA-256
+ * - 폴더: 블랙리스트 기반 전체 파일 목록의 이름:크기를 SHA-256
  * - 단일 파일(압축 등): 파일명:크기를 SHA-256
  */
 export function computeFingerprint(
@@ -85,8 +170,6 @@ export function computeFingerprint(
       }
     }
 
-    if (execEntries.length === 0) return null;
-
     // 1. www/data/System.json (RPG Maker MV/MZ NW.js 패키징) - 최우선
     const wwwSystemPath = join(gamePath, "www", "data", "System.json");
     if (existsSync(wwwSystemPath)) {
@@ -114,25 +197,36 @@ export function computeFingerprint(
       return createHash("sha256").update(data).digest("hex");
     }
 
-    // 4. NW.js: package.json의 window.title
-    const pkgPath = join(gamePath, "package.json");
-    if (existsSync(pkgPath)) {
+    // 4. Fallback: 블랙리스트 기반 전체 파일 목록 (루트 + 1단계 하위)
+    const allEntries: string[] = [];
+
+    // 루트 파일 수집 (이미 읽은 entries 재사용)
+    allEntries.push(...collectFileEntries(gamePath, entries, ""));
+
+    // 1단계 하위 디렉토리 파일 수집
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      if (entry.name.startsWith(".")) continue;
+      if (EXCLUDED_DIRS.has(entry.name.toLowerCase())) continue;
+
       try {
-        const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as {
-          window?: { title?: string };
-        };
-        if (pkg?.window?.title) {
-          const data = `${pkg.window.title}:${firstExecSize}`;
-          return createHash("sha256").update(data).digest("hex");
-        }
+        const subPath = join(gamePath, entry.name);
+        const subDirEntries = readdirSync(subPath, { withFileTypes: true });
+        const subEntries = collectFileEntries(
+          subPath,
+          subDirEntries,
+          `${entry.name}/`,
+        );
+        allEntries.push(...subEntries);
       } catch {
-        // package.json 파싱 실패 → 기존 로직 사용
+        // 하위 디렉토리 접근 실패 시 무시
       }
     }
 
-    // 5. 일반 게임: 실행파일 목록으로 해시
-    execEntries.sort();
-    const data = execEntries.join("|");
+    if (allEntries.length === 0) return null;
+
+    allEntries.sort();
+    const data = allEntries.join("|");
     return createHash("sha256").update(data).digest("hex");
   } catch {
     return null;

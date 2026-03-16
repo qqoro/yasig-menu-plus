@@ -12,7 +12,7 @@ import { computeFingerprint } from "./fingerprint.js";
 vi.mock("fs", () => ({
   readdirSync: vi.fn(),
   statSync: vi.fn(),
-  existsSync: vi.fn(() => false), // NW.js package.json 감지 비활성화
+  existsSync: vi.fn(() => false),
   readFileSync: vi.fn(),
 }));
 
@@ -190,10 +190,12 @@ describe("폴더 (isCompressFile: false, isDirectory: true)", () => {
     expect(result).toBe(expected);
   });
 
-  it("exe 파일 없음 → null", () => {
+  it("exe 파일 없어도 비exe 파일로 해시 반환", () => {
     mockStatSync.mockImplementation((path: any) => {
       const pathStr = String(path);
       if (pathStr === "/games/mygame") return createDirStat();
+      if (pathStr.endsWith("readme.txt")) return createFileStat(100);
+      if (pathStr.endsWith("data.json")) return createFileStat(200);
       return createFileStat(0);
     });
     mockReaddirSync.mockReturnValue([
@@ -203,27 +205,33 @@ describe("폴더 (isCompressFile: false, isDirectory: true)", () => {
 
     const result = computeFingerprint("/games/mygame", false);
 
-    expect(result).toBeNull();
+    const expected = sha256("data.json:200|readme.txt:100");
+    expect(result).toBe(expected);
   });
 
-  it("exe + 비exe 혼합 → exe만 사용", () => {
+  it("exe + 비exe 혼합 → 전체 파일 포함", () => {
     mockStatSync.mockImplementation((path: any) => {
       const pathStr = String(path);
       if (pathStr === "/games/mygame") return createDirStat();
       if (pathStr.endsWith("game.exe")) return createFileStat(8192);
       return createFileStat(100);
     });
-    mockReaddirSync.mockReturnValue([
-      createDirent("readme.txt", { isFile: true }),
-      createDirent("game.exe", { isFile: true }),
-      createDirent("config.ini", { isFile: true }),
-      createDirent("subfolder", { isDirectory: true }),
-    ] as unknown as ReturnType<typeof readdirSync>);
+    mockReaddirSync.mockImplementation((path: any) => {
+      const pathStr = String(path);
+      if (pathStr === "/games/mygame") {
+        return [
+          createDirent("readme.txt", { isFile: true }),
+          createDirent("game.exe", { isFile: true }),
+          createDirent("config.ini", { isFile: true }),
+          createDirent("subfolder", { isDirectory: true }),
+        ] as unknown as ReturnType<typeof readdirSync>;
+      }
+      return [] as unknown as ReturnType<typeof readdirSync>;
+    });
 
     const result = computeFingerprint("/games/mygame", false);
 
-    // exe 파일만 사용
-    const expected = sha256("game.exe:8192");
+    const expected = sha256("config.ini:100|game.exe:8192|readme.txt:100");
     expect(result).toBe(expected);
   });
 
@@ -606,49 +614,6 @@ describe("RPG Maker VX/Ace/XP (RGSS 파일)", () => {
 });
 
 // ============================================
-// NW.js (package.json window.title) - 최하위
-// ============================================
-describe("NW.js (package.json)", () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-  });
-
-  it("System.json 없는 NW.js → window.title로 해시", () => {
-    mockStatSync.mockImplementation((path: any) => {
-      const pathStr = String(path);
-      if (pathStr === "/games/nwjs-normal") return createDirStat();
-      if (pathStr.endsWith("Game.exe")) return createFileStat(2000000);
-      return createFileStat(0);
-    });
-    mockReaddirSync.mockReturnValue([
-      createDirent("Game.exe", { isFile: true }),
-      createDirent("package.json", { isFile: true }),
-    ] as unknown as ReturnType<typeof readdirSync>);
-
-    // package.json만 존재, System.json 없음
-    mockExistsSync.mockImplementation((path: any) => {
-      const pathStr = String(path);
-      return (
-        pathStr.endsWith("package.json") && !pathStr.includes("System.json")
-      );
-    });
-    mockReadFileSync.mockImplementation((path: any) => {
-      const pathStr = String(path);
-      if (pathStr.endsWith("package.json")) {
-        return JSON.stringify({ window: { title: "Normal NW.js Game" } });
-      }
-      return "";
-    });
-
-    const result = computeFingerprint("/games/nwjs-normal", false);
-
-    // window.title:exe크기로 해시
-    const expected = sha256("Normal NW.js Game:2000000");
-    expect(result).toBe(expected);
-  });
-});
-
-// ============================================
 // 우선순위 테스트
 // ============================================
 describe("우선순위 테스트", () => {
@@ -687,39 +652,364 @@ describe("우선순위 테스트", () => {
     expect(result).toBe(expected);
   });
 
-  it("RGSS > package.json (RGSS가 있으면 window.title 무시)", () => {
+  it("RGSS > fallback (RGSS가 있으면 fallback 무시)", () => {
     mockStatSync.mockImplementation((path: any) => {
       const pathStr = String(path);
-      if (pathStr === "/games/rgss-vs-nwjs") return createDirStat();
+      if (pathStr === "/games/rgss-vs-fallback") return createDirStat();
       if (pathStr.endsWith("Game.exe")) return createFileStat(1000000);
       if (pathStr.endsWith("Game.rgss3a")) return createFileStat(50000000);
+      if (pathStr.endsWith("data.pak")) return createFileStat(9999);
       return createFileStat(0);
     });
     mockReaddirSync.mockReturnValue([
       createDirent("Game.exe", { isFile: true }),
       createDirent("Game.rgss3a", { isFile: true }),
-      createDirent("package.json", { isFile: true }),
+      createDirent("data.pak", { isFile: true }),
     ] as unknown as ReturnType<typeof readdirSync>);
+    mockExistsSync.mockReturnValue(false);
 
-    // package.json 존재, System.json 없음
-    mockExistsSync.mockImplementation((path: any) => {
-      const pathStr = String(path);
-      return (
-        pathStr.endsWith("package.json") && !pathStr.includes("System.json")
-      );
-    });
-    mockReadFileSync.mockImplementation((path: any) => {
-      const pathStr = String(path);
-      if (pathStr.endsWith("package.json")) {
-        return JSON.stringify({ window: { title: "NW.js 타이틀" } });
-      }
-      return "";
-    });
+    const result = computeFingerprint("/games/rgss-vs-fallback", false);
 
-    const result = computeFingerprint("/games/rgss-vs-nwjs", false);
-
-    // RGSS가 package.json보다 우선
     const expected = sha256("Game.rgss3a:50000000");
     expect(result).toBe(expected);
+  });
+});
+
+// ============================================
+// Fallback (블랙리스트 기반 전체 파일 목록)
+// ============================================
+describe("Fallback (블랙리스트 기반 전체 파일 목록)", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mockExistsSync.mockReturnValue(false);
+  });
+
+  it("루트 파일 전체 수집 (exe + 비exe 포함)", () => {
+    mockStatSync.mockImplementation((path: any) => {
+      const pathStr = String(path);
+      if (pathStr === "/games/mygame") return createDirStat();
+      if (pathStr.endsWith("Game.exe")) return createFileStat(4096);
+      if (pathStr.endsWith("data.pak")) return createFileStat(50000);
+      if (pathStr.endsWith("config.ini")) return createFileStat(200);
+      return createFileStat(0);
+    });
+    mockReaddirSync.mockReturnValue([
+      createDirent("Game.exe", { isFile: true }),
+      createDirent("data.pak", { isFile: true }),
+      createDirent("config.ini", { isFile: true }),
+    ] as unknown as ReturnType<typeof readdirSync>);
+
+    const result = computeFingerprint("/games/mygame", false);
+
+    const expected = sha256("Game.exe:4096|config.ini:200|data.pak:50000");
+    expect(result).toBe(expected);
+  });
+
+  it("1단계 하위 디렉토리 파일 포함", () => {
+    mockStatSync.mockImplementation((path: any) => {
+      const pathStr = String(path);
+      if (pathStr === "/games/mygame") return createDirStat();
+      if (pathStr.endsWith("Game.exe")) return createFileStat(4096);
+      if (pathStr.endsWith("Actors.json")) return createFileStat(1000);
+      return createFileStat(0);
+    });
+    mockReaddirSync.mockImplementation((path: any) => {
+      const pathStr = String(path);
+      if (pathStr === "/games/mygame") {
+        return [
+          createDirent("Game.exe", { isFile: true }),
+          createDirent("data", { isDirectory: true }),
+        ] as unknown as ReturnType<typeof readdirSync>;
+      }
+      if (pathStr.endsWith("data")) {
+        return [
+          createDirent("Actors.json", { isFile: true }),
+        ] as unknown as ReturnType<typeof readdirSync>;
+      }
+      return [] as unknown as ReturnType<typeof readdirSync>;
+    });
+
+    const result = computeFingerprint("/games/mygame", false);
+
+    const expected = sha256("Game.exe:4096|data/Actors.json:1000");
+    expect(result).toBe(expected);
+  });
+
+  it("2단계 이상 하위 디렉토리는 무시", () => {
+    mockStatSync.mockImplementation((path: any) => {
+      const pathStr = String(path);
+      if (pathStr === "/games/mygame") return createDirStat();
+      if (pathStr.endsWith("Game.exe")) return createFileStat(4096);
+      if (pathStr.endsWith("Map001.json")) return createFileStat(500);
+      return createFileStat(0);
+    });
+    mockReaddirSync.mockImplementation((path: any) => {
+      const pathStr = String(path);
+      if (pathStr === "/games/mygame") {
+        return [
+          createDirent("Game.exe", { isFile: true }),
+          createDirent("data", { isDirectory: true }),
+        ] as unknown as ReturnType<typeof readdirSync>;
+      }
+      if (pathStr.endsWith("data")) {
+        // data 안에 maps 디렉토리가 있지만, 파일로 인식되지 않으므로 무시됨
+        return [
+          createDirent("maps", { isDirectory: true }),
+        ] as unknown as ReturnType<typeof readdirSync>;
+      }
+      // maps 안의 파일은 collectFileEntries가 호출되지 않아야 함
+      if (pathStr.endsWith("maps")) {
+        return [
+          createDirent("Map001.json", { isFile: true }),
+        ] as unknown as ReturnType<typeof readdirSync>;
+      }
+      return [] as unknown as ReturnType<typeof readdirSync>;
+    });
+
+    const result = computeFingerprint("/games/mygame", false);
+
+    // 2단계 하위(data/maps/)는 탐색하지 않으므로 Game.exe만 포함
+    const expected = sha256("Game.exe:4096");
+    expect(result).toBe(expected);
+  });
+
+  it("블랙리스트 디렉토리 제외 (save, logs 등)", () => {
+    mockStatSync.mockImplementation((path: any) => {
+      const pathStr = String(path);
+      if (pathStr === "/games/mygame") return createDirStat();
+      if (pathStr.endsWith("Game.exe")) return createFileStat(4096);
+      if (pathStr.endsWith("save1.dat")) return createFileStat(500);
+      return createFileStat(0);
+    });
+    mockReaddirSync.mockImplementation((path: any) => {
+      const pathStr = String(path);
+      if (pathStr === "/games/mygame") {
+        return [
+          createDirent("Game.exe", { isFile: true }),
+          createDirent("save", { isDirectory: true }),
+        ] as unknown as ReturnType<typeof readdirSync>;
+      }
+      if (pathStr.endsWith("save")) {
+        return [
+          createDirent("save1.dat", { isFile: true }),
+        ] as unknown as ReturnType<typeof readdirSync>;
+      }
+      return [] as unknown as ReturnType<typeof readdirSync>;
+    });
+
+    const result = computeFingerprint("/games/mygame", false);
+
+    const expected = sha256("Game.exe:4096");
+    expect(result).toBe(expected);
+  });
+
+  it("블랙리스트 파일 패턴 제외 (*.sav, *.log 등)", () => {
+    mockStatSync.mockImplementation((path: any) => {
+      const pathStr = String(path);
+      if (pathStr === "/games/mygame") return createDirStat();
+      if (pathStr.endsWith("Game.exe")) return createFileStat(4096);
+      if (pathStr.endsWith("game.sav")) return createFileStat(300);
+      if (pathStr.endsWith("error.log")) return createFileStat(100);
+      if (pathStr.endsWith("Thumbs.db")) return createFileStat(50);
+      return createFileStat(0);
+    });
+    mockReaddirSync.mockReturnValue([
+      createDirent("Game.exe", { isFile: true }),
+      createDirent("game.sav", { isFile: true }),
+      createDirent("error.log", { isFile: true }),
+      createDirent("Thumbs.db", { isFile: true }),
+    ] as unknown as ReturnType<typeof readdirSync>);
+
+    const result = computeFingerprint("/games/mygame", false);
+
+    const expected = sha256("Game.exe:4096");
+    expect(result).toBe(expected);
+  });
+
+  it("블랙리스트 파일 확장자 case-insensitive (*.SAV, *.Log)", () => {
+    mockStatSync.mockImplementation((path: any) => {
+      const pathStr = String(path);
+      if (pathStr === "/games/mygame") return createDirStat();
+      if (pathStr.endsWith("Game.exe")) return createFileStat(4096);
+      return createFileStat(0);
+    });
+    mockReaddirSync.mockReturnValue([
+      createDirent("Game.exe", { isFile: true }),
+      createDirent("SAVE.SAV", { isFile: true }),
+      createDirent("Error.Log", { isFile: true }),
+      createDirent("backup.BAK", { isFile: true }),
+    ] as unknown as ReturnType<typeof readdirSync>);
+
+    const result = computeFingerprint("/games/mygame", false);
+
+    const expected = sha256("Game.exe:4096");
+    expect(result).toBe(expected);
+  });
+
+  it("숨김 파일/폴더 제외 (.으로 시작)", () => {
+    mockStatSync.mockImplementation((path: any) => {
+      const pathStr = String(path);
+      if (pathStr === "/games/mygame") return createDirStat();
+      if (pathStr.endsWith("Game.exe")) return createFileStat(4096);
+      return createFileStat(0);
+    });
+    mockReaddirSync.mockReturnValue([
+      createDirent("Game.exe", { isFile: true }),
+      createDirent(".hidden", { isFile: true }),
+      createDirent(".git", { isDirectory: true }),
+    ] as unknown as ReturnType<typeof readdirSync>);
+
+    const result = computeFingerprint("/games/mygame", false);
+
+    const expected = sha256("Game.exe:4096");
+    expect(result).toBe(expected);
+  });
+
+  it("디렉토리당 100개 상한 적용", () => {
+    const entries: Dirent[] = [];
+    const statMap: Record<string, number> = {};
+    for (let i = 0; i < 120; i++) {
+      const name = `file_${String(i).padStart(3, "0")}.dat`;
+      entries.push(createDirent(name, { isFile: true }));
+      statMap[name] = 1000 + i;
+    }
+    entries.push(createDirent("Game.exe", { isFile: true }));
+    statMap["Game.exe"] = 4096;
+
+    mockStatSync.mockImplementation((path: any) => {
+      const pathStr = String(path);
+      if (pathStr === "/games/mygame") return createDirStat();
+      for (const [name, size] of Object.entries(statMap)) {
+        if (pathStr.endsWith(name)) return createFileStat(size);
+      }
+      return createFileStat(0);
+    });
+    mockReaddirSync.mockReturnValue(
+      entries as unknown as ReturnType<typeof readdirSync>,
+    );
+
+    const result = computeFingerprint("/games/mygame", false);
+
+    // 정렬 후 100개만 선택 (Game.exe, file_000~file_098)
+    const sortedEntries = entries
+      .map((e) => `${e.name}:${statMap[e.name]}`)
+      .sort()
+      .slice(0, 100);
+    const expected = sha256(sortedEntries.join("|"));
+    expect(result).toBe(expected);
+  });
+
+  it("블랙리스트 디렉토리명 case-insensitive", () => {
+    mockStatSync.mockImplementation((path: any) => {
+      const pathStr = String(path);
+      if (pathStr === "/games/mygame") return createDirStat();
+      if (pathStr.endsWith("Game.exe")) return createFileStat(4096);
+      return createFileStat(0);
+    });
+    mockReaddirSync.mockImplementation((path: any) => {
+      const pathStr = String(path);
+      if (pathStr === "/games/mygame") {
+        return [
+          createDirent("Game.exe", { isFile: true }),
+          createDirent("Save", { isDirectory: true }),
+          createDirent("LOGS", { isDirectory: true }),
+          createDirent("Cache", { isDirectory: true }),
+        ] as unknown as ReturnType<typeof readdirSync>;
+      }
+      return [] as unknown as ReturnType<typeof readdirSync>;
+    });
+
+    const result = computeFingerprint("/games/mygame", false);
+
+    const expected = sha256("Game.exe:4096");
+    expect(result).toBe(expected);
+  });
+
+  it("하위 디렉토리 접근 실패 시 다른 디렉토리는 정상 수집", () => {
+    mockStatSync.mockImplementation((path: any) => {
+      const pathStr = String(path);
+      if (pathStr === "/games/mygame") return createDirStat();
+      if (pathStr.endsWith("Game.exe")) return createFileStat(4096);
+      if (pathStr.endsWith("Actors.json")) return createFileStat(1000);
+      return createFileStat(0);
+    });
+    mockReaddirSync.mockImplementation((path: any) => {
+      const pathStr = String(path);
+      if (pathStr === "/games/mygame") {
+        return [
+          createDirent("Game.exe", { isFile: true }),
+          createDirent("broken", { isDirectory: true }),
+          createDirent("data", { isDirectory: true }),
+        ] as unknown as ReturnType<typeof readdirSync>;
+      }
+      if (pathStr.endsWith("broken")) {
+        throw new Error("EACCES: permission denied");
+      }
+      if (pathStr.endsWith("data")) {
+        return [
+          createDirent("Actors.json", { isFile: true }),
+        ] as unknown as ReturnType<typeof readdirSync>;
+      }
+      return [] as unknown as ReturnType<typeof readdirSync>;
+    });
+
+    const result = computeFingerprint("/games/mygame", false);
+
+    // broken 실패해도 data는 정상 수집
+    const expected = sha256("Game.exe:4096|data/Actors.json:1000");
+    expect(result).toBe(expected);
+  });
+
+  it("여러 하위 디렉토리 파일의 전체 정렬", () => {
+    mockStatSync.mockImplementation((path: any) => {
+      const pathStr = String(path);
+      if (pathStr === "/games/mygame") return createDirStat();
+      if (pathStr.endsWith("Game.exe")) return createFileStat(4096);
+      if (pathStr.endsWith("b.txt")) return createFileStat(100);
+      if (pathStr.endsWith("a.txt")) return createFileStat(200);
+      return createFileStat(0);
+    });
+    mockReaddirSync.mockImplementation((path: any) => {
+      const pathStr = String(path);
+      if (pathStr === "/games/mygame") {
+        return [
+          createDirent("Game.exe", { isFile: true }),
+          createDirent("zzz", { isDirectory: true }),
+          createDirent("aaa", { isDirectory: true }),
+        ] as unknown as ReturnType<typeof readdirSync>;
+      }
+      if (pathStr.endsWith("zzz")) {
+        return [
+          createDirent("b.txt", { isFile: true }),
+        ] as unknown as ReturnType<typeof readdirSync>;
+      }
+      if (pathStr.endsWith("aaa")) {
+        return [
+          createDirent("a.txt", { isFile: true }),
+        ] as unknown as ReturnType<typeof readdirSync>;
+      }
+      return [] as unknown as ReturnType<typeof readdirSync>;
+    });
+
+    const result = computeFingerprint("/games/mygame", false);
+
+    // 전체 정렬: Game.exe < aaa/a.txt < zzz/b.txt
+    const expected = sha256("Game.exe:4096|aaa/a.txt:200|zzz/b.txt:100");
+    expect(result).toBe(expected);
+  });
+
+  it("수집 파일 0개 → null 반환", () => {
+    mockStatSync.mockImplementation((path: any) => {
+      const pathStr = String(path);
+      if (pathStr === "/games/mygame") return createDirStat();
+      return createFileStat(0);
+    });
+    mockReaddirSync.mockReturnValue([
+      createDirent("save", { isDirectory: true }),
+    ] as unknown as ReturnType<typeof readdirSync>);
+
+    const result = computeFingerprint("/games/mygame", false);
+
+    expect(result).toBeNull();
   });
 });
