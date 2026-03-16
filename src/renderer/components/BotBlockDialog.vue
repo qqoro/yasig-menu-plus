@@ -19,6 +19,7 @@ const emit = defineEmits<{
   (e: "update:open", value: boolean): void;
   (e: "resolved"): void;
   (e: "cancel"): void;
+  (e: "ignore", minutes: number): void;
 }>();
 
 const isResolving = ref(false);
@@ -45,6 +46,16 @@ const handleResolved = async () => {
 const handleCancel = async () => {
   await window.api.invoke("resolveBotBlock", { resolved: false });
   emit("cancel");
+  emit("update:open", false);
+};
+
+// 30분 동안 무시 버튼 클릭
+const handleIgnore = async () => {
+  await window.api.invoke("resolveBotBlock", {
+    resolved: false,
+    ignoreMinutes: 30,
+  });
+  emit("ignore", 30);
   emit("update:open", false);
 };
 </script>
@@ -75,6 +86,9 @@ const handleCancel = async () => {
       <div class="flex justify-end gap-2">
         <Button variant="outline" @click="handleCancel" :disabled="isResolving">
           취소
+        </Button>
+        <Button variant="outline" @click="handleIgnore" :disabled="isResolving">
+          30분 무시
         </Button>
         <Button @click="handleResolved" :disabled="isResolving">
           <span v-if="isResolving">처리 중...</span>

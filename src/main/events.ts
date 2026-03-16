@@ -400,7 +400,7 @@ export interface IpcRendererEventMap {
   runCollector: { gamePath: string; force?: boolean };
   runAllCollectors: { force?: boolean };
   getNewCookie: undefined; // 반환값: string | undefined (쿠키 값)
-  resolveBotBlock: { resolved: boolean }; // 봇 차단 해결 완료/취소
+  resolveBotBlock: { resolved: boolean; ignoreMinutes?: number }; // 봇 차단 해결 완료/취소 (ignoreMinutes: 무시 시간)
 
   // 썸네일 관련
   downloadThumbnail: { gamePath: string; url: string };
