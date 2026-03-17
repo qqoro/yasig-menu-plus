@@ -68,7 +68,11 @@ import {
 } from "./handlers/libraryPathVisibility.js";
 import { processMonitor } from "./services/ProcessMonitor.js";
 import { autoUpdaterService } from "./services/AutoUpdater.js";
-import { getAutoScanOnStartup, getAutoUpdateSettings } from "./store.js";
+import {
+  getAutoScanOnStartup,
+  getAutoUpdateSettings,
+  runLibraryPathsNormalization,
+} from "./store.js";
 
 log.initialize();
 export const console = log;
@@ -418,6 +422,9 @@ app.whenReady().then(async () => {
     // 데이터베이스 초기화 실패 시에도 앱을 시작하도록 하지만 오류 로그 출력
     // 사용자에게 알림을 표시할 수도 있음
   }
+
+  // 라이브러리 경로 정규화 (최초 1회만 실행)
+  runLibraryPathsNormalization();
 
   createWindow();
   registerIpcHandlers();

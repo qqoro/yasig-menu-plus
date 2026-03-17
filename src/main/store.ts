@@ -546,3 +546,66 @@ export function toggleLibraryPathDisabled(inputPath: string): boolean {
     return false; // 활성화됨
   }
 }
+
+/**
+ * 정규화 + 중복 제거 헬퍼
+ */
+function deduplicateNormalized(paths: string[]): string[] {
+  const seen = new Map<string, string>();
+  for (const p of paths) {
+    const normalized = normalizePath(p);
+    const key = normalized.toLowerCase();
+    if (!seen.has(key)) {
+      seen.set(key, normalized);
+    }
+  }
+  return [...seen.values()];
+}
+
+const LIBRARY_PATHS_NORMALIZED_KEY = "libraryPathsNormalizedAt";
+
+/**
+ * 라이브러리 경로 정규화 실행 (앱 시작 시 1회만 실행)
+ * - libraryPaths 정규화
+ * - disabledLibraryPaths 정규화
+ * - libraryScanHistory 키 정규화
+ */
+export function runLibraryPathsNormalization(): void {
+  const store = getStore();
+
+  // 이미 실행했으면 스킵
+  if (store.get(LIBRARY_PATHS_NORMALIZED_KEY as any)) {
+    return;
+  }
+
+  // libraryPaths 정규화
+  const paths = store.get("libraryPaths") || [];
+  store.set("libraryPaths", deduplicateNormalized(paths));
+
+  // disabledLibraryPaths 정규화
+  const disabled = store.get("disabledLibraryPaths") || [];
+  store.set("disabledLibraryPaths", deduplicateNormalized(disabled));
+
+  // libraryScanHistory 키 정규화
+  const history = store.get("libraryScanHistory") || {};
+  const newHistory: Record<string, LibraryScanInfo> = {};
+  for (const [key, value] of Object.entries(history)) {
+    const normalizedKey = normalizePath(key);
+    // 중복 키가 생기면 최신 스캔 기록 유지
+    if (
+      !newHistory[normalizedKey] ||
+      (value as LibraryScanInfo).lastScannedAt >
+        newHistory[normalizedKey].lastScannedAt
+    ) {
+      newHistory[normalizedKey] = value as LibraryScanInfo;
+    }
+  }
+  store.set("libraryScanHistory", newHistory);
+
+  // 실행 완료 표시
+  (store as any).set(LIBRARY_PATHS_NORMALIZED_KEY, new Date().toISOString());
+
+  console.log(
+    `[설정] 라이브러리 경로 정규화 완료: libraryPaths ${paths.length}개, disabledPaths ${disabled.length}개, scanHistory ${Object.keys(history).length}개`,
+  );
+}
