@@ -54,6 +54,29 @@ export async function selectFileHandler(
 }
 
 /**
+ * 프로그램 선택 다이얼로그 (미디어 플레이어 등)
+ */
+export async function selectProgramHandler(
+  _event: IpcMainInvokeEvent,
+  _payload: unknown,
+): Promise<{ filePaths: string[] | undefined }> {
+  const result = await dialog.showOpenDialog({
+    properties: ["openFile"],
+    title: "프로그램 선택",
+    filters: [
+      { name: "실행 파일", extensions: ["exe"] },
+      { name: "모든 파일", extensions: ["*"] },
+    ],
+  });
+
+  if (result.canceled) {
+    return { filePaths: undefined };
+  }
+
+  return { filePaths: result.filePaths };
+}
+
+/**
  * 실행 파일 선택 다이얼로그
  */
 export async function selectExecutableFileHandler(

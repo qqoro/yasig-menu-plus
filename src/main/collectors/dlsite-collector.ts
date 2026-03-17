@@ -1,11 +1,12 @@
 import dayjs from "dayjs";
 import { parse } from "node-html-parser";
 import { Collector, type CollectorResult } from "./registry.js";
+import { extractRjCode } from "../lib/rj-code.js";
 
 export const DLSiteCollector: Collector = {
   name: "DLSite",
   getId: async (path) => {
-    const rjCode = /[RBV]J\d{6,8}/i.exec(path)?.[0];
+    const rjCode = extractRjCode(path);
     return rjCode;
   },
   fetchInfo: async ({ id }) => {

@@ -28,6 +28,7 @@ export const enum IpcRendererSend {
   // 다이얼로그
   SelectFolder = "selectFolder",
   SelectFile = "selectFile",
+  SelectProgram = "selectProgram", // 프로그램(실행 파일) 선택 다이얼로그
 
   // 컬렉터 관련
   RunCollector = "runCollector", // 단일 게임 컬렉터 실행
@@ -156,6 +157,7 @@ export const enum IpcMainSend {
   // 다이얼로그
   SelectFolder = "selectFolder",
   SelectFile = "selectFile",
+  SelectProgram = "selectProgram",
 
   // 컬렉터 관련
   CollectorProgress = "collectorProgress", // { current, total, gameTitle }
@@ -250,6 +252,7 @@ export type IpcMainSendChannel =
   | "windowUnmaximized"
   | "selectFolder"
   | "selectFile"
+  | "selectProgram"
   | "collectorProgress"
   | "collectorDone"
   | "allCollectorsDone"
@@ -308,6 +311,7 @@ export interface GameItem {
   thumbnail: string | null;
   executablePath: string | null; // 직접 지정한 실행 파일 경로
   isCompressFile: boolean;
+  hasExecutable: boolean;
   publishDate: Date | null;
   isFavorite?: boolean;
   isHidden?: boolean;
@@ -395,6 +399,7 @@ export interface IpcRendererEventMap {
   closeWindow: undefined;
   selectFolder: undefined;
   selectFile: undefined;
+  selectProgram: undefined;
 
   // 컬렉터 관련
   runCollector: { gamePath: string; force?: boolean };
@@ -585,6 +590,7 @@ export interface IpcMainEventMap {
   // 다이얼로그
   selectFolder: { filePaths: string[] | undefined };
   selectFile: { filePaths: string[] | undefined };
+  selectProgram: { filePaths: string[] | undefined };
 
   // 게임 상세 정보 관련
   gameDetail: { game: GameDetailItem | null };

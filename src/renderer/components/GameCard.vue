@@ -502,11 +502,19 @@ function handleMouseDown(event: MouseEvent): void {
           :disabled="isPlaying"
           size="sm"
           class="flex-1"
-          title="게임 실행"
+          :title="game.hasExecutable === false ? '미디어 재생' : '게임 실행'"
         >
           <Loader2 v-if="isPlaying" :size="12" class="animate-spin" />
           <Play v-else :size="12" />
-          {{ isPlaying ? "실행 중..." : "실행" }}
+          {{
+            isPlaying
+              ? game.hasExecutable === false
+                ? "재생 중..."
+                : "실행 중..."
+              : game.hasExecutable === false
+                ? "재생"
+                : "실행"
+          }}
         </Button>
         <Button
           @click="handleOpenFolder"

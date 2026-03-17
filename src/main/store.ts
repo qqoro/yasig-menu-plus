@@ -65,6 +65,11 @@ export interface StoreSchema {
   autoUpdateSettings?: AutoUpdateSettings; // 자동 업데이트 설정
   disabledLibraryPaths?: string[]; // 비활성화된 라이브러리 경로 목록
   scanDepth?: number; // 재귀 스캔 최대 깊이 (기본값: 5)
+  enableNonGameContent?: boolean; // 비게임 콘텐츠 인식 활성화 여부
+  mediaPlayerSettings?: {
+    audioPlayerPath: string | null; // 오디오 플레이어 경로
+    videoPlayerPath: string | null; // 비디오 플레이어 경로
+  };
 }
 
 /**
@@ -102,6 +107,11 @@ const DEFAULTS: StoreSchema = {
   },
   disabledLibraryPaths: [],
   scanDepth: 5,
+  enableNonGameContent: false,
+  mediaPlayerSettings: {
+    audioPlayerPath: null,
+    videoPlayerPath: null,
+  },
 };
 
 /**
@@ -312,6 +322,8 @@ export function getAllSettings(): StoreSchema {
     autoUpdateSettings: store.get("autoUpdateSettings"),
     disabledLibraryPaths: store.get("disabledLibraryPaths"),
     scanDepth: store.get("scanDepth"),
+    enableNonGameContent: store.get("enableNonGameContent"),
+    mediaPlayerSettings: store.get("mediaPlayerSettings"),
   };
 }
 
@@ -478,6 +490,42 @@ export function setDisabledLibraryPaths(paths: string[]): void {
 export function getScanDepth(): number {
   const store = getStore();
   return store.get("scanDepth") ?? 5;
+}
+
+/**
+ * 비게임 콘텐츠 인식 활성화 여부 가져오기
+ */
+export function getEnableNonGameContent(): boolean {
+  const store = getStore();
+  return store.get("enableNonGameContent") ?? DEFAULTS.enableNonGameContent!;
+}
+
+/**
+ * 비게임 콘텐츠 인식 활성화 여부 설정
+ */
+export function setEnableNonGameContent(enabled: boolean): void {
+  const store = getStore();
+  store.set("enableNonGameContent", enabled);
+}
+
+/**
+ * 미디어 플레이어 설정 가져오기
+ */
+export function getMediaPlayerSettings(): NonNullable<
+  StoreSchema["mediaPlayerSettings"]
+> {
+  const store = getStore();
+  return store.get("mediaPlayerSettings") ?? DEFAULTS.mediaPlayerSettings!;
+}
+
+/**
+ * 미디어 플레이어 설정 저장
+ */
+export function setMediaPlayerSettings(
+  settings: NonNullable<StoreSchema["mediaPlayerSettings"]>,
+): void {
+  const store = getStore();
+  store.set("mediaPlayerSettings", settings);
 }
 
 /**

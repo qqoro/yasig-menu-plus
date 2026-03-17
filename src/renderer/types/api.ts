@@ -31,6 +31,7 @@ type IpcInvokeReturn = {
   closeWindow: void;
   selectFolder: IpcMainEventMap["selectFolder"];
   selectFile: IpcMainEventMap["selectFile"];
+  selectProgram: IpcMainEventMap["selectProgram"];
   runCollector: IpcMainEventMap["collectorDone"];
   runAllCollectors: IpcMainEventMap["allCollectorsDone"];
   getNewCookie: string | undefined;

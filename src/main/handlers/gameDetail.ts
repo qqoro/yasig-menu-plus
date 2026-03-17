@@ -29,6 +29,7 @@ export async function getGameDetail(
       "games.thumbnail",
       "games.executablePath",
       "games.isCompressFile",
+      "games.hasExecutable",
       "games.publishDate",
       "games.isHidden",
       "games.provider",
@@ -87,6 +88,8 @@ export async function getGameDetail(
     thumbnail: toAbsolutePath(game.thumbnail),
     executablePath: game.executablePath,
     isCompressFile: Boolean(game.isCompressFile),
+    hasExecutable:
+      game.hasExecutable !== undefined ? Boolean(game.hasExecutable) : true,
     publishDate: toDate(game.publishDate),
     isFavorite: Boolean(game.isFavorite),
     isHidden: Boolean(game.isHidden),

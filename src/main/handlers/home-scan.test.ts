@@ -55,6 +55,7 @@ vi.mock("../store.js", () => ({
   getExcludedExecutables: () => [],
   getLibraryPaths: () => [],
   getScanDepth: () => 5,
+  getEnableNonGameContent: () => false,
   DEFAULT_TITLE_DISPLAY_PRIORITY: ["translated", "collected", "original"],
   addExcludedExecutable: vi.fn(),
   removeExcludedExecutable: vi.fn(),
@@ -197,8 +198,18 @@ describe("scanFolder — 폴더 스캔", () => {
 
   it("새 게임을 DB에 추가해야 한다", async () => {
     vi.mocked(runScanWorker).mockResolvedValue([
-      { path: "/library/game-a", name: "game-a", isCompressFile: false },
-      { path: "/library/game-b", name: "game-b", isCompressFile: false },
+      {
+        path: "/library/game-a",
+        name: "game-a",
+        isCompressFile: false,
+        hasExecutable: true,
+      },
+      {
+        path: "/library/game-b",
+        name: "game-b",
+        isCompressFile: false,
+        hasExecutable: true,
+      },
     ]);
 
     const result = await scanFolder("/library");
@@ -227,6 +238,7 @@ describe("scanFolder — 폴더 스캔", () => {
         path: "/library/archive-game.zip",
         name: "archive-game.zip",
         isCompressFile: true,
+        hasExecutable: true,
       },
     ]);
 
@@ -258,6 +270,7 @@ describe("scanFolder — 폴더 스캔", () => {
         path: "/library/existing-game",
         name: "new-name",
         isCompressFile: false,
+        hasExecutable: true,
       },
     ]);
     vi.mocked(computeFingerprint).mockReturnValue("new-fp");
@@ -293,7 +306,12 @@ describe("scanFolder — 폴더 스캔", () => {
     });
 
     vi.mocked(runScanWorker).mockResolvedValue([
-      { path: "/library/fp-game", name: "FP Game", isCompressFile: false },
+      {
+        path: "/library/fp-game",
+        name: "FP Game",
+        isCompressFile: false,
+        hasExecutable: true,
+      },
     ]);
     vi.mocked(computeFingerprint).mockReturnValue("new-fp");
 
@@ -335,7 +353,12 @@ describe("scanFolder — 폴더 스캔", () => {
 
     // 스캔 결과: keep-game만 존재
     vi.mocked(runScanWorker).mockResolvedValue([
-      { path: "/library/keep-game", name: "keep-game", isCompressFile: false },
+      {
+        path: "/library/keep-game",
+        name: "keep-game",
+        isCompressFile: false,
+        hasExecutable: true,
+      },
     ]);
 
     const result = await scanFolder("/library");
@@ -400,7 +423,12 @@ describe("scanFolder — 폴더 스캔", () => {
 
   it("스캔 완료 후 updateLibraryScanHistory를 호출해야 한다", async () => {
     vi.mocked(runScanWorker).mockResolvedValue([
-      { path: "/library/game-1", name: "game-1", isCompressFile: false },
+      {
+        path: "/library/game-1",
+        name: "game-1",
+        isCompressFile: false,
+        hasExecutable: true,
+      },
     ]);
 
     await scanFolder("/library");

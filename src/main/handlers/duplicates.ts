@@ -96,6 +96,7 @@ function buildGameItems(
     thumbnail: string | null;
     executablePath: string | null;
     isCompressFile: number | boolean;
+    hasExecutable?: number | boolean;
     publishDate: Date | null;
     isFavorite?: number | boolean;
     isHidden?: number | boolean;
@@ -125,6 +126,8 @@ function buildGameItems(
       thumbnail: toAbsolutePath(g.thumbnail),
       executablePath: g.executablePath || null,
       isCompressFile: Boolean(g.isCompressFile),
+      hasExecutable:
+        g.hasExecutable !== undefined ? Boolean(g.hasExecutable) : true,
       publishDate: g.publishDate || null,
       translatedTitle: g.translatedTitle || null,
       translationSource: g.translationSource || null,
@@ -169,6 +172,7 @@ export async function findDuplicatesHandler(
       "games.thumbnail",
       "games.executablePath",
       "games.isCompressFile",
+      "games.hasExecutable",
       "games.publishDate",
       "games.isHidden",
       "games.provider",

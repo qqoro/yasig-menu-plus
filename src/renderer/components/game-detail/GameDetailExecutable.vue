@@ -58,51 +58,60 @@ async function handleResetExecutablePath() {
 </script>
 
 <template>
-  <!-- 실행 파일 -->
-  <div class="border-t pt-2">
-    <label class="text-muted-foreground text-sm font-medium">실행 파일</label>
-    <div class="mt-1 flex items-center justify-between">
-      <div class="flex min-w-0 flex-1 items-center gap-2">
-        <File :size="14" class="text-muted-foreground shrink-0" />
-        <p class="truncate font-mono text-sm">
-          {{ game?.executablePath || "자동 감지" }}
-        </p>
-      </div>
-      <div class="flex gap-1">
-        <Button
-          size="sm"
-          variant="ghost"
-          @click="handleSelectExecutableFile"
-          title="파일 선택"
-        >
-          <Folder :size="14" />
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          @click="handleResetExecutablePath"
-          title="자동 감지로 초기화"
-          :disabled="!game?.executablePath"
-        >
-          <RotateCcw :size="14" />
-        </Button>
+  <div class="flex flex-col gap-0">
+    <!-- 비게임 콘텐츠: 미디어 재생 표시 -->
+    <div v-if="game?.hasExecutable === false" class="border-t pt-2">
+      <div class="flex items-center gap-2">
+        <p class="text-muted-foreground text-sm">미디어 재생</p>
       </div>
     </div>
-  </div>
 
-  <!-- 경로 정보 -->
-  <div class="space-y-1 border-t pt-2">
-    <p class="text-muted-foreground text-xs">
-      <span class="font-medium">경로:</span> {{ game?.path }}
-    </p>
-    <p class="text-muted-foreground text-xs">
-      <span class="font-medium">소스:</span> {{ game?.source }}
-    </p>
-    <p v-if="game?.provider" class="text-muted-foreground text-xs">
-      <span class="font-medium">제공자:</span> {{ game?.provider }}
-    </p>
-    <p v-if="game?.externalId" class="text-muted-foreground text-xs">
-      <span class="font-medium">외부 ID:</span> {{ game?.externalId }}
-    </p>
+    <!-- 게임: 기존 실행 파일 UI -->
+    <div v-else class="border-t pt-2">
+      <label class="text-muted-foreground text-sm font-medium">실행 파일</label>
+      <div class="mt-1 flex items-center justify-between">
+        <div class="flex min-w-0 flex-1 items-center gap-2">
+          <File :size="14" class="text-muted-foreground shrink-0" />
+          <p class="truncate font-mono text-sm">
+            {{ game?.executablePath || "자동 감지" }}
+          </p>
+        </div>
+        <div class="flex gap-1">
+          <Button
+            size="sm"
+            variant="ghost"
+            @click="handleSelectExecutableFile"
+            title="파일 선택"
+          >
+            <Folder :size="14" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            @click="handleResetExecutablePath"
+            title="자동 감지로 초기화"
+            :disabled="!game?.executablePath"
+          >
+            <RotateCcw :size="14" />
+          </Button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 경로 정보 -->
+    <div class="space-y-1 border-t pt-2">
+      <p class="text-muted-foreground text-xs">
+        <span class="font-medium">경로:</span> {{ game?.path }}
+      </p>
+      <p class="text-muted-foreground text-xs">
+        <span class="font-medium">소스:</span> {{ game?.source }}
+      </p>
+      <p v-if="game?.provider" class="text-muted-foreground text-xs">
+        <span class="font-medium">제공자:</span> {{ game?.provider }}
+      </p>
+      <p v-if="game?.externalId" class="text-muted-foreground text-xs">
+        <span class="font-medium">외부 ID:</span> {{ game?.externalId }}
+      </p>
+    </div>
   </div>
 </template>

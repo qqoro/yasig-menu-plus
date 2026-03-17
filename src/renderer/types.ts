@@ -17,6 +17,7 @@ export interface GameItem {
   source: string;
   thumbnail: string | null;
   isCompressFile: boolean;
+  hasExecutable?: boolean;
   publishDate: Date | null;
   makers: string[];
   categories: string[];

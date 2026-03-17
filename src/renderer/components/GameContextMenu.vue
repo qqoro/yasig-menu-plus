@@ -96,7 +96,7 @@ const emit = defineEmits<Emits>();
       <template v-else>
         <ContextMenuItem @select="emit('play', game)">
           <Play :size="14" />
-          실행
+          {{ game.hasExecutable === false ? "재생" : "실행" }}
         </ContextMenuItem>
         <ContextMenuItem @select="emit('open-folder', game)">
           <FolderOpen :size="14" />

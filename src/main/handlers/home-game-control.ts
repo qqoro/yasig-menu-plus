@@ -9,6 +9,9 @@
  * - 원본 사이트 열기
  */
 
+import { spawn } from "child_process";
+import { existsSync, readdirSync } from "fs";
+import { extname, join } from "path";
 import type { IpcMainInvokeEvent } from "electron";
 import { shell } from "electron";
 import { db } from "../db/db-manager.js";
@@ -18,10 +21,57 @@ import { getOrCreateUserGameData } from "../services/user-game-data.js";
 import {
   addExcludedExecutable,
   getExcludedExecutables as getExcludedExecutablesFromStore,
+  getMediaPlayerSettings,
   removeExcludedExecutable,
 } from "../store.js";
 import { validateDirectoryPath, validatePath } from "../utils/validator.js";
 import { findExecutables, selectBestExecutable } from "./home-scan.js";
+
+const AUDIO_EXTENSIONS = [".mp3", ".wav", ".flac", ".ogg", ".m4a"];
+const VIDEO_EXTENSIONS = [".mp4", ".avi", ".mkv", ".wmv"];
+const MEDIA_EXTENSIONS = [...AUDIO_EXTENSIONS, ...VIDEO_EXTENSIONS];
+
+/**
+ * 폴더를 재귀 탐색하여 상대 경로 기준 사전순 첫 번째 미디어 파일 반환
+ */
+function findFirstMediaFile(folderPath: string): string | null {
+  const mediaFiles: string[] = [];
+
+  function traverse(currentPath: string): void {
+    try {
+      const entries = readdirSync(currentPath, { withFileTypes: true });
+      const sorted = [...entries].sort((a, b) => a.name.localeCompare(b.name));
+
+      for (const entry of sorted) {
+        if (entry.name.startsWith(".")) continue;
+        const fullPath = join(currentPath, entry.name);
+
+        if (entry.isFile()) {
+          const ext = extname(entry.name).toLowerCase();
+          if (MEDIA_EXTENSIONS.includes(ext)) {
+            mediaFiles.push(fullPath);
+            return;
+          }
+        } else if (entry.isDirectory()) {
+          traverse(fullPath);
+          if (mediaFiles.length > 0) return;
+        }
+      }
+    } catch {
+      // 접근 불가 폴더 무시
+    }
+  }
+
+  traverse(folderPath);
+  return mediaFiles[0] ?? null;
+}
+
+/**
+ * 미디어 파일이 오디오인지 확인
+ */
+function isAudioFile(filePath: string): boolean {
+  return AUDIO_EXTENSIONS.includes(extname(filePath).toLowerCase());
+}
 
 /**
  * 게임 실행 핸들러
@@ -58,7 +108,35 @@ export async function playGameHandler(
   }
 
   if (!executablePath) {
-    throw new Error("실행 파일을 찾을 수 없습니다.");
+    // 미디어 재생 fallback
+    const mediaFile = findFirstMediaFile(path);
+    if (!mediaFile) {
+      throw new Error("실행 파일을 찾을 수 없습니다.");
+    }
+
+    const playerSettings = getMediaPlayerSettings();
+    const isAudio = isAudioFile(mediaFile);
+    const playerPath = isAudio
+      ? playerSettings.audioPlayerPath
+      : playerSettings.videoPlayerPath;
+
+    if (playerPath && existsSync(playerPath)) {
+      spawn(playerPath, [mediaFile], {
+        detached: true,
+        stdio: "ignore",
+      }).unref();
+    } else {
+      await shell.openPath(mediaFile);
+    }
+
+    // lastPlayedAt 업데이트
+    const userGameDataId = await getOrCreateUserGameData(path);
+    await db("userGameData").where("id", userGameDataId).update({
+      lastPlayedAt: new Date(),
+    });
+    await db("games").where("path", path).update({ updatedAt: new Date() });
+
+    return { executablePath: mediaFile };
   }
 
   // .exe 파일인 경우 ProcessMonitor로 실행 (플레이 타임 추적)

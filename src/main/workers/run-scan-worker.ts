@@ -27,6 +27,7 @@ function getWorkerPath(): string {
 export function runScanWorker(
   sourcePath: string,
   maxDepth = 5,
+  enableNonGameContent = false,
 ): Promise<GameCandidate[]> {
   return new Promise((resolve, reject) => {
     const worker = new Worker(getWorkerPath());
@@ -51,6 +52,10 @@ export function runScanWorker(
       reject(error);
     });
 
-    worker.postMessage({ sourcePath, maxDepth } satisfies ScanRequest);
+    worker.postMessage({
+      sourcePath,
+      maxDepth,
+      enableNonGameContent,
+    } satisfies ScanRequest);
   });
 }

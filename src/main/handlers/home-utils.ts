@@ -105,6 +105,7 @@ export function buildGameItems(
     thumbnail: string | null;
     executablePath: string | null;
     isCompressFile: SqliteBoolean;
+    hasExecutable?: number | boolean;
     publishDate: Date | null;
     translatedTitle: string | null;
     translationSource: string | null;
@@ -133,6 +134,8 @@ export function buildGameItems(
     thumbnail: toAbsolutePath(g.thumbnail),
     executablePath: g.executablePath || null,
     isCompressFile: Boolean(g.isCompressFile),
+    hasExecutable:
+      g.hasExecutable !== undefined ? Boolean(g.hasExecutable) : true,
     publishDate: g.publishDate ? new Date(g.publishDate) : null,
     translatedTitle: g.translatedTitle || null,
     translationSource: g.translationSource || null,

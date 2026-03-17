@@ -17,6 +17,7 @@ import type { IpcMainEventMap, IpcRendererEventMap } from "../events.js";
 import { computeFingerprint } from "../lib/fingerprint.js";
 import { EXECUTABLE_EXTENSIONS } from "../lib/scan-logic.js";
 import {
+  getEnableNonGameContent,
   getExcludedExecutables as getExcludedExecutablesFromStore,
   getScanDepth,
   updateLibraryScanHistory,
@@ -109,8 +110,15 @@ export async function scanFolder(
     const foundPaths = new Set<string>();
     let addedCount = 0;
 
+    // 비게임 콘텐츠 인식 설정 로드
+    const enableNonGameContent = getEnableNonGameContent();
+
     // Worker Thread에서 스캔 실행
-    const candidates = await runScanWorker(sourcePath, getScanDepth());
+    const candidates = await runScanWorker(
+      sourcePath,
+      getScanDepth(),
+      enableNonGameContent,
+    );
 
     // 발견한 게임 후보 등록
     for (const candidate of candidates) {
@@ -135,6 +143,7 @@ export async function scanFolder(
         originalTitle: name,
         source: sourcePath,
         isCompressFile: Boolean(isCompressFile),
+        hasExecutable: candidate.hasExecutable,
         fingerprint,
       };
 
@@ -273,6 +282,7 @@ export async function refreshListHandler(
       "games.thumbnail",
       "games.executablePath",
       "games.isCompressFile",
+      "games.hasExecutable",
       "games.publishDate",
       "games.translatedTitle",
       "games.translationSource",

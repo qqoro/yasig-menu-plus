@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Cookie, Loader2, Palette } from "lucide-vue-next";
+import { Cookie, Folder, Loader2, Palette, RotateCcw } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
 import { toast } from "vue-sonner";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,74 @@ function handleScanDepthChange() {
   const depth = Math.max(1, Math.min(10, Number(scanDepthInput.value) || 5));
   scanDepthInput.value = depth;
   updateSettingsMutation.mutate({ scanDepth: depth });
+}
+
+// 비게임 콘텐츠 인식 토글
+const enableNonGameContent = computed({
+  get: () => settings.value?.enableNonGameContent ?? false,
+  set: (value: boolean) => {
+    updateSettingsMutation.mutate({ enableNonGameContent: value });
+  },
+});
+
+// 오디오 플레이어 선택
+async function selectAudioPlayer() {
+  const result = await window.api.invoke("selectProgram");
+  const filePath = result?.filePaths?.[0];
+  if (filePath) {
+    updateSettingsMutation.mutate({
+      mediaPlayerSettings: {
+        ...(settings.value?.mediaPlayerSettings ?? {
+          audioPlayerPath: null,
+          videoPlayerPath: null,
+        }),
+        audioPlayerPath: filePath,
+      },
+    });
+  }
+}
+
+// 오디오 플레이어 초기화
+function resetAudioPlayer() {
+  updateSettingsMutation.mutate({
+    mediaPlayerSettings: {
+      ...(settings.value?.mediaPlayerSettings ?? {
+        audioPlayerPath: null,
+        videoPlayerPath: null,
+      }),
+      audioPlayerPath: null,
+    },
+  });
+}
+
+// 비디오 플레이어 선택
+async function selectVideoPlayer() {
+  const result = await window.api.invoke("selectProgram");
+  const filePath = result?.filePaths?.[0];
+  if (filePath) {
+    updateSettingsMutation.mutate({
+      mediaPlayerSettings: {
+        ...(settings.value?.mediaPlayerSettings ?? {
+          audioPlayerPath: null,
+          videoPlayerPath: null,
+        }),
+        videoPlayerPath: filePath,
+      },
+    });
+  }
+}
+
+// 비디오 플레이어 초기화
+function resetVideoPlayer() {
+  updateSettingsMutation.mutate({
+    mediaPlayerSettings: {
+      ...(settings.value?.mediaPlayerSettings ?? {
+        audioPlayerPath: null,
+        videoPlayerPath: null,
+      }),
+      videoPlayerPath: null,
+    },
+  });
 }
 
 // 테마 설정
@@ -157,6 +225,115 @@ async function handleGetNewCookie(): Promise<void> {
             >
               {{ theme.label }}
             </button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <!-- 비게임 콘텐츠 설정 -->
+      <Card>
+        <CardHeader class="pb-4">
+          <CardTitle class="text-lg">비게임 콘텐츠</CardTitle>
+          <CardDescription class="text-sm">
+            RJ코드 폴더를 비게임 콘텐츠(오디오/비디오)로 인식하고 외부
+            플레이어로 재생합니다.
+          </CardDescription>
+        </CardHeader>
+        <CardContent class="flex flex-col gap-4">
+          <!-- 비게임 콘텐츠 인식 토글 -->
+          <div class="flex items-center justify-between">
+            <div class="space-y-0.5">
+              <label class="text-sm leading-none font-medium"
+                >비게임 콘텐츠 인식</label
+              >
+              <p class="text-muted-foreground text-xs">
+                RJ코드 폴더를 비게임 콘텐츠로 인식합니다
+              </p>
+            </div>
+            <Switch v-model="enableNonGameContent" />
+          </div>
+
+          <!-- 오디오 플레이어 선택 -->
+          <div
+            class="border-border flex flex-col gap-2 border-t pt-3"
+            :class="{ 'pointer-events-none opacity-50': !enableNonGameContent }"
+          >
+            <div class="space-y-0.5">
+              <label class="text-sm leading-none font-medium"
+                >오디오 플레이어</label
+              >
+              <p class="text-muted-foreground truncate font-mono text-xs">
+                {{
+                  settings?.mediaPlayerSettings?.audioPlayerPath ||
+                  "설정되지 않음"
+                }}
+              </p>
+            </div>
+            <div class="flex gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                class="flex-1"
+                @click="selectAudioPlayer"
+                :disabled="!enableNonGameContent"
+              >
+                <Folder :size="14" />
+                파일 선택
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                @click="resetAudioPlayer"
+                :disabled="
+                  !enableNonGameContent ||
+                  !settings?.mediaPlayerSettings?.audioPlayerPath
+                "
+                title="초기화"
+              >
+                <RotateCcw :size="14" />
+              </Button>
+            </div>
+          </div>
+
+          <!-- 비디오 플레이어 선택 -->
+          <div
+            class="border-border flex flex-col gap-2 border-t pt-3"
+            :class="{ 'pointer-events-none opacity-50': !enableNonGameContent }"
+          >
+            <div class="space-y-0.5">
+              <label class="text-sm leading-none font-medium"
+                >비디오 플레이어</label
+              >
+              <p class="text-muted-foreground truncate font-mono text-xs">
+                {{
+                  settings?.mediaPlayerSettings?.videoPlayerPath ||
+                  "설정되지 않음"
+                }}
+              </p>
+            </div>
+            <div class="flex gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                class="flex-1"
+                @click="selectVideoPlayer"
+                :disabled="!enableNonGameContent"
+              >
+                <Folder :size="14" />
+                파일 선택
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                @click="resetVideoPlayer"
+                :disabled="
+                  !enableNonGameContent ||
+                  !settings?.mediaPlayerSettings?.videoPlayerPath
+                "
+                title="초기화"
+              >
+                <RotateCcw :size="14" />
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

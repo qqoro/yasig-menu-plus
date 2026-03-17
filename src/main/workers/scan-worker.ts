@@ -7,6 +7,7 @@ import type { GameCandidate } from "../lib/scan-logic.js";
 export interface ScanRequest {
   sourcePath: string;
   maxDepth: number;
+  enableNonGameContent: boolean;
 }
 
 /** Worker → Main */
@@ -19,6 +20,7 @@ parentPort?.on("message", (request: ScanRequest) => {
     const candidates = scanFolderRecursive(
       request.sourcePath,
       request.maxDepth,
+      request.enableNonGameContent,
     );
     parentPort!.postMessage({
       type: "SCAN_COMPLETE",

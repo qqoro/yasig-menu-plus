@@ -14,6 +14,7 @@ import {
   selectExecutableFileHandler,
   selectFileHandler,
   selectFolderHandler,
+  selectProgramHandler,
 } from "./handlers/dialog.js";
 import { registerHandlers as registerGameDetailHandlers } from "./handlers/gameDetail.js";
 import * as GameImagesHandlers from "./handlers/gameImages.js";
@@ -220,6 +221,7 @@ function registerIpcHandlers() {
   // ========== 다이얼로그 ==========
   ipcMain.handle(IpcRendererSend.SelectFolder, selectFolderHandler);
   ipcMain.handle(IpcRendererSend.SelectFile, selectFileHandler);
+  ipcMain.handle(IpcRendererSend.SelectProgram, selectProgramHandler);
   ipcMain.handle(
     IpcRendererSend.SelectExecutableFile,
     selectExecutableFileHandler,
