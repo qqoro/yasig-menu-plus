@@ -1,5 +1,6 @@
 import { Page } from "puppeteer-core";
 import { db } from "../db/db-manager.js";
+import { getEnableGoogleCollector } from "../store.js";
 import { updateUserGameDataExternalKey } from "../services/user-game-data.js";
 import { deleteImage, downloadImage } from "../utils/downloader.js";
 import { toAbsolutePath } from "../utils/image-path.js";
@@ -81,6 +82,11 @@ export async function findCollector(path: string) {
   }
 
   // 2단계: 일반 컬렉터가 모두 실패하면 GoogleCollector 실행
+  // 단, 설정에서 비활성화된 경우 실행하지 않음
+  if (!getEnableGoogleCollector()) {
+    return undefined;
+  }
+
   const fallbackId = await fallbackCollector.getId(path);
   if (fallbackId) {
     return {

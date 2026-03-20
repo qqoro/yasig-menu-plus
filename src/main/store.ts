@@ -66,6 +66,7 @@ export interface StoreSchema {
   disabledLibraryPaths?: string[]; // 비활성화된 라이브러리 경로 목록
   scanDepth?: number; // 재귀 스캔 최대 깊이 (기본값: 5)
   enableNonGameContent?: boolean; // 비게임 콘텐츠 인식 활성화 여부
+  enableGoogleCollector?: boolean; // Google 콜렉터 활성화 여부 (기본값: true)
   mediaPlayerSettings?: {
     audioPlayerPath: string | null; // 오디오 플레이어 경로
     videoPlayerPath: string | null; // 비디오 플레이어 경로
@@ -108,6 +109,7 @@ const DEFAULTS: StoreSchema = {
   disabledLibraryPaths: [],
   scanDepth: 5,
   enableNonGameContent: false,
+  enableGoogleCollector: true, // 기본적으로 Google 콜렉터 활성화
   mediaPlayerSettings: {
     audioPlayerPath: null,
     videoPlayerPath: null,
@@ -323,6 +325,7 @@ export function getAllSettings(): StoreSchema {
     disabledLibraryPaths: store.get("disabledLibraryPaths"),
     scanDepth: store.get("scanDepth"),
     enableNonGameContent: store.get("enableNonGameContent"),
+    enableGoogleCollector: store.get("enableGoogleCollector"),
     mediaPlayerSettings: store.get("mediaPlayerSettings"),
   };
 }
@@ -526,6 +529,22 @@ export function setMediaPlayerSettings(
 ): void {
   const store = getStore();
   store.set("mediaPlayerSettings", settings);
+}
+
+/**
+ * Google 콜렉터 활성화 여부 가져오기
+ */
+export function getEnableGoogleCollector(): boolean {
+  const store = getStore();
+  return store.get("enableGoogleCollector") ?? DEFAULTS.enableGoogleCollector!;
+}
+
+/**
+ * Google 콜렉터 활성화 여부 설정
+ */
+export function setEnableGoogleCollector(enabled: boolean): void {
+  const store = getStore();
+  store.set("enableGoogleCollector", enabled);
 }
 
 /**

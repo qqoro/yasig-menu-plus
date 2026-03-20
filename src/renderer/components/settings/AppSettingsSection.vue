@@ -58,6 +58,14 @@ const enableNonGameContent = computed({
   },
 });
 
+// Google 콜렉터 활성화 설정
+const enableGoogleCollector = computed({
+  get: () => settings.value?.enableGoogleCollector ?? true,
+  set: (value: boolean) => {
+    updateSettingsMutation.mutate({ enableGoogleCollector: value });
+  },
+});
+
 // 오디오 플레이어 선택
 async function selectAudioPlayer() {
   const result = await window.api.invoke("selectProgram");
@@ -338,7 +346,7 @@ async function handleGetNewCookie(): Promise<void> {
         </CardContent>
       </Card>
 
-      <!-- Google 쿠키 설정 -->
+      <!-- Google 검색 설정 -->
       <Card>
         <CardHeader class="pb-4">
           <CardTitle class="text-lg">Google 검색 설정</CardTitle>
@@ -347,26 +355,57 @@ async function handleGetNewCookie(): Promise<void> {
             설정하세요.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Button
-            @click="handleGetNewCookie"
-            :disabled="getNewCookieMutation.isPending.value"
-            variant="outline"
-            class="w-full"
-            size="default"
+        <CardContent class="flex flex-col gap-4">
+          <!-- Google 콜렉터 활성화 토글 -->
+          <div class="flex items-center justify-between">
+            <div class="space-y-0.5">
+              <label class="text-sm leading-none font-medium"
+                >Google 이미지 검색 사용</label
+              >
+              <p class="text-muted-foreground text-xs">
+                ID가 없는 게임의 썸네일을 Google 이미지 검색으로 찾습니다
+              </p>
+            </div>
+            <Switch v-model="enableGoogleCollector" />
+          </div>
+
+          <!-- 쿠키 설정 (Google 콜렉터 활성화 시에만) -->
+          <div
+            class="border-border border-t pt-3"
+            :class="{
+              'pointer-events-none opacity-50': !enableGoogleCollector,
+            }"
           >
-            <Loader2
-              v-if="getNewCookieMutation.isPending.value"
-              :size="18"
-              class="animate-spin"
-            />
-            <Cookie v-else :size="18" />
-            {{
-              getNewCookieMutation.isPending.value
-                ? "설정 중..."
-                : "Google 쿠키 설정"
-            }}
-          </Button>
+            <div class="mb-2 space-y-0.5">
+              <label class="text-sm leading-none font-medium"
+                >세이프서치 해제</label
+              >
+              <p class="text-muted-foreground text-xs">
+                쿠키가 만료되면 다시 설정하세요
+              </p>
+            </div>
+            <Button
+              @click="handleGetNewCookie"
+              :disabled="
+                getNewCookieMutation.isPending.value || !enableGoogleCollector
+              "
+              variant="outline"
+              class="w-full"
+              size="default"
+            >
+              <Loader2
+                v-if="getNewCookieMutation.isPending.value"
+                :size="18"
+                class="animate-spin"
+              />
+              <Cookie v-else :size="18" />
+              {{
+                getNewCookieMutation.isPending.value
+                  ? "설정 중..."
+                  : "Google 쿠키 설정"
+              }}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
