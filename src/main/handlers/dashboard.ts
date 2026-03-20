@@ -3,10 +3,13 @@
  */
 
 import type { IpcMainInvokeEvent } from "electron";
+import { readdir, stat } from "fs/promises";
+import { join } from "path";
 import { db } from "../db/db-manager.js";
 import type { DashboardStats, IpcMainEventMap } from "../events.js";
 import { leftJoinUserGameData } from "./home-utils.js";
 import { toAbsolutePath } from "../utils/image-path.js";
+import { getLibraryPaths } from "../store.js";
 
 /** 라이브러리 개요 통계 */
 async function getOverviewStats(): Promise<DashboardStats["overview"]> {
@@ -352,26 +355,29 @@ export async function getDashboardStatsHandler(
 export async function getLibraryStorageSizeHandler(
   _event: IpcMainInvokeEvent,
 ): Promise<IpcMainEventMap["libraryStorageSize"]> {
-  const { readdirSync, statSync } = await import("fs");
-  const { join } = await import("path");
-  const { getLibraryPaths } = await import("../store.js");
-
-  function getFolderSize(dirPath: string): number {
+  async function getFolderSize(dirPath: string): Promise<number> {
     let size = 0;
     try {
-      const entries = readdirSync(dirPath, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = join(dirPath, entry.name);
-        if (entry.isDirectory()) {
-          size += getFolderSize(fullPath);
-        } else if (entry.isFile()) {
-          try {
-            size += statSync(fullPath).size;
-          } catch {
-            // 접근 불가 파일 무시
+      const entries = await readdir(dirPath, { withFileTypes: true });
+      // 병렬로 처리하여 성능 개선
+      const results = await Promise.all(
+        entries.map(async (entry) => {
+          const fullPath = join(dirPath, entry.name);
+          if (entry.isDirectory()) {
+            return getFolderSize(fullPath);
+          } else if (entry.isFile()) {
+            try {
+              const fileStat = await stat(fullPath);
+              return fileStat.size;
+            } catch {
+              // 접근 불가 파일 무시
+              return 0;
+            }
           }
-        }
-      }
+          return 0;
+        }),
+      );
+      size = results.reduce((sum, s) => sum + s, 0);
     } catch {
       // 접근 불가 디렉토리 무시
     }
@@ -381,15 +387,22 @@ export async function getLibraryStorageSizeHandler(
   const libraryPaths = getLibraryPaths();
   const libraries: Array<{ path: string; size: number; gameCount: number }> =
     [];
-  for (const libPath of libraryPaths) {
-    const size = getFolderSize(libPath);
-    const gameCountRow = await db("games")
-      .where("source", libPath)
-      .count("path as count")
-      .first();
-    const gameCount = (gameCountRow as any)?.count ?? 0;
-    libraries.push({ path: libPath, size, gameCount });
-  }
+
+  // 각 라이브러리 병렬 처리
+  const libraryResults = await Promise.all(
+    libraryPaths.map(async (libPath) => {
+      const [size, gameCountRow] = await Promise.all([
+        getFolderSize(libPath),
+        db("games").where("source", libPath).count("path as count").first(),
+      ]);
+      return {
+        path: libPath,
+        size,
+        gameCount: (gameCountRow as any)?.count ?? 0,
+      };
+    }),
+  );
+  libraries.push(...libraryResults);
 
   const totalSize = libraries.reduce((sum, lib) => sum + lib.size, 0);
 
