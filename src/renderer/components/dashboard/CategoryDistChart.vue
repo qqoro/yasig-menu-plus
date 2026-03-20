@@ -45,9 +45,9 @@ const option = computed(() => ({
   series: [
     {
       type: "pie",
-      center: ["50%", "42%"],
-      radius: ["45%", "70%"],
-      avoidLabelOverlap: false,
+      center: ["50%", "45%"],
+      radius: ["35%", "55%"],
+      avoidLabelOverlap: true,
       label: {
         show: true,
         formatter: "{b}\n{d}%",
