@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { RJ_CODE_REGEX, extractRjCode, hasRjCode } from "../rj-code";
+import { RJ_CODE_REGEX, extractRjCode, hasRjCode } from "../rj-code.js";
 
 describe("extractRjCode", () => {
   it("RJ 코드를 추출한다 (RJ123456)", () => {

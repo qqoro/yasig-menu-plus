@@ -107,7 +107,17 @@ vi.mock("../../db/db-manager.js", () => ({
 }));
 
 // 모킹 후 import (vi.mock 호이스팅)
-import * as store from "../../store.js";
+import * as _store from "../../store.js";
+
+// store 모킹 함수에 접근하기 위한 타입 단언
+const store = _store as unknown as {
+  getLibraryPaths: ReturnType<typeof vi.fn>;
+  setLastRefreshedAt: ReturnType<typeof vi.fn>;
+  getLastRefreshedAt: ReturnType<typeof vi.fn>;
+  removeLibraryPath: ReturnType<typeof vi.fn>;
+  removeLibraryScanHistory: ReturnType<typeof vi.fn>;
+};
+
 import {
   getLibraryPathsHandler,
   getLastRefreshedHandler,
@@ -275,7 +285,7 @@ describe("getLibraryPathsHandler", () => {
   it("store에서 경로 목록을 반환해야 한다", async () => {
     store.getLibraryPaths.mockReturnValueOnce(["/library/a", "/library/b"]);
 
-    const result = await getLibraryPathsHandler({} as any, {});
+    const result = await getLibraryPathsHandler({} as any, {} as any);
 
     expect(result.paths).toEqual(["/library/a", "/library/b"]);
     expect(store.getLibraryPaths).toHaveBeenCalled();
@@ -299,7 +309,7 @@ describe("setLastRefreshedHandler / getLastRefreshedHandler", () => {
     expect(store.setLastRefreshedAt).toHaveBeenCalledWith(timestamp);
 
     // 조회
-    const result = await getLastRefreshedHandler({} as any, {});
+    const result = await getLastRefreshedHandler({} as any, {} as any);
     expect(result.timestamp).toBe(timestamp);
     expect(store.getLastRefreshedAt).toHaveBeenCalled();
   });

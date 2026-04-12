@@ -387,8 +387,8 @@ describe("비게임 콘텐츠 (RJ코드) 인식", () => {
       return [createDirent("RJ123456_작품명", { isDirectory: true })] as any;
     });
 
-    // enableNonGameContent=true여도 scanSingleFolder는 subFolders에만 추가
-    const result = scanSingleFolder("/library", true);
+    // scanSingleFolder는 RJ코드 폴더를 subFolders에만 추가
+    const result = scanSingleFolder("/library");
     expect(result.candidates).toHaveLength(0);
     expect(result.subFolders).toContain(join("/library", "RJ123456_작품명"));
   });

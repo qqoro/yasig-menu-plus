@@ -67,10 +67,7 @@ export function hasExecutableFile(folderPath: string): boolean {
 /**
  * 단일 폴더를 스캔하여 게임 후보와 하위 폴더 목록 반환
  */
-export function scanSingleFolder(
-  folderPath: string,
-  enableNonGameContent = false,
-): {
+export function scanSingleFolder(folderPath: string): {
   candidates: GameCandidate[];
   subFolders: string[];
 } {
@@ -167,10 +164,7 @@ export function scanFolderRecursive(
       continue;
     }
 
-    const { candidates, subFolders } = scanSingleFolder(
-      currentPath,
-      enableNonGameContent,
-    );
+    const { candidates, subFolders } = scanSingleFolder(currentPath);
 
     // 게임 후보 수집
     allCandidates.push(...candidates);
