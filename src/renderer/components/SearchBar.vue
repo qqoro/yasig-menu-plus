@@ -78,9 +78,18 @@ function selectItem(suggestion: string): void {
     finalSuggestion = suggestion.replace(/\s+/g, "_");
   }
 
+  // 마지막 단어의 - 접두사 보존 (제외 검색)
+  const lastWord = props.modelValue.substring(
+    props.modelValue.lastIndexOf(" ") + 1,
+  );
+  const excludePrefix = lastWord.startsWith("-") ? "-" : "";
+
   // prefix가 있으면 prefix:value 형태로 만들기
   if (currentPrefix.value) {
-    finalSuggestion = `${currentPrefix.value}:${finalSuggestion}`;
+    finalSuggestion = `${excludePrefix}${currentPrefix.value}:${finalSuggestion}`;
+  } else if (excludePrefix && finalSuggestion.endsWith(":")) {
+    // prefix 제안 단계(-t → tag:)에서도 - 보존
+    finalSuggestion = `-${finalSuggestion}`;
   }
 
   const newValue = selectSuggestion(props.modelValue, finalSuggestion);

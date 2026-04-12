@@ -37,7 +37,11 @@ export function useAutocomplete() {
   // 현재 입력된 prefix (예: "tag", "circle", "태그", "서클" 등)
   const currentPrefix = computed((): AutocompletePrefix => {
     const lastSpaceIndex = inputValue.value.lastIndexOf(" ");
-    const lastWord = inputValue.value.substring(lastSpaceIndex + 1);
+    let lastWord = inputValue.value.substring(lastSpaceIndex + 1);
+    // 제외 검색 prefix(-tag:) 인식: 앞의 - 제거 후 확인
+    if (lastWord.startsWith("-")) {
+      lastWord = lastWord.substring(1);
+    }
     const colonIndex = lastWord.indexOf(":");
     if (colonIndex > -1) {
       const prefix = lastWord.substring(0, colonIndex);
@@ -52,7 +56,11 @@ export function useAutocomplete() {
   // 현재 검색어 (prefix 제외)
   const currentSearchTerm = computed(() => {
     const lastSpaceIndex = inputValue.value.lastIndexOf(" ");
-    const lastWord = inputValue.value.substring(lastSpaceIndex + 1);
+    let lastWord = inputValue.value.substring(lastSpaceIndex + 1);
+    // 제외 검색 prefix에서 - 제거
+    if (lastWord.startsWith("-")) {
+      lastWord = lastWord.substring(1);
+    }
     const colonIndex = lastWord.indexOf(":");
     if (colonIndex > -1) {
       return lastWord.substring(colonIndex + 1);
@@ -88,7 +96,9 @@ export function useAutocomplete() {
   const usedPrefixes = computed(() => {
     const used = new Set<string>();
     const words = inputValue.value.toLowerCase().split(/\s+/);
-    for (const word of words) {
+    for (let word of words) {
+      // 제외 검색 prefix에서 - 제거
+      if (word.startsWith("-")) word = word.substring(1);
       const colonIndex = word.indexOf(":");
       if (colonIndex > 0) {
         used.add(word.substring(0, colonIndex));

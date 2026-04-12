@@ -41,6 +41,9 @@ interface ParsedSearchQuery {
   circles: string[];
   tags: string[];
   categories: string[];
+  excludeCircles: string[];
+  excludeTags: string[];
+  excludeCategories: string[];
 }
 
 /**
@@ -50,25 +53,31 @@ interface ParsedSearchQuery {
  * - circle:name / 서클:name
  * - tag:value / 태그:value
  * - category:RPG / 카테고리:RPG
+ * - -tag:RPG / -circle:name / -category:Action (제외 검색)
  */
 export function parseSearchQuery(query: string): ParsedSearchQuery {
   const result: ParsedSearchQuery = {
     circles: [],
     tags: [],
     categories: [],
+    excludeCircles: [],
+    excludeTags: [],
+    excludeCategories: [],
   };
 
   // 한글+영문 prefix 패턴 생성
   const allPrefixes = [...ENGLISH_PREFIXES, ...KOREAN_PREFIXES];
   const prefixPattern = allPrefixes.join("|");
-  const prefixRegex = new RegExp(String.raw`(${prefixPattern}):(\S+)`, "g");
+  const prefixRegex = new RegExp(String.raw`-?(${prefixPattern}):(\S+)`, "g");
 
   let remainingQuery = query;
   let match;
 
   while ((match = prefixRegex.exec(query)) !== null) {
+    const fullMatch = match[0];
     const rawPrefix = match[1];
     const value = match[2];
+    const isExclude = fullMatch.startsWith("-");
     if (!value) continue;
 
     // 한글/영문을 영문으로 정규화
@@ -86,7 +95,16 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
         category: "categories",
       };
       const field = fieldMap[normalizedPrefix];
-      result[field].push(value);
+      if (isExclude) {
+        const excludeField =
+          `exclude${field.charAt(0).toUpperCase() + field.slice(1)}` as
+            | "excludeCircles"
+            | "excludeTags"
+            | "excludeCategories";
+        result[excludeField].push(value);
+      } else {
+        result[field].push(value);
+      }
     } else if (normalizedPrefix === "provider") {
       result.provider = value;
     } else if (normalizedPrefix === "id") {
@@ -94,12 +112,12 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
     }
 
     // 매칭된 부분을 제거
-    remainingQuery = remainingQuery.replace(match[0], "");
+    remainingQuery = remainingQuery.replace(fullMatch, "");
   }
 
   // 불완전한 prefix: 형태 제거 (값이 없는 경우)
   remainingQuery = remainingQuery
-    .replaceAll(new RegExp(String.raw`(?:${prefixPattern}):(\s|$)`, "g"), "")
+    .replaceAll(new RegExp(String.raw`-?(?:${prefixPattern}):(\s|$)`, "g"), "")
     .trim();
 
   // 남은 텍스트 (공백 제거)
@@ -269,6 +287,40 @@ export async function searchGamesHandler(
 
       for (const category of parsed.categories) {
         query = query.whereExists(
+          db("gameCategories")
+            .join("categories", "gameCategories.categoryId", "categories.id")
+            .where("gameCategories.gamePath", db.ref("games.path"))
+            .where("categories.name", "LIKE", `%${category}%`),
+        );
+      }
+    }
+
+    // 제외 서클/태그/카테고리 필터 (whereNotExists)
+    if (
+      parsed.excludeCircles.length > 0 ||
+      parsed.excludeTags.length > 0 ||
+      parsed.excludeCategories.length > 0
+    ) {
+      for (const circle of parsed.excludeCircles) {
+        query = query.whereNotExists(
+          db("gameMakers")
+            .join("makers", "gameMakers.makerId", "makers.id")
+            .where("gameMakers.gamePath", db.ref("games.path"))
+            .where("makers.name", "LIKE", `%${circle}%`),
+        );
+      }
+
+      for (const tag of parsed.excludeTags) {
+        query = query.whereNotExists(
+          db("gameTags")
+            .join("tags", "gameTags.tagId", "tags.id")
+            .where("gameTags.gamePath", db.ref("games.path"))
+            .where("tags.name", "LIKE", `%${tag}%`),
+        );
+      }
+
+      for (const category of parsed.excludeCategories) {
+        query = query.whereNotExists(
           db("gameCategories")
             .join("categories", "gameCategories.categoryId", "categories.id")
             .where("gameCategories.gamePath", db.ref("games.path"))
@@ -498,6 +550,40 @@ export async function getRandomGameHandler(
 
       for (const category of parsed.categories) {
         query = query.whereExists(
+          db("gameCategories")
+            .join("categories", "gameCategories.categoryId", "categories.id")
+            .where("gameCategories.gamePath", db.ref("games.path"))
+            .where("categories.name", "LIKE", `%${category}%`),
+        );
+      }
+    }
+
+    // 제외 서클/태그/카테고리 필터 (whereNotExists)
+    if (
+      parsed.excludeCircles.length > 0 ||
+      parsed.excludeTags.length > 0 ||
+      parsed.excludeCategories.length > 0
+    ) {
+      for (const circle of parsed.excludeCircles) {
+        query = query.whereNotExists(
+          db("gameMakers")
+            .join("makers", "gameMakers.makerId", "makers.id")
+            .where("gameMakers.gamePath", db.ref("games.path"))
+            .where("makers.name", "LIKE", `%${circle}%`),
+        );
+      }
+
+      for (const tag of parsed.excludeTags) {
+        query = query.whereNotExists(
+          db("gameTags")
+            .join("tags", "gameTags.tagId", "tags.id")
+            .where("gameTags.gamePath", db.ref("games.path"))
+            .where("tags.name", "LIKE", `%${tag}%`),
+        );
+      }
+
+      for (const category of parsed.excludeCategories) {
+        query = query.whereNotExists(
           db("gameCategories")
             .join("categories", "gameCategories.categoryId", "categories.id")
             .where("gameCategories.gamePath", db.ref("games.path"))

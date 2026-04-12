@@ -28,6 +28,9 @@ interface Props {
   isActiveTag?: (tag: string) => boolean;
   isActiveCircle?: (circle: string) => boolean;
   isActiveCategory?: (category: string) => boolean;
+  isExcludedTag?: (tag: string) => boolean;
+  isExcludedCircle?: (circle: string) => boolean;
+  isExcludedCategory?: (category: string) => boolean;
   isPlaying?: boolean;
   isToggling?: boolean;
   isSelected?: boolean;
@@ -43,6 +46,9 @@ interface Emits {
   (e: "click-tag", tag: string): void;
   (e: "click-circle", circle: string): void;
   (e: "click-category", category: string): void;
+  (e: "exclude-tag", tag: string): void;
+  (e: "exclude-circle", circle: string): void;
+  (e: "exclude-category", category: string): void;
   (e: "show-detail", game: GameItem): void;
   (e: "open-original-site", game: GameItem): void;
   (e: "select", game: GameItem, event: MouseEvent): void;
@@ -188,6 +194,25 @@ function handleClickCategory(category: string, event: MouseEvent): void {
   emit("click-category", category);
 }
 
+// 제외 태그 우클릭
+function handleExcludeTag(tag: string, event: MouseEvent): void {
+  event.preventDefault();
+  event.stopPropagation();
+  emit("exclude-tag", tag);
+}
+
+function handleExcludeCircle(circle: string, event: MouseEvent): void {
+  event.preventDefault();
+  event.stopPropagation();
+  emit("exclude-circle", circle);
+}
+
+function handleExcludeCategory(category: string, event: MouseEvent): void {
+  event.preventDefault();
+  event.stopPropagation();
+  emit("exclude-category", category);
+}
+
 // 태그 활성화 상태 확인
 function isTagActive(tag: string): boolean {
   return props.isActiveTag?.(tag) ?? false;
@@ -201,6 +226,19 @@ function isCircleActive(circle: string): boolean {
 // 카테고리 활성화 상태 확인
 function isCategoryActive(category: string): boolean {
   return props.isActiveCategory?.(category) ?? false;
+}
+
+// 제외 상태 확인
+function isTagExcluded(tag: string): boolean {
+  return props.isExcludedTag?.(tag) ?? false;
+}
+
+function isCircleExcluded(circle: string): boolean {
+  return props.isExcludedCircle?.(circle) ?? false;
+}
+
+function isCategoryExcluded(category: string): boolean {
+  return props.isExcludedCategory?.(category) ?? false;
 }
 
 // 상세 보기 핸들러
@@ -425,10 +463,13 @@ function handleMouseDown(event: MouseEvent): void {
             :class="
               isCircleActive(circle)
                 ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted-foreground/20'
+                : isCircleExcluded(circle)
+                  ? 'bg-destructive text-destructive-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted-foreground/20'
             "
             :title="circle"
             @click="handleClickCircle(circle, $event)"
+            @contextmenu="handleExcludeCircle(circle, $event)"
           >
             🏢 {{ circle }}
           </span>
@@ -446,10 +487,13 @@ function handleMouseDown(event: MouseEvent): void {
             :class="
               isCategoryActive(category)
                 ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted-foreground/20'
+                : isCategoryExcluded(category)
+                  ? 'bg-destructive text-destructive-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted-foreground/20'
             "
             :title="category"
             @click="handleClickCategory(category, $event)"
+            @contextmenu="handleExcludeCategory(category, $event)"
           >
             {{ category }}
           </span>
@@ -468,10 +512,13 @@ function handleMouseDown(event: MouseEvent): void {
               :class="
                 isTagActive(tag)
                   ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted-foreground/20'
+                  : isTagExcluded(tag)
+                    ? 'bg-destructive text-destructive-foreground'
+                    : 'bg-muted text-muted-foreground hover:bg-muted-foreground/20'
               "
               :title="tag"
               @click="handleClickTag(tag, $event)"
+              @contextmenu="handleExcludeTag(tag, $event)"
             >
               #{{ tag }}
             </span>

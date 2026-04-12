@@ -21,6 +21,9 @@ interface Props {
   isActiveTag: (tag: string) => boolean;
   isActiveCircle: (circle: string) => boolean;
   isActiveCategory: (category: string) => boolean;
+  isExcludedTag: (tag: string) => boolean;
+  isExcludedCircle: (circle: string) => boolean;
+  isExcludedCategory: (category: string) => boolean;
 }
 
 interface Emits {
@@ -37,6 +40,9 @@ interface Emits {
   (e: "clickTag", tag: string): void;
   (e: "clickCircle", circle: string): void;
   (e: "clickCategory", category: string): void;
+  (e: "excludeTag", tag: string): void;
+  (e: "excludeCircle", circle: string): void;
+  (e: "excludeCategory", category: string): void;
   (e: "batchFavorite", value: boolean): void;
   (e: "batchClear", value: boolean): void;
   (e: "batchHidden", value: boolean): void;
@@ -137,6 +143,9 @@ onUnmounted(() => {
             :is-active-tag="isActiveTag"
             :is-active-circle="isActiveCircle"
             :is-active-category="isActiveCategory"
+            :is-excluded-tag="isExcludedTag"
+            :is-excluded-circle="isExcludedCircle"
+            :is-excluded-category="isExcludedCategory"
             @play="emit('play', $event)"
             @open-folder="emit('openFolder', $event)"
             @toggle-favorite="emit('toggleFavorite', $event)"
@@ -145,6 +154,9 @@ onUnmounted(() => {
             @click-tag="emit('clickTag', $event)"
             @click-circle="emit('clickCircle', $event)"
             @click-category="emit('clickCategory', $event)"
+            @exclude-tag="emit('excludeTag', $event)"
+            @exclude-circle="emit('excludeCircle', $event)"
+            @exclude-category="emit('excludeCategory', $event)"
             @show-detail="emit('gameClick', $event)"
             @open-original-site="emit('openOriginalSite', $event)"
             @select="handleSelect"

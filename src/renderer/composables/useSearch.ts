@@ -36,6 +36,9 @@ interface ParsedSearchQuery {
   circles: string[];
   tags: string[];
   categories: string[];
+  excludeCircles: string[];
+  excludeTags: string[];
+  excludeCategories: string[];
 }
 
 /**
@@ -47,17 +50,21 @@ function parseSearchQuery(query: string): ParsedSearchQuery {
     circles: [],
     tags: [],
     categories: [],
+    excludeCircles: [],
+    excludeTags: [],
+    excludeCategories: [],
   };
 
   // 한글+영문 prefix 패턴 생성
   const allPrefixes = [...ENGLISH_PREFIXES, ...KOREAN_PREFIXES];
   const prefixPattern = allPrefixes.join("|");
-  const prefixRegex = new RegExp(String.raw`(${prefixPattern}):(\S+)`, "g");
+  const prefixRegex = new RegExp(String.raw`-?(${prefixPattern}):(\S+)`, "g");
 
   let remainingQuery = query;
   let match;
 
   while ((match = prefixRegex.exec(query)) !== null) {
+    const fullMatch = match[0];
     const rawPrefix = match[1];
     const value = match[2];
     // 빈 값은 무시
@@ -67,12 +74,27 @@ function parseSearchQuery(query: string): ParsedSearchQuery {
     const normalizedPrefix = normalizeToEnglish(rawPrefix);
     if (!normalizedPrefix) continue;
 
+    // 제외(-) 접두사 여부 확인
+    const isExclude = fullMatch.startsWith("-");
+
     if (normalizedPrefix === "circle") {
-      result.circles.push(value);
+      if (isExclude) {
+        result.excludeCircles.push(value);
+      } else {
+        result.circles.push(value);
+      }
     } else if (normalizedPrefix === "tag") {
-      result.tags.push(value);
+      if (isExclude) {
+        result.excludeTags.push(value);
+      } else {
+        result.tags.push(value);
+      }
     } else if (normalizedPrefix === "category") {
-      result.categories.push(value);
+      if (isExclude) {
+        result.excludeCategories.push(value);
+      } else {
+        result.categories.push(value);
+      }
     } else if (normalizedPrefix === "provider") {
       result.provider = value;
     } else if (normalizedPrefix === "id") {
@@ -80,12 +102,12 @@ function parseSearchQuery(query: string): ParsedSearchQuery {
     }
 
     // 매칭된 부분을 제거
-    remainingQuery = remainingQuery.replace(match[0], "");
+    remainingQuery = remainingQuery.replace(fullMatch, "");
   }
 
-  // 불완전한 prefix: 형태 제거 (값이 없는 경우)
+  // 불완전한 -?prefix: 형태 제거 (값이 없는 경우)
   remainingQuery = remainingQuery
-    .replaceAll(new RegExp(String.raw`(?:${prefixPattern}):(\s|$)`, "g"), "")
+    .replaceAll(new RegExp(String.raw`-?(?:${prefixPattern}):(\s|$)`, "g"), "")
     .trim();
 
   // 남은 텍스트 (공백 제거)
@@ -359,6 +381,11 @@ export function useSearch(sourcePaths: () => string[]) {
     for (const tag of parsed.tags) parts.push(`tag:${tag}`);
     for (const category of parsed.categories)
       parts.push(`category:${category}`);
+    // 제외 필터 추가
+    for (const tag of parsed.excludeTags) parts.push(`-tag:${tag}`);
+    for (const circle of parsed.excludeCircles) parts.push(`-circle:${circle}`);
+    for (const category of parsed.excludeCategories)
+      parts.push(`-category:${category}`);
 
     return parts.join(" ");
   });
@@ -478,6 +505,36 @@ export function useSearch(sourcePaths: () => string[]) {
     );
   }
 
+  // 제외 태그 토글
+  function toggleExcludeTag(tag: string): void {
+    const convertedTag = tag.replace(/\s+/g, "_");
+    searchQuery.value = toggleSearchFilter(
+      searchQuery.value,
+      "-tag",
+      convertedTag,
+    );
+  }
+
+  // 제외 서클 토글
+  function toggleExcludeCircle(circle: string): void {
+    const convertedCircle = circle.replace(/\s+/g, "_");
+    searchQuery.value = toggleSearchFilter(
+      searchQuery.value,
+      "-circle",
+      convertedCircle,
+    );
+  }
+
+  // 제외 카테고리 토글
+  function toggleExcludeCategory(category: string): void {
+    const convertedCategory = category.replace(/\s+/g, "_");
+    searchQuery.value = toggleSearchFilter(
+      searchQuery.value,
+      "-category",
+      convertedCategory,
+    );
+  }
+
   // 필터 포함 확인
   function hasTag(tag: string): boolean {
     // 띄어쓰기를 _로 변환하여 검사
@@ -495,6 +552,24 @@ export function useSearch(sourcePaths: () => string[]) {
     // 띄어쓰기를 _로 변환하여 검사
     const convertedCategory = category.replace(/\s+/g, "_");
     return hasSearchFilter(searchQuery.value, "category", convertedCategory);
+  }
+
+  // 제외 태그 포함 확인
+  function hasExcludeTag(tag: string): boolean {
+    const convertedTag = tag.replace(/\s+/g, "_");
+    return hasSearchFilter(searchQuery.value, "-tag", convertedTag);
+  }
+
+  // 제외 서클 포함 확인
+  function hasExcludeCircle(circle: string): boolean {
+    const convertedCircle = circle.replace(/\s+/g, "_");
+    return hasSearchFilter(searchQuery.value, "-circle", convertedCircle);
+  }
+
+  // 제외 카테고리 포함 확인
+  function hasExcludeCategory(category: string): boolean {
+    const convertedCategory = category.replace(/\s+/g, "_");
+    return hasSearchFilter(searchQuery.value, "-category", convertedCategory);
   }
 
   // 필터 초기화
@@ -572,9 +647,15 @@ export function useSearch(sourcePaths: () => string[]) {
     toggleTag,
     toggleCircle,
     toggleCategory,
+    toggleExcludeTag,
+    toggleExcludeCircle,
+    toggleExcludeCategory,
     hasTag,
     hasCircle,
     hasCategory,
+    hasExcludeTag,
+    hasExcludeCircle,
+    hasExcludeCategory,
     resetFilters,
 
     // 토글 작업

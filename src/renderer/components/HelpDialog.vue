@@ -48,6 +48,7 @@ const mouseInteractions = [
   { action: "Ctrl+클릭", description: "다중 선택 모드 진입 / 개별 선택·해제" },
   { action: "Shift+클릭", description: "범위 선택 (마지막 선택~현재)" },
   { action: "우클릭", description: "컨텍스트 메뉴" },
+  { action: "태그·서클·카테고리 우클릭", description: "제외 검색 토글" },
   { action: "이미지 캐러셀 클릭", description: "다이얼로그 닫기" },
   { action: "이미지 캐러셀 휠", description: "이전/다음 이미지 이동" },
 ];
