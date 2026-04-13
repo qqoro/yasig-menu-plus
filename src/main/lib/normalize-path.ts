@@ -8,7 +8,8 @@ import path from "path";
  * 3. realpathSync.native() — 파일 시스템의 실제 대소문자 반영
  */
 export function normalizePath(inputPath: string): string {
-  let resolved = path.resolve(inputPath);
+  const trimmed = inputPath.trim();
+  let resolved = path.resolve(trimmed);
   if (resolved !== path.parse(resolved).root) {
     resolved = resolved.replace(/[\\/]+$/, "");
   }

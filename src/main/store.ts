@@ -229,26 +229,26 @@ export function setLibraryPaths(paths: string[]): void {
 
 /**
  * 라이브러리 경로 추가
+ * 호출부에서 이미 정규화된 경로를 전달해야 함
  */
-export function addLibraryPath(inputPath: string): void {
-  const normalized = normalizePath(inputPath);
+export function addLibraryPath(normalizedPath: string): void {
   const current = getLibraryPaths();
   const isDuplicate = current.some(
-    (p) => normalizePath(p).toLowerCase() === normalized.toLowerCase(),
+    (p) => p.toLowerCase() === normalizedPath.toLowerCase(),
   );
   if (!isDuplicate) {
-    setLibraryPaths([...current, normalized]);
+    setLibraryPaths([...current, normalizedPath]);
   }
 }
 
 /**
  * 라이브러리 경로 제거
+ * 호출부에서 이미 정규화된 경로를 전달해야 함
  */
-export function removeLibraryPath(inputPath: string): void {
-  const normalized = normalizePath(inputPath);
+export function removeLibraryPath(normalizedPath: string): void {
   const current = getLibraryPaths();
   const filtered = current.filter(
-    (p) => normalizePath(p).toLowerCase() !== normalized.toLowerCase(),
+    (p) => p.toLowerCase() !== normalizedPath.toLowerCase(),
   );
   setLibraryPaths(filtered);
 }

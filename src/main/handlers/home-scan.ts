@@ -24,6 +24,7 @@ import {
 } from "../store.js";
 import { deleteImage } from "../utils/downloader.js";
 import { toAbsolutePath } from "../utils/image-path.js";
+import { wrapIpcHandler } from "../utils/ipc-wrapper.js";
 import { validateDirectoryPath } from "../utils/validator.js";
 import { runScanWorker } from "../workers/run-scan-worker.js";
 import {
@@ -251,86 +252,98 @@ export async function scanFolder(
 /**
  * 게임 목록 새로고침 핸들러 (폴더 재스캔)
  */
-export async function refreshListHandler(
-  _event: IpcMainInvokeEvent,
-  payload: IpcRendererEventMap["refreshList"],
-): Promise<IpcMainEventMap["listRefreshed"]> {
-  const { sourcePaths } = payload;
+export const refreshListHandler = wrapIpcHandler(
+  "refreshList",
+  async (
+    _event: IpcMainInvokeEvent,
+    payload: IpcRendererEventMap["refreshList"],
+  ): Promise<IpcMainEventMap["listRefreshed"]> => {
+    const { sourcePaths } = payload;
 
-  // 각 경로 유효성 검증 후 스캔
-  let totalAdded = 0;
-  let totalDeleted = 0;
-  for (const sourcePath of sourcePaths) {
-    const result = await scanFolder(sourcePath);
-    totalAdded += result.addedCount;
-    totalDeleted += result.deletedCount;
-  }
+    // 각 경로 유효성 검증 후 스캔
+    let totalAdded = 0;
+    let totalDeleted = 0;
+    for (const sourcePath of sourcePaths) {
+      const result = await scanFolder(sourcePath);
+      totalAdded += result.addedCount;
+      totalDeleted += result.deletedCount;
+    }
 
-  // 스캔 후 다시 목록 로드
-  const games = await leftJoinUserGameData(db("games"))
-    .whereIn(
-      "games.source",
-      sourcePaths.filter((p) => existsSync(p)),
-    )
-    .where("games.isHidden", 0)
-    .orderBy("games.title", "asc")
-    .select(
-      "games.path",
-      "games.title",
-      "games.originalTitle",
-      "games.source",
-      "games.thumbnail",
-      "games.executablePath",
-      "games.isCompressFile",
-      "games.hasExecutable",
-      "games.publishDate",
-      "games.translatedTitle",
-      "games.translationSource",
-      "userGameData.rating",
-    );
+    // 스캔 후 다시 목록 로드
+    const games = await leftJoinUserGameData(db("games"))
+      .whereIn(
+        "games.source",
+        sourcePaths.filter((p) => existsSync(p)),
+      )
+      .where("games.isHidden", 0)
+      .orderBy("games.title", "asc")
+      .select(
+        "games.path",
+        "games.title",
+        "games.originalTitle",
+        "games.source",
+        "games.thumbnail",
+        "games.executablePath",
+        "games.isCompressFile",
+        "games.hasExecutable",
+        "games.publishDate",
+        "games.translatedTitle",
+        "games.translationSource",
+        "userGameData.rating",
+      );
 
-  // 관계 데이터 조회 및 그룹화
-  const gamePaths = games.map((g) => g.path);
-  const relations = await loadRelationsAndGroup(gamePaths);
+    // 관계 데이터 조회 및 그룹화
+    const gamePaths = games.map((g) => g.path);
+    const relations = await loadRelationsAndGroup(gamePaths);
 
-  // GameItem으로 변환
-  const plainGames = buildGameItems(games, relations);
+    // GameItem으로 변환
+    const plainGames = buildGameItems(games, relations);
 
-  return {
-    games: plainGames,
-    addedCount: totalAdded,
-    deletedCount: totalDeleted,
-  };
-}
+    return {
+      games: plainGames,
+      addedCount: totalAdded,
+      deletedCount: totalDeleted,
+    };
+  },
+);
 
 /**
  * 폴더 열기 핸들러
  */
-export async function openFolderHandler(
-  _event: IpcMainInvokeEvent,
-  payload: IpcRendererEventMap["openFolder"],
-): Promise<void> {
-  const { path } = payload;
+export const openFolderHandler = wrapIpcHandler(
+  "openFolder",
+  async (
+    _event: IpcMainInvokeEvent,
+    payload: IpcRendererEventMap["openFolder"],
+  ): Promise<void> => {
+    const { path } = payload;
 
-  // DB에서 게임 정보 조회 (압축파일 확인용)
-  const game = await db("games").where("path", path).first();
+    // DB에서 게임 정보 조회 (압축파일 확인용)
+    const game = await db("games").where("path", path).first();
 
-  // 게임이 없으면 일반 폴더로 처리
-  if (!game) {
-    validateDirectoryPath(path);
-    shell.openPath(path);
-    return;
-  }
+    // 게임이 없으면 일반 폴더로 처리
+    if (!game) {
+      validateDirectoryPath(path);
+      const openResult = await shell.openPath(path);
+      if (openResult) {
+        throw new Error(`폴더를 열 수 없습니다: ${openResult}`);
+      }
+      return;
+    }
 
-  const isCompressFile = Boolean(game.isCompressFile);
-  const isShortcutFile = path.toLowerCase().endsWith(".lnk");
+    const isCompressFile = Boolean(game.isCompressFile);
+    const isShortcutFile = path.toLowerCase().endsWith(".lnk");
 
-  if (isCompressFile || isShortcutFile) {
-    // 압축파일이거나 바로가기 파일인 경우 파일이 있는 폴더에서 파일 선택
-    shell.showItemInFolder(path);
-  } else {
-    // 폴더인 경우 해당 폴더 열기
-    validateDirectoryPath(path);
-    shell.openPath(path);
-  }
-}
+    if (isCompressFile || isShortcutFile) {
+      // 압축파일이거나 바로가기 파일인 경우 파일이 있는 폴더에서 파일 선택
+      shell.showItemInFolder(path);
+    } else {
+      // 폴더인 경우 해당 폴더 열기
+      validateDirectoryPath(path);
+      const openResult = await shell.openPath(path);
+      if (openResult) {
+        throw new Error(`폴더를 열 수 없습니다: ${openResult}`);
+      }
+    }
+  },
+);

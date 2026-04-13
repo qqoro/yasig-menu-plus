@@ -224,8 +224,10 @@ async function handleMigrateThumbnails(): Promise<void> {
 async function handleOpenDataFolder(): Promise<void> {
   try {
     await openDataFolderMutation.mutateAsync(undefined);
-  } catch {
-    toast.error("폴더를 열지 못했습니다.");
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "폴더를 열지 못했습니다.";
+    toast.error(message);
   }
 }
 </script>

@@ -91,8 +91,10 @@ function handleAddPath(): void {
       folderInput.value = "";
       toast.success("경로가 추가되었습니다.");
     },
-    onError: () => {
-      toast.error("경로 추가에 실패했습니다.");
+    onError: (err) => {
+      const message =
+        err instanceof Error ? err.message : "경로 추가에 실패했습니다.";
+      toast.error(message);
     },
   });
 }
@@ -105,8 +107,10 @@ function handleRemovePath(path: string): void {
     onSuccess: () => {
       toast.success("경로가 제거되었습니다.");
     },
-    onError: () => {
-      toast.error("경로 제거에 실패했습니다.");
+    onError: (err) => {
+      const message =
+        err instanceof Error ? err.message : "경로 제거에 실패했습니다.";
+      toast.error(message);
     },
   });
 }
@@ -130,8 +134,10 @@ async function handleSelectFolder(): Promise<void> {
         onSuccess: () => {
           toast.success("경로가 추가되었습니다.");
         },
-        onError: () => {
-          toast.error("경로 추가에 실패했습니다.");
+        onError: (err) => {
+          const message =
+            err instanceof Error ? err.message : "경로 추가에 실패했습니다.";
+          toast.error(message);
         },
       });
     }
