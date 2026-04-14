@@ -413,6 +413,20 @@ function registerIpcHandlers() {
   setupChangelogHandler(mainWindow);
 }
 
+// 중복 실행 방지
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    // 두 번째 인스턴스 실행 시 기존 창 활성화
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+}
+
 app.whenReady().then(async () => {
   try {
     // 안전한 데이터베이스 초기화 (재시도 포함)
