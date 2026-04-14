@@ -26,7 +26,7 @@ conventional_commits = true
 # 커밋 필터링 (머지 커밋 제외)
 filter_commits = false
 # 태그 패턴
-tag_pattern = "v[0-9]*"
+tag_pattern = "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
 
 # 커밋 그룹 정의 (한국어)
 commit_parsers = [
