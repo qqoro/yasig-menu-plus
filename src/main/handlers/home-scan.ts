@@ -10,7 +10,7 @@
 import type { IpcMainInvokeEvent } from "electron";
 import { shell } from "electron";
 import { existsSync, readdirSync } from "fs";
-import { join } from "path";
+import { dirname, join } from "path";
 import { COMPRESS_FILE_TYPE } from "../constants.js";
 import { db } from "../db/db-manager.js";
 import type { IpcMainEventMap, IpcRendererEventMap } from "../events.js";
@@ -336,7 +336,16 @@ export const openFolderHandler = wrapIpcHandler(
 
     if (isCompressFile || isShortcutFile) {
       // 압축파일이거나 바로가기 파일인 경우 파일이 있는 폴더에서 파일 선택
-      shell.showItemInFolder(path);
+      if (existsSync(path)) {
+        shell.showItemInFolder(path);
+      } else {
+        // 파일이 삭제된 경우 상위 폴더 열기
+        const parentDir = dirname(path);
+        const openResult = await shell.openPath(parentDir);
+        if (openResult) {
+          throw new Error(`폴더를 열 수 없습니다: ${openResult}`);
+        }
+      }
     } else {
       // 폴더인 경우 해당 폴더 열기
       validateDirectoryPath(path);
