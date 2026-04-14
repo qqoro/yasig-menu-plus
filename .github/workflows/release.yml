@@ -77,6 +77,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           body: ${{ steps.cliff.outputs.content }}
+          prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
           files: |
             artifacts/build_win/yasig-menu-plus-setup-*.exe
             artifacts/build_win/*.blockmap
