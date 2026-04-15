@@ -58,6 +58,10 @@ import {
 } from "./handlers/dashboard.js";
 import { setupChangelogHandler } from "./handlers/changelog.js";
 import {
+  exportDebugDataHandler,
+  openGitHubIssueHandler,
+} from "./handlers/debugExport.js";
+import {
   closeWindowHandler,
   maximizeWindowHandler,
   minimizeWindowHandler,
@@ -411,6 +415,12 @@ function registerIpcHandlers() {
 
   // ========== 체인지로그 ==========
   setupChangelogHandler(mainWindow);
+
+  // ========== 디버그 데이터 내보내기 ==========
+  ipcMain.handle(IpcRendererSend.ExportDebugData, exportDebugDataHandler);
+
+  // ========== GitHub 이슈 열기 ==========
+  ipcMain.handle(IpcRendererSend.OpenGitHubIssue, openGitHubIssueHandler);
 }
 
 // 중복 실행 방지

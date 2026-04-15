@@ -2,6 +2,7 @@
 import { version as APP_VERSION } from "../../../../package.json";
 import { computed, ref } from "vue";
 import {
+  Bug,
   Download,
   Github,
   History,
@@ -19,6 +20,16 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "vue-sonner";
 import ChangelogDialog from "@/components/ChangelogDialog.vue";
 import {
   useAllSettings,
@@ -66,6 +77,37 @@ const isDownloading = computed(() => updateStatus.value === "downloading");
 
 // 체인지로그 다이얼로그 상태
 const changelogOpen = ref(false);
+
+// 디버그 데이터 내보내기
+const showExportDialog = ref(false);
+const includeDb = ref(true);
+const isExporting = ref(false);
+
+async function handleExport() {
+  isExporting.value = true;
+  try {
+    const result = await window.api.invoke("exportDebugData", {
+      includeDb: includeDb.value,
+    });
+    if (result) {
+      toast.success("디버그 데이터를 내보냈습니다.");
+    }
+  } catch (error) {
+    toast.error(
+      "내보내기 실패: " +
+        (error instanceof Error ? error.message : String(error)),
+    );
+  } finally {
+    isExporting.value = false;
+    showExportDialog.value = false;
+  }
+}
+
+async function handleOpenGitHubIssue() {
+  toast.info("이슈 본문이 클립보드에 복사되었습니다. 붙여넣기 해주세요.");
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  await window.api.invoke("openGitHubIssue");
+}
 </script>
 
 <template>
@@ -228,7 +270,7 @@ const changelogOpen = ref(false);
             있습니다. 유용하게 사용하셨다면 Star를 눌러 응원해주세요!
           </CardDescription>
         </CardHeader>
-        <CardContent class="grid grid-cols-2 gap-2">
+        <CardContent>
           <a
             href="https://github.com/qqoro/yasig-menu-plus"
             target="_blank"
@@ -239,19 +281,70 @@ const changelogOpen = ref(false);
               Star 하기
             </Button>
           </a>
-          <a
-            href="https://github.com/qqoro/yasig-menu-plus/issues"
-            target="_blank"
-            rel="noopener noreferrer"
+        </CardContent>
+      </Card>
+
+      <!-- 문제 제보 -->
+      <Card>
+        <CardHeader class="pb-4">
+          <CardTitle class="text-lg">문제 제보</CardTitle>
+          <CardDescription class="text-sm">
+            문제 발생 시 진단 데이터를 파일로 내보내거나 GitHub 이슈로 등록할 수
+            있습니다.
+          </CardDescription>
+        </CardHeader>
+        <CardContent class="flex flex-col gap-2">
+          <Button
+            @click="showExportDialog = true"
+            :disabled="isExporting"
+            variant="outline"
+            class="w-full"
           >
-            <Button variant="outline" class="w-full">
-              <Github :size="18" />
-              이슈 제보하기
-            </Button>
-          </a>
+            <Loader2 v-if="isExporting" :size="16" class="animate-spin" />
+            <Bug v-else :size="16" />
+            디버그 데이터 내보내기
+          </Button>
+          <Button
+            @click="handleOpenGitHubIssue"
+            variant="outline"
+            class="w-full"
+          >
+            <Github :size="16" />
+            GitHub 이슈 등록하기
+          </Button>
         </CardContent>
       </Card>
     </div>
+
+    <!-- 내보내기 확인 다이얼로그 -->
+    <Dialog v-model:open="showExportDialog">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>문제 해결 데이터 내보내기</DialogTitle>
+          <DialogDescription>
+            시스템 정보, 설정, 로그가 포함된 파일을 생성합니다.
+          </DialogDescription>
+        </DialogHeader>
+        <div class="flex items-center gap-2">
+          <Checkbox
+            :checked="includeDb"
+            @update:checked="includeDb = $event"
+            id="includeDb"
+          />
+          <label for="includeDb" class="cursor-pointer text-sm"
+            >데이터베이스 포함</label
+          >
+        </div>
+        <DialogFooter>
+          <Button variant="outline" @click="showExportDialog = false"
+            >취소</Button
+          >
+          <Button @click="handleExport" :disabled="isExporting"
+            >내보내기</Button
+          >
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     <!-- 체인지로그 다이얼로그 -->
     <ChangelogDialog

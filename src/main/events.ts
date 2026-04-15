@@ -140,6 +140,12 @@ export const enum IpcRendererSend {
   // 대시보드 통계
   GetDashboardStats = "getDashboardStats",
   GetLibraryStorageSize = "getLibraryStorageSize",
+
+  // 디버그 데이터 내보내기
+  ExportDebugData = "exportDebugData",
+
+  // GitHub 이슈 열기
+  OpenGitHubIssue = "openGitHubIssue",
 }
 
 // ========== Main → Renderer 이벤트 ==========
@@ -546,6 +552,12 @@ export interface IpcRendererEventMap {
     field: "is_favorite" | "is_hidden" | "is_clear";
     value: boolean;
   };
+
+  // 디버그 데이터 내보내기
+  exportDebugData: { includeDb: boolean };
+
+  // GitHub 이슈 열기
+  openGitHubIssue: undefined;
 }
 
 // Main → Renderer 페이로드
@@ -730,6 +742,12 @@ export interface IpcMainEventMap {
   // 대시보드 통계
   dashboardStats: { stats: DashboardStats };
   libraryStorageSize: LibraryStorageInfo;
+
+  // 디버그 데이터 내보내기
+  debugDataExported: { path: string } | null;
+
+  // GitHub 이슈 열기
+  gitHubIssueOpened: void;
 }
 
 // 대시보드 통계

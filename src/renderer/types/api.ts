@@ -108,6 +108,12 @@ type IpcInvokeReturn = {
   // 대시보드 통계
   getDashboardStats: IpcMainEventMap["dashboardStats"];
   getLibraryStorageSize: IpcMainEventMap["libraryStorageSize"];
+
+  // 디버그 데이터 내보내기
+  exportDebugData: IpcMainEventMap["debugDataExported"];
+
+  // GitHub 이슈 열기
+  openGitHubIssue: IpcMainEventMap["gitHubIssueOpened"];
 };
 
 /**
