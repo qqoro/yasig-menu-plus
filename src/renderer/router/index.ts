@@ -7,6 +7,7 @@ import HomeView from "../views/HomeView.vue";
 import SettingsView from "../views/SettingsView.vue";
 import DuplicatesView from "../views/DuplicatesView.vue";
 import DashboardView from "../views/DashboardView.vue";
+import HelpView from "../views/HelpView.vue";
 
 const routes: RouteRecordRaw[] = [
   {
@@ -28,6 +29,11 @@ const routes: RouteRecordRaw[] = [
     path: "/dashboard",
     name: "dashboard",
     component: DashboardView,
+  },
+  {
+    path: "/help",
+    name: "help",
+    component: HelpView,
   },
 ];
 

@@ -240,10 +240,10 @@ onMounted(async () => {
       <div class="no-drag flex items-center">
         <!-- 도움말 버튼 -->
         <Button
-          @click="showHelpDialog = true"
+          @click="router.push('/help')"
           variant="ghost"
           size="icon-sm"
-          title="도움말 (F1)"
+          title="도움말"
         >
           <CircleHelp :size="14" />
         </Button>
