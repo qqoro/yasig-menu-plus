@@ -80,3 +80,35 @@ export function useToggleLibraryPathVisibility() {
     },
   });
 }
+
+/**
+ * 오프라인 라이브러리 경로 목록 조회
+ */
+export function useOfflineLibraryPaths() {
+  return useQuery({
+    queryKey: queryKeys.offlineLibraryPaths.all,
+    queryFn: async () => {
+      const result = await window.api.invoke("getOfflineLibraryPaths");
+      return result.paths as string[];
+    },
+  });
+}
+
+/**
+ * 라이브러리 경로 오프라인 토글
+ */
+export function useToggleLibraryPathOffline() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (path: string) => {
+      return await window.api.invoke("toggleLibraryPathOffline", { path });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.offlineLibraryPaths.all,
+      });
+      // 게임 목록도 무효화 (sourcePaths 변경)
+      queryClient.invalidateQueries({ queryKey: queryKeys.games.all });
+    },
+  });
+}

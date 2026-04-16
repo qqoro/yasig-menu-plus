@@ -64,6 +64,7 @@ export interface StoreSchema {
   colorTheme?: string; // 컬러 테마 (예: "default", "catppuccin", "cyberpunk")
   autoUpdateSettings?: AutoUpdateSettings; // 자동 업데이트 설정
   disabledLibraryPaths?: string[]; // 비활성화된 라이브러리 경로 목록
+  offlineLibraryPaths?: string[]; // 오프라인 라이브러리 경로 목록 (자동 스캔 제외, 항상 목록에 표시)
   scanDepth?: number; // 재귀 스캔 최대 깊이 (기본값: 5)
   enableNonGameContent?: boolean; // 비게임 콘텐츠 인식 활성화 여부
   enableGoogleCollector?: boolean; // Google 콜렉터 활성화 여부 (기본값: true)
@@ -107,6 +108,7 @@ const DEFAULTS: StoreSchema = {
     checkOnStartup: true,
   },
   disabledLibraryPaths: [],
+  offlineLibraryPaths: [],
   scanDepth: 5,
   enableNonGameContent: false,
   enableGoogleCollector: true, // 기본적으로 Google 콜렉터 활성화
@@ -323,6 +325,7 @@ export function getAllSettings(): StoreSchema {
     colorTheme: store.get("colorTheme"),
     autoUpdateSettings: store.get("autoUpdateSettings"),
     disabledLibraryPaths: store.get("disabledLibraryPaths"),
+    offlineLibraryPaths: store.get("offlineLibraryPaths"),
     scanDepth: store.get("scanDepth"),
     enableNonGameContent: store.get("enableNonGameContent"),
     enableGoogleCollector: store.get("enableGoogleCollector"),
@@ -488,6 +491,42 @@ export function setDisabledLibraryPaths(paths: string[]): void {
 }
 
 /**
+ * 오프라인 라이브러리 경로 목록 가져오기
+ */
+export function getOfflineLibraryPaths(): string[] {
+  const store = getStore();
+  return store.get("offlineLibraryPaths") || [];
+}
+
+/**
+ * 오프라인 라이브러리 경로 목록 설정
+ */
+export function setOfflineLibraryPaths(paths: string[]): void {
+  const store = getStore();
+  store.set("offlineLibraryPaths", paths);
+}
+
+/**
+ * 라이브러리 경로 오프라인 토글
+ * @returns 토글 후 오프라인 여부 (true=오프라인)
+ */
+export function toggleLibraryPathOffline(inputPath: string): boolean {
+  const normalized = normalizePath(inputPath);
+  const current = getOfflineLibraryPaths();
+  const index = current.findIndex(
+    (p) => normalizePath(p).toLowerCase() === normalized.toLowerCase(),
+  );
+  if (index === -1) {
+    setOfflineLibraryPaths([...current, normalized]);
+    return true; // 오프라인 설정됨
+  } else {
+    const filtered = current.filter((_, i) => i !== index);
+    setOfflineLibraryPaths(filtered);
+    return false; // 온라인 복원됨
+  }
+}
+
+/**
  * 스캔 깊이 가져오기
  */
 export function getScanDepth(): number {
@@ -604,6 +643,10 @@ export function runLibraryPathsNormalization(): void {
   // disabledLibraryPaths 정규화
   const disabled = store.get("disabledLibraryPaths") || [];
   store.set("disabledLibraryPaths", deduplicateNormalized(disabled));
+
+  // offlineLibraryPaths 정규화
+  const offline = store.get("offlineLibraryPaths") || [];
+  store.set("offlineLibraryPaths", deduplicateNormalized(offline));
 
   // libraryScanHistory 키 정규화
   const history = store.get("libraryScanHistory") || {};

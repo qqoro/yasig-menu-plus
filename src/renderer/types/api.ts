@@ -68,6 +68,8 @@ type IpcInvokeReturn = {
   removeLibraryPath: IpcMainEventMap["libraryPathRemoved"];
   toggleLibraryPathVisibility: IpcMainEventMap["libraryPathVisibilityToggled"];
   getDisabledLibraryPaths: IpcMainEventMap["disabledLibraryPaths"];
+  toggleLibraryPathOffline: IpcMainEventMap["libraryPathOfflineToggled"];
+  getOfflineLibraryPaths: IpcMainEventMap["offlineLibraryPaths"];
   translateTitle: IpcMainEventMap["translationDone"];
   translateAllTitles: IpcMainEventMap["allTranslationsDone"];
   getTranslationSettings: IpcMainEventMap["translationSettings"];

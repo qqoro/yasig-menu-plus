@@ -14,6 +14,7 @@ import {
   Play,
   Star,
   StarOff,
+  Unplug,
 } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import { useAllSettings } from "../composables/useAllSettings";
@@ -277,6 +278,7 @@ function handleMouseDown(event: MouseEvent): void {
     class="group hover:border-primary/50 -py-6 flex flex-col overflow-hidden transition-colors"
     :class="{
       'pointer-events-none opacity-75': isPlaying,
+      'opacity-50': game.isOffline && !isPlaying,
       'ring-primary border-primary ring-2': isSelected,
       'cursor-pointer': isSelectionMode,
     }"
@@ -373,6 +375,14 @@ function handleMouseDown(event: MouseEvent): void {
         <span class="text-popover-foreground text-xs font-medium">{{
           game.rating
         }}</span>
+      </div>
+      <!-- 오프라인 표시 -->
+      <div
+        v-if="game.isOffline"
+        class="absolute inset-x-0 bottom-0 flex items-center gap-1 bg-black/60 px-2 py-1 text-xs text-white"
+      >
+        <Unplug class="h-3 w-3" />
+        <span>연결 안 됨</span>
       </div>
       <!-- 오버레이 버튼들 (hover 시 표시, 선택 모드에서 비활성화) -->
       <div

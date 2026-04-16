@@ -63,6 +63,13 @@ export const queryKeys = {
   },
 
   /**
+   * 오프라인 라이브러리 경로 쿼리 키
+   */
+  offlineLibraryPaths: {
+    all: ["offlineLibraryPaths"] as const,
+  },
+
+  /**
    * 통합 설정 쿼리 키
    */
   settings: {

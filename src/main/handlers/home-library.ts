@@ -24,6 +24,7 @@ import {
   getLastRefreshedAt,
   getLibraryPaths,
   getLibraryScanHistory,
+  getOfflineLibraryPaths,
   getScanDepth,
   removeLibraryPath as removeLibraryPathFromStore,
   removeLibraryScanHistory,
@@ -255,9 +256,16 @@ export async function autoScanLibraries(): Promise<number> {
   const paths = getLibraryPaths();
   if (paths.length === 0) return 0;
 
+  const offlinePaths = getOfflineLibraryPaths();
   let totalAdded = 0;
   let totalDeleted = 0;
   for (const path of paths) {
+    // 오프라인 경로는 자동 스캔에서 제외
+    if (offlinePaths.includes(path)) {
+      console.log(`자동 스캔 스킵: 오프라인 경로 — ${path}`);
+      continue;
+    }
+
     // 드라이브/경로가 존재하지 않으면 스킵 (블로킹 방지)
     if (!existsSync(path)) {
       console.log(`자동 스캔 스킵: 경로 없음 — ${path}`);

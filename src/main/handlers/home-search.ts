@@ -18,12 +18,14 @@ import {
 } from "../lib/search-prefix.js";
 import {
   DEFAULT_TITLE_DISPLAY_PRIORITY,
+  getOfflineLibraryPaths,
   getTranslationSettings,
 } from "../store.js";
 import {
   validateDirectoryPath,
   validateSearchQuery,
 } from "../utils/validator.js";
+import { existsSync } from "fs";
 import {
   buildGameItems,
   buildTitleOrderParts,
@@ -143,8 +145,11 @@ export async function searchGamesHandler(
     validateSearchQuery(searchQuery.query);
   }
 
-  // 라이브러리 경로들 유효성 검증 후 필터링
+  // 오프라인 경로는 존재 여부 검증 우회
+  const offlinePaths = getOfflineLibraryPaths();
   const validPaths = sourcePaths.filter((p) => {
+    if (offlinePaths.some((op) => op.toLowerCase() === p.toLowerCase()))
+      return true;
     try {
       validateDirectoryPath(p);
       return true;
@@ -396,6 +401,16 @@ export async function searchGamesHandler(
   // GameItem으로 변환
   const plainGames = buildGameItems(games, relations);
 
+  // 오프라인 경로 중 현재 연결되지 않은 경로 계산
+  const unavailableOfflinePaths = offlinePaths.filter((p) => !existsSync(p));
+
+  // 각 게임에 isOffline 필드 설정
+  for (const game of plainGames) {
+    game.isOffline = unavailableOfflinePaths.some(
+      (p) => p.toLowerCase() === game.source.toLowerCase(),
+    );
+  }
+
   // 더 로드할 데이터가 있는지 확인
   const hasMore = offset + limit < totalCount;
 
@@ -411,8 +426,11 @@ export async function getRandomGameHandler(
 ): Promise<IpcMainEventMap["randomGame"]> {
   const { sourcePaths, searchQuery } = payload;
 
-  // 라이브러리 경로들 유효성 검증 후 필터링
+  // 오프라인 경로는 존재 여부 검증 우회
+  const offlinePaths = getOfflineLibraryPaths();
   const validPaths = sourcePaths.filter((p) => {
+    if (offlinePaths.some((op) => op.toLowerCase() === p.toLowerCase()))
+      return true;
     try {
       validateDirectoryPath(p);
       return true;
@@ -623,6 +641,16 @@ export async function getRandomGameHandler(
 
   // GameItem으로 변환
   const plainGames = buildGameItems(games, relations);
+
+  // 오프라인 경로 중 현재 연결되지 않은 경로 계산
+  const unavailableOfflinePaths = offlinePaths.filter((p) => !existsSync(p));
+
+  // 각 게임에 isOffline 필드 설정
+  for (const game of plainGames) {
+    game.isOffline = unavailableOfflinePaths.some(
+      (p) => p.toLowerCase() === game.source.toLowerCase(),
+    );
+  }
 
   return { game: plainGames[0] };
 }

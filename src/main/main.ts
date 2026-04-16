@@ -70,6 +70,10 @@ import {
   getDisabledLibraryPathsHandler,
   toggleLibraryPathVisibilityHandler,
 } from "./handlers/libraryPathVisibility.js";
+import {
+  getOfflineLibraryPathsHandler,
+  toggleLibraryPathOfflineHandler,
+} from "./handlers/libraryPathOffline.js";
 import { processMonitor } from "./services/ProcessMonitor.js";
 import { autoUpdaterService } from "./services/AutoUpdater.js";
 import {
@@ -331,6 +335,14 @@ function registerIpcHandlers() {
   ipcMain.handle(
     IpcRendererSend.GetDisabledLibraryPaths,
     getDisabledLibraryPathsHandler,
+  );
+  ipcMain.handle(
+    IpcRendererSend.ToggleLibraryPathOffline,
+    toggleLibraryPathOfflineHandler,
+  );
+  ipcMain.handle(
+    IpcRendererSend.GetOfflineLibraryPaths,
+    getOfflineLibraryPathsHandler,
   );
 
   // ========== 번역 관련 ==========

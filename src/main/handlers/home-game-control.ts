@@ -22,6 +22,7 @@ import {
   addExcludedExecutable,
   getExcludedExecutables as getExcludedExecutablesFromStore,
   getMediaPlayerSettings,
+  getOfflineLibraryPaths,
   removeExcludedExecutable,
 } from "../store.js";
 import { validateDirectoryPath, validatePath } from "../utils/validator.js";
@@ -84,6 +85,21 @@ export const playGameHandler = wrapIpcHandler(
     payload: IpcRendererEventMap["playGame"],
   ): Promise<IpcMainEventMap["gamePlayed"]> => {
     const { path } = payload;
+
+    // 오프라인 경로 안내: 경로가 존재하지 않고 오프라인 경로인 경우 친화적 메시지
+    if (!existsSync(path)) {
+      const offlinePaths = getOfflineLibraryPaths();
+      const game = await db("games")
+        .where("path", path)
+        .select("source")
+        .first();
+      if (
+        game &&
+        offlinePaths.some((p) => p.toLowerCase() === game.source.toLowerCase())
+      ) {
+        throw new Error("이 게임이 있는 드라이브가 연결되지 않았습니다");
+      }
+    }
 
     // 경로 유효성 검증
     validatePath(path, { mustExist: true });

@@ -19,6 +19,7 @@ import { EXECUTABLE_EXTENSIONS } from "../lib/scan-logic.js";
 import {
   getEnableNonGameContent,
   getExcludedExecutables as getExcludedExecutablesFromStore,
+  getOfflineLibraryPaths,
   getScanDepth,
   updateLibraryScanHistory,
 } from "../store.js";
@@ -197,6 +198,14 @@ export async function scanFolder(
           updatedAt: new Date(),
         });
       }
+    }
+
+    // 오프라인 경로는 삭제 로직 스킵 (일시적 접근 불가로 인한 삭제 방지)
+    const offlinePaths = getOfflineLibraryPaths();
+    if (
+      offlinePaths.some((op) => op.toLowerCase() === sourcePath.toLowerCase())
+    ) {
+      return { addedCount, deletedCount: 0 };
     }
 
     // DB에 있지만 실제로는 존재하지 않는 게임 삭제

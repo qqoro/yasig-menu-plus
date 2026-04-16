@@ -32,8 +32,11 @@ import { useOpenFolder, useRefreshGames } from "@/composables/useGames";
 import {
   useAddLibraryPath,
   useLibraryPaths,
+  useOfflineLibraryPaths,
   useRemoveLibraryPath,
+  useToggleLibraryPathOffline,
 } from "@/composables/useSettings";
+import { Switch } from "@/components/ui/switch";
 import { useRouter } from "vue-router";
 import { formatLastScannedAt } from "@/utils/format";
 
@@ -47,6 +50,10 @@ const { data: libraryPaths } = useLibraryPaths();
 const addLibraryPathMutation = useAddLibraryPath();
 const removeLibraryPathMutation = useRemoveLibraryPath();
 
+// 오프라인 라이브러리 경로 관리
+const { data: offlineLibraryPaths } = useOfflineLibraryPaths();
+const toggleOfflineMutation = useToggleLibraryPathOffline();
+
 // 개별 경로 새로고침 상태 (경로별 개별 추적)
 const refreshingPaths = ref(new Set<string>());
 
@@ -56,6 +63,20 @@ const { data: libraryScanHistories } = useLibraryScanHistory();
 // 폴더 선택
 const selectFolderMutation = useSelectFolder();
 const folderInput = ref("");
+
+/**
+ * 경로가 오프라인인지 확인
+ */
+function isPathOffline(path: string): boolean {
+  return (offlineLibraryPaths.value ?? []).includes(path);
+}
+
+/**
+ * 경로 오프라인 토글
+ */
+function handleToggleOffline(path: string): void {
+  toggleOfflineMutation.mutate(path);
+}
 
 /**
  * 대소문자 무시 경로 중복 체크
@@ -300,13 +321,24 @@ async function handleRemoveExcludedExecutable(
               <div
                 v-for="path in libraryPaths"
                 :key="path"
-                class="bg-muted/50 hover:bg-muted group flex flex-col gap-2 rounded-md p-3 transition-colors"
+                :class="[
+                  'bg-muted/50 hover:bg-muted group flex flex-col gap-2 rounded-md p-3 transition-colors',
+                  isPathOffline(path) ? 'border-l-primary/30 border-l-2' : '',
+                ]"
               >
                 <div class="flex items-center gap-3">
                   <Folder :size="18" class="text-muted-foreground shrink-0" />
                   <span class="min-w-0 flex-1 truncate font-mono text-sm">{{
                     path
                   }}</span>
+                  <div class="flex shrink-0 items-center gap-1.5">
+                    <Switch
+                      :model-value="isPathOffline(path)"
+                      @update:model-value="handleToggleOffline(path)"
+                      class="scale-75"
+                    />
+                    <span class="text-muted-foreground text-xs">오프라인</span>
+                  </div>
                   <Button
                     @click="handleOpenPath(path)"
                     variant="ghost"

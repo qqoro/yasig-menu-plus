@@ -89,6 +89,10 @@ export const enum IpcRendererSend {
   ToggleLibraryPathVisibility = "toggleLibraryPathVisibility",
   GetDisabledLibraryPaths = "getDisabledLibraryPaths",
 
+  // 라이브러리 경로 오프라인 토글
+  ToggleLibraryPathOffline = "toggleLibraryPathOffline",
+  GetOfflineLibraryPaths = "getOfflineLibraryPaths",
+
   // 번역 관련
   TranslateTitle = "translateTitle", // 단일 게임 제목 번역
   TranslateAllTitles = "translateAllTitles", // 전체 게임 제목 번역
@@ -303,6 +307,8 @@ export type IpcMainSendChannel =
   | "changelogResult"
   | "libraryPathVisibilityToggled"
   | "disabledLibraryPaths"
+  | "libraryPathOfflineToggled"
+  | "offlineLibraryPaths"
   | "thumbnailsMigrated"
   | "imagesConvertedToWebp";
 
@@ -334,6 +340,7 @@ export interface GameItem {
   sessionStartAt?: Date | null; // 현재 세션 시작 시간
   fileCreatedAt?: Date | null; // 파일 생성일 (파일 시스템)
   fileModifiedAt?: Date | null; // 파일 수정일 (파일 시스템)
+  isOffline?: boolean; // 오프라인 경로의 게임 여부 (드라이브 연결 안 됨)
   makers: string[];
   categories: string[];
   tags: string[];
@@ -487,6 +494,10 @@ export interface IpcRendererEventMap {
   // 라이브러리 경로 표시 토글
   toggleLibraryPathVisibility: { path: string };
   getDisabledLibraryPaths: undefined;
+
+  // 라이브러리 경로 오프라인 토글
+  toggleLibraryPathOffline: { path: string };
+  getOfflineLibraryPaths: undefined;
 
   // 번역 관련
   translateTitle: { path: string; force?: boolean };
@@ -648,6 +659,10 @@ export interface IpcMainEventMap {
   // 라이브러리 경로 표시 토글
   libraryPathVisibilityToggled: { path: string; isDisabled: boolean };
   disabledLibraryPaths: { paths: string[] };
+
+  // 라이브러리 경로 오프라인 토글
+  libraryPathOfflineToggled: { path: string; isOffline: boolean };
+  offlineLibraryPaths: { paths: string[] };
 
   // 번역 관련
   translationProgress: { current: number; total: number; gameTitle: string };

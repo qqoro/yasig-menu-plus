@@ -37,6 +37,7 @@ export interface GameItem {
   totalPlayTime?: number; // 총 플레이 시간 (초)
   fileCreatedAt?: Date | null; // 파일 생성일 (파일 시스템)
   fileModifiedAt?: Date | null; // 파일 수정일 (파일 시스템)
+  isOffline?: boolean; // 오프라인 경로의 게임 여부 (드라이브 연결 안 됨)
 }
 
 /**
