@@ -275,10 +275,10 @@ function handleMouseDown(event: MouseEvent): void {
 
 <template>
   <Card
-    class="group hover:border-primary/50 -py-6 flex flex-col overflow-hidden transition-colors"
+    class="hover:border-primary/50 -py-6 flex flex-col gap-3 overflow-hidden transition-colors"
     :class="{
       'pointer-events-none opacity-75': isPlaying,
-      'opacity-50': game.isOffline && !isPlaying,
+      'opacity-75 hover:opacity-100': game.isOffline && !isPlaying,
       'ring-primary border-primary ring-2': isSelected,
       'cursor-pointer': isSelectionMode,
     }"
@@ -286,7 +286,7 @@ function handleMouseDown(event: MouseEvent): void {
     @mousedown="handleMouseDown"
   >
     <!-- 썸네일 영역 -->
-    <div class="bg-muted relative aspect-4/3 overflow-hidden">
+    <div class="group/thumb bg-muted relative aspect-4/3 overflow-hidden">
       <!-- 선택 체크박스 (선택 모드 시 표시) -->
       <div v-if="isSelectionMode" class="absolute top-2 left-2 z-10">
         <div
@@ -337,7 +337,7 @@ function handleMouseDown(event: MouseEvent): void {
         v-if="game.thumbnail"
         :src="thumbnailUrl"
         :alt="game.title"
-        class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+        class="h-full w-full object-cover transition-transform duration-300 group-hover/thumb:scale-105"
         :class="{ 'blur-md': settings?.thumbnailSettings?.blurEnabled }"
         @error="handleImageError"
       />
@@ -387,7 +387,7 @@ function handleMouseDown(event: MouseEvent): void {
       <!-- 오버레이 버튼들 (hover 시 표시, 선택 모드에서 비활성화) -->
       <div
         v-if="!isSelectionMode"
-        class="bg-popover/60 absolute inset-0 flex flex-wrap content-center justify-center gap-1.5 p-2 opacity-0 transition-opacity group-hover:opacity-100"
+        class="bg-popover/60 absolute inset-0 flex flex-wrap content-center justify-center gap-1.5 p-2 opacity-0 transition-opacity group-hover/thumb:opacity-100"
       >
         <Button
           size="icon"
@@ -556,9 +556,9 @@ function handleMouseDown(event: MouseEvent): void {
       <div class="mt-auto flex gap-1" @click.stop>
         <Button
           @click="handlePlay"
-          :disabled="isPlaying"
+          :disabled="isPlaying || game.isOffline"
           size="sm"
-          class="flex-1"
+          class="flex-1 disabled:pointer-events-auto disabled:cursor-not-allowed"
           :title="game.hasExecutable === false ? '미디어 재생' : '게임 실행'"
         >
           <Loader2 v-if="isPlaying" :size="12" class="animate-spin" />
@@ -575,8 +575,10 @@ function handleMouseDown(event: MouseEvent): void {
         </Button>
         <Button
           @click="handleOpenFolder"
+          :disabled="game.isOffline"
           size="sm"
           variant="secondary"
+          class="disabled:pointer-events-auto disabled:cursor-not-allowed"
           title="폴더 열기"
         >
           <FolderOpen :size="16" />
