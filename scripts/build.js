@@ -19,6 +19,31 @@ function buildMain() {
   return compileTs(mainPath);
 }
 
+/**
+ * Preload 스크립트를 CJS로 빌드
+ *
+ * tsc는 ESM(import)으로 출력하지만, 패키징 환경(특히 포터블)에서
+ * ESM preload가 로드되지 않는 이슈가 있어 Vite로 CJS 번들링
+ */
+function buildPreload() {
+  return build({
+    configFile: false,
+    build: {
+      lib: {
+        entry: join(import.meta.dirname, "..", "src", "main", "preload.ts"),
+        formats: ["cjs"],
+        fileName: () => "preload.js",
+      },
+      outDir: join(import.meta.dirname, "..", "build", "main"),
+      emptyOutDir: false,
+      minify: false,
+      rollupOptions: {
+        external: ["electron"],
+      },
+    },
+  });
+}
+
 // 빌드 폴더 정리
 console.log(blueBright("Cleaning build directories..."));
 rmSync(join(import.meta.dirname, "..", "build"), {
@@ -36,12 +61,15 @@ console.log(blueBright("Transpiling renderer & main..."));
 buildLicenseInfo()
   .then(() => Promise.allSettled([buildRenderer(), buildMain()]))
   .then(async (results) => {
-    // Make this async to use await
     const failed = results.some((result) => result.status === "rejected");
     if (failed) {
       console.error(redBright("Renderer or main transpilation failed."));
-      process.exit(1); // Exit if build failed
+      process.exit(1);
     }
+
+    // tsc가 출력한 ESM preload를 CJS로 덮어쓰기
+    console.log(blueBright("Bundling preload (CJS)..."));
+    await buildPreload();
 
     console.log(
       greenBright(
