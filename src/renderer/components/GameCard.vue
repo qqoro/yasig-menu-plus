@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import {
-  ChevronDown,
-  ChevronUp,
   Clock,
   Eye,
   EyeOff,
@@ -523,13 +521,17 @@ function handleMouseDown(event: MouseEvent): void {
         <!-- 태그 (클릭 가능) -->
         <div
           v-if="game.tags && game.tags.length > 0"
-          class="flex flex-col gap-1"
+          class="flex items-center gap-1"
+          :class="{ 'flex-wrap': showAllTags }"
         >
-          <div class="flex flex-wrap gap-1">
+          <div
+            class="flex min-w-0 flex-1 gap-1"
+            :class="showAllTags ? 'flex-wrap' : 'flex-nowrap overflow-hidden'"
+          >
             <span
-              v-for="tag in showAllTags ? game.tags : game.tags.slice(0, 3)"
+              v-for="tag in game.tags"
               :key="tag"
-              class="max-w-full cursor-pointer truncate rounded px-1.5 py-0.5 transition-colors"
+              class="shrink-0 cursor-pointer truncate rounded px-1.5 py-0.5 transition-colors"
               :class="
                 isTagActive(tag)
                   ? 'bg-primary text-primary-foreground'
@@ -546,19 +548,13 @@ function handleMouseDown(event: MouseEvent): void {
           </div>
           <!-- 더보기/접기 버튼 -->
           <button
-            v-if="game.tags.length > 3"
+            v-if="game.tags.length > 1"
             @click.stop="showAllTags = !showAllTags"
-            class="text-muted-foreground hover:text-foreground flex w-fit items-center gap-0.5 text-xs transition-colors"
-            :title="showAllTags ? '태그 접기' : '태그 더보기'"
+            class="text-muted-foreground hover:text-foreground shrink-0 text-xs transition-colors"
+            :title="showAllTags ? '태그 접기' : '모든 태그 보기'"
           >
-            <template v-if="showAllTags">
-              <ChevronUp :size="12" />
-              접기
-            </template>
-            <template v-else>
-              <ChevronDown :size="12" />
-              더보기 (+{{ game.tags.length - 3 }})
-            </template>
+            <template v-if="showAllTags">접기</template>
+            <template v-else>+</template>
           </button>
         </div>
       </div>
