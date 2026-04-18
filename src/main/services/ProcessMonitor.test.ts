@@ -297,6 +297,7 @@ describe("endSession", () => {
       path: gamePath,
       durationSeconds: 120,
       totalPlayTime: 220,
+      wasCheatMode: false,
     });
   });
 

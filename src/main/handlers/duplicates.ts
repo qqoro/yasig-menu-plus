@@ -7,7 +7,7 @@
  */
 
 import { shell } from "electron";
-import { existsSync, statSync } from "fs";
+import { stat, access } from "fs/promises";
 import type { IpcMainInvokeEvent } from "electron";
 import { db } from "../db/db-manager.js";
 import type {
@@ -19,6 +19,18 @@ import type {
 import { deleteImage } from "../utils/downloader.js";
 import { toAbsolutePath } from "../utils/image-path.js";
 import { leftJoinUserGameData } from "./home-utils.js";
+
+/**
+ * 경로 존재 여부 확인 (fs/promises 기반)
+ */
+async function pathExists(p: string): Promise<boolean> {
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * 관계 데이터 조회 및 맵 생성
@@ -66,13 +78,13 @@ async function loadRelationsAndGroup(gamePaths: string[]): Promise<{
 /**
  * 파일 시스템에서 파일 생성/수정일 조회
  */
-function getFileStats(filePath: string): {
+async function getFileStats(filePath: string): Promise<{
   fileCreatedAt: Date | null;
   fileModifiedAt: Date | null;
-} {
+}> {
   try {
-    if (existsSync(filePath)) {
-      const stats = statSync(filePath);
+    if (await pathExists(filePath)) {
+      const stats = await stat(filePath);
       return {
         fileCreatedAt: stats.birthtime,
         fileModifiedAt: stats.mtime,
@@ -87,7 +99,7 @@ function getFileStats(filePath: string): {
 /**
  * DB 결과를 GameItem으로 변환
  */
-function buildGameItems(
+async function buildGameItems(
   games: Array<{
     path: string;
     title: string;
@@ -115,39 +127,42 @@ function buildGameItems(
     categories: Map<string, string[]>;
     tags: Map<string, string[]>;
   },
-): GameItem[] {
-  return games.map((g) => {
-    const fileStats = getFileStats(g.path);
-    return {
-      path: g.path,
-      title: g.title,
-      originalTitle: g.originalTitle,
-      source: g.source,
-      thumbnail: toAbsolutePath(g.thumbnail),
-      executablePath: g.executablePath || null,
-      isCompressFile: Boolean(g.isCompressFile),
-      hasExecutable:
-        g.hasExecutable !== undefined ? Boolean(g.hasExecutable) : true,
-      publishDate: g.publishDate || null,
-      translatedTitle: g.translatedTitle || null,
-      translationSource: g.translationSource || null,
-      rating: g.rating,
-      isFavorite:
-        g.isFavorite !== undefined ? Boolean(g.isFavorite) : undefined,
-      isHidden: g.isHidden !== undefined ? Boolean(g.isHidden) : undefined,
-      isClear: g.isClear !== undefined ? Boolean(g.isClear) : undefined,
-      provider: g.provider || null,
-      externalId: g.externalId || null,
-      lastPlayedAt: g.lastPlayedAt || null,
-      createdAt: g.createdAt || null,
-      totalPlayTime: g.totalPlayTime,
-      fileCreatedAt: fileStats.fileCreatedAt,
-      fileModifiedAt: fileStats.fileModifiedAt,
-      makers: relations.makers.get(g.path) || [],
-      categories: relations.categories.get(g.path) || [],
-      tags: relations.tags.get(g.path) || [],
-    };
-  });
+): Promise<GameItem[]> {
+  const items = await Promise.all(
+    games.map(async (g) => {
+      const fileStats = await getFileStats(g.path);
+      return {
+        path: g.path,
+        title: g.title,
+        originalTitle: g.originalTitle,
+        source: g.source,
+        thumbnail: toAbsolutePath(g.thumbnail),
+        executablePath: g.executablePath || null,
+        isCompressFile: Boolean(g.isCompressFile),
+        hasExecutable:
+          g.hasExecutable !== undefined ? Boolean(g.hasExecutable) : true,
+        publishDate: g.publishDate || null,
+        translatedTitle: g.translatedTitle || null,
+        translationSource: g.translationSource || null,
+        rating: g.rating,
+        isFavorite:
+          g.isFavorite !== undefined ? Boolean(g.isFavorite) : undefined,
+        isHidden: g.isHidden !== undefined ? Boolean(g.isHidden) : undefined,
+        isClear: g.isClear !== undefined ? Boolean(g.isClear) : undefined,
+        provider: g.provider || null,
+        externalId: g.externalId || null,
+        lastPlayedAt: g.lastPlayedAt || null,
+        createdAt: g.createdAt || null,
+        totalPlayTime: g.totalPlayTime,
+        fileCreatedAt: fileStats.fileCreatedAt,
+        fileModifiedAt: fileStats.fileModifiedAt,
+        makers: relations.makers.get(g.path) || [],
+        categories: relations.categories.get(g.path) || [],
+        tags: relations.tags.get(g.path) || [],
+      };
+    }),
+  );
+  return items;
 }
 
 /**
@@ -196,7 +211,7 @@ export async function findDuplicatesHandler(
   // 관계 데이터 조회
   const gamePaths = games.map((g) => g.path);
   const relations = await loadRelationsAndGroup(gamePaths);
-  const gameItems = buildGameItems(games, relations);
+  const gameItems = await buildGameItems(games, relations);
 
   // 중복 그룹화
   const groups: DuplicateGroup[] = [];
@@ -332,7 +347,7 @@ export async function deleteGamesHandler(
   // 실제 파일 삭제 (휴지통으로 이동)
   for (const game of gamesToDelete) {
     try {
-      if (existsSync(game.path)) {
+      if (await pathExists(game.path)) {
         // 휴지통으로 이동 (복원 가능)
         shell.trashItem(game.path);
       }

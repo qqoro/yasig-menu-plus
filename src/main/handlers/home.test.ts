@@ -53,6 +53,7 @@ vi.mock("../store.js", () => ({
   }),
   getExcludedExecutables: () => [],
   getLibraryPaths: () => [],
+  getOfflineLibraryPaths: () => [],
   getScanDepth: () => 5,
   DEFAULT_TITLE_DISPLAY_PRIORITY: ["translated", "collected", "original"],
   addExcludedExecutable: vi.fn(),
@@ -80,6 +81,15 @@ vi.mock("../lib/fingerprint.js", () => ({
 vi.mock("../utils/downloader.js", () => ({
   deleteImage: vi.fn(),
 }));
+
+// fs/promises 모킹 — 프로덕션 코드가 fs/promises를 사용
+vi.mock("fs/promises", async (importOriginal) => {
+  const actual = (await importOriginal()) as any;
+  return {
+    ...actual,
+    access: vi.fn(() => Promise.resolve()),
+  };
+});
 
 // db-manager 모킹: testDb를 동적 참조
 const dbRef: { current: Knex | null } = { current: null };

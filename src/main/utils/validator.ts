@@ -4,7 +4,7 @@
  * 보안: Path Traversal, 잘못된 입력 등을 방지
  */
 
-import { existsSync, statSync } from "fs";
+import { stat, access } from "fs/promises";
 
 /**
  * 경로 검증 오류
@@ -26,13 +26,25 @@ function hasPathTraversal(path: string): boolean {
 }
 
 /**
+ * 경로 존재 여부 비동기 확인
+ */
+async function pathExists(p: string): Promise<boolean> {
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * 경로 유효성 검증
  * @throws {ValidationError} 경로가 유효하지 않은 경우
  */
-export function validatePath(
+export async function validatePath(
   path: string,
   options?: { mustExist: boolean },
-): void {
+): Promise<void> {
   if (typeof path !== "string" || path.trim() === "") {
     throw new ValidationError("경로가 비어있습니다.");
   }
@@ -43,7 +55,7 @@ export function validatePath(
   }
 
   // 존재 여부 확인 (옵션)
-  if (options?.mustExist && !existsSync(path)) {
+  if (options?.mustExist && !(await pathExists(path))) {
     throw new ValidationError("존재하지 않는 경로입니다.");
   }
 }
@@ -52,18 +64,16 @@ export function validatePath(
  * 디렉토리 경로 유효성 검증
  * @throws {ValidationError} 경로가 유효하지 않은 경우
  */
-export function validateDirectoryPath(path: string): void {
-  validatePath(path, { mustExist: true });
+export async function validateDirectoryPath(path: string): Promise<void> {
+  await validatePath(path, { mustExist: true });
 
   try {
-    const stat = statSync(path);
-    if (!stat.isDirectory()) {
+    const s = await stat(path);
+    if (!s.isDirectory()) {
       throw new ValidationError("디렉토리가 아닙니다.");
     }
   } catch (error) {
-    if (error instanceof ValidationError) {
-      throw error;
-    }
+    if (error instanceof ValidationError) throw error;
     throw new ValidationError("경로 정보를 가져올 수 없습니다.");
   }
 }

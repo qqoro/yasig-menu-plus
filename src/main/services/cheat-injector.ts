@@ -11,16 +11,16 @@
  */
 
 import {
-  readFileSync,
-  writeFileSync,
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  rmSync,
-  statSync,
-  readdirSync,
-} from "node:fs";
-import { join, relative } from "node:path";
+  readFile,
+  writeFile,
+  copyFile,
+  mkdir,
+  rm,
+  stat,
+  readdir,
+  access,
+} from "node:fs/promises";
+import { join } from "node:path";
 import { app } from "electron";
 import log from "electron-log";
 
@@ -28,21 +28,33 @@ const BACKUP_SUFFIX = ".cheat-backup";
 const REGISTRY_FILE = "cheat-injections.json";
 
 /**
- * 디렉토리 재귀 복사 (cpSync 대체)
- * cpSync가 Electron에서 네이티브 크래시를 유발하여 copyFileSync 기반으로 구현
+ * 경로 존재 여부 확인 (existsSync 대체)
  */
-function copyDirRecursive(src: string, dest: string): void {
-  if (!existsSync(dest)) {
-    mkdirSync(dest, { recursive: true });
+async function pathExists(p: string): Promise<boolean> {
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
   }
-  const entries = readdirSync(src, { withFileTypes: true });
+}
+
+/**
+ * 디렉토리 재귀 복사 (cpSync 대체)
+ * cpSync가 Electron에서 네이티브 크래시를 유발하여 copyFile 기반으로 구현
+ */
+async function copyDirRecursive(src: string, dest: string): Promise<void> {
+  if (!(await pathExists(dest))) {
+    await mkdir(dest, { recursive: true });
+  }
+  const entries = await readdir(src, { withFileTypes: true });
   for (const entry of entries) {
     const srcPath = join(src, entry.name);
     const destPath = join(dest, entry.name);
     if (entry.isDirectory()) {
-      copyDirRecursive(srcPath, destPath);
+      await copyDirRecursive(srcPath, destPath);
     } else {
-      copyFileSync(srcPath, destPath);
+      await copyFile(srcPath, destPath);
     }
   }
 }
@@ -67,8 +79,11 @@ class CheatInjector {
   /**
    * RPG Maker MV/MZ 게임 감지
    */
-  detect(gamePath: string): RpgMakerDetectionResult {
-    if (!existsSync(gamePath) || !statSync(gamePath).isDirectory()) {
+  async detect(gamePath: string): Promise<RpgMakerDetectionResult> {
+    if (
+      !(await pathExists(gamePath)) ||
+      !(await stat(gamePath)).isDirectory()
+    ) {
       return {
         isRpgMaker: false,
         version: null,
@@ -80,7 +95,7 @@ class CheatInjector {
     // MV 감지: www/js/main.js 또는 www/js/rpg_core.js
     const mvMainJs = join(gamePath, "www", "js", "main.js");
     const mvCore = join(gamePath, "www", "js", "rpg_core.js");
-    if (existsSync(mvMainJs) && existsSync(mvCore)) {
+    if ((await pathExists(mvMainJs)) && (await pathExists(mvCore))) {
       return {
         isRpgMaker: true,
         version: "mv",
@@ -92,7 +107,7 @@ class CheatInjector {
     // MZ 감지: js/main.js 또는 js/rmmz_core.js
     const mzMainJs = join(gamePath, "js", "main.js");
     const mzCore = join(gamePath, "js", "rmmz_core.js");
-    if (existsSync(mzMainJs) && existsSync(mzCore)) {
+    if ((await pathExists(mzMainJs)) && (await pathExists(mzCore))) {
       return {
         isRpgMaker: true,
         version: "mz",
@@ -124,13 +139,13 @@ class CheatInjector {
     const backupPath = mainJsPath + BACKUP_SUFFIX;
 
     // 이미 백업이 있으면 (이전 주입이 미복원됨) 먼저 복원
-    if (existsSync(backupPath)) {
+    if (await pathExists(backupPath)) {
       log.warn("이전 주입 백업 발견, 복원 후 재주입:", backupPath);
       // 레지스트리 기록이 없어도 백업 파일로 직접 복원
       try {
-        const backupContent = readFileSync(backupPath, "utf-8");
-        writeFileSync(mainJsPath, backupContent, "utf-8");
-        rmSync(backupPath, { force: true });
+        const backupContent = await readFile(backupPath, "utf-8");
+        await writeFile(mainJsPath, backupContent, "utf-8");
+        await rm(backupPath, { force: true });
         log.info("백업 파일로 main.js 복원 완료");
       } catch (e) {
         log.error("백업 복원 실패:", e);
@@ -140,15 +155,15 @@ class CheatInjector {
     }
 
     // 1. main.js 백업
-    const mainJsContent = readFileSync(mainJsPath, "utf-8");
-    writeFileSync(backupPath, mainJsContent, "utf-8");
+    const mainJsContent = await readFile(mainJsPath, "utf-8");
+    await writeFile(backupPath, mainJsContent, "utf-8");
 
     try {
       // 2. 번들 파일 복사 (cheat/, css/, js/, cheat-version-description.json)
-      const injectedDirs = this.copyBundleFiles(version!, gameRoot);
+      const injectedDirs = await this.copyBundleFiles(version!, gameRoot);
 
       // 3. 레지스트리에 기록
-      this.addToRegistry({
+      await this.addToRegistry({
         gamePath,
         version: version!,
         mainJsPath,
@@ -161,9 +176,13 @@ class CheatInjector {
     } catch (error) {
       // 주입 실패 시 백업 복원
       log.error("치트 주입 실패, 백업 복원:", error);
-      if (existsSync(backupPath)) {
-        writeFileSync(mainJsPath, readFileSync(backupPath, "utf-8"), "utf-8");
-        rmSync(backupPath, { force: true });
+      if (await pathExists(backupPath)) {
+        await writeFile(
+          mainJsPath,
+          await readFile(backupPath, "utf-8"),
+          "utf-8",
+        );
+        await rm(backupPath, { force: true });
       }
       throw error;
     }
@@ -173,7 +192,7 @@ class CheatInjector {
    * 치트 플러그인 복원
    */
   async restore(gamePath: string): Promise<boolean> {
-    const records = this.loadRegistry();
+    const records = await this.loadRegistry();
     const record = records.find((r) => r.gamePath === gamePath);
 
     if (!record) {
@@ -183,26 +202,26 @@ class CheatInjector {
 
     try {
       // main.js 복원
-      if (existsSync(record.mainJsBackupPath)) {
-        writeFileSync(
+      if (await pathExists(record.mainJsBackupPath)) {
+        await writeFile(
           record.mainJsPath,
-          readFileSync(record.mainJsBackupPath, "utf-8"),
+          await readFile(record.mainJsBackupPath, "utf-8"),
           "utf-8",
         );
-        rmSync(record.mainJsBackupPath, { force: true });
+        await rm(record.mainJsBackupPath, { force: true });
         log.info(`main.js 복원 완료: ${record.mainJsPath}`);
       }
 
       // 주입한 디렉토리/파일 삭제
       for (const dir of record.injectedDirs) {
-        if (existsSync(dir)) {
-          rmSync(dir, { recursive: true, force: true });
+        if (await pathExists(dir)) {
+          await rm(dir, { recursive: true, force: true });
           log.info(`주입 디렉토리 삭제: ${dir}`);
         }
       }
 
       // 레지스트리에서 제거
-      this.removeFromRegistry(gamePath);
+      await this.removeFromRegistry(gamePath);
 
       log.info(`치트 복원 완료: ${gamePath}`);
       return true;
@@ -216,7 +235,7 @@ class CheatInjector {
    * 앱 시작 시 미복원 항목 정리
    */
   async restoreAllPending(): Promise<void> {
-    const records = this.loadRegistry();
+    const records = await this.loadRegistry();
     if (records.length === 0) return;
 
     log.info(`미복원 치트 주입 항목 ${records.length}개 발견, 복원 시작`);
@@ -235,9 +254,12 @@ class CheatInjector {
    * mv/ 내부의 cheat/, css/, js/, *.json → www/
    * mz/ 내부의 cheat/, css/, js/, *.json → 게임 루트
    */
-  private copyBundleFiles(version: "mv" | "mz", gameRoot: string): string[] {
+  private async copyBundleFiles(
+    version: "mv" | "mz",
+    gameRoot: string,
+  ): Promise<string[]> {
     const bundleDir = this.getBundleDir(version);
-    if (!existsSync(bundleDir)) {
+    if (!(await pathExists(bundleDir))) {
       throw new Error(`치트 플러그인 번들을 찾을 수 없습니다: ${bundleDir}`);
     }
 
@@ -253,18 +275,18 @@ class CheatInjector {
     ];
 
     for (const { src, dest } of entries) {
-      if (!existsSync(src)) continue;
+      if (!(await pathExists(src))) continue;
 
-      if (statSync(src).isDirectory()) {
+      if ((await stat(src)).isDirectory()) {
         // 기존 디렉토리는 추적하지 않음 (js/ 등 게임 원본)
         // 파일 덮어쓰기는 main.js 백업/복원으로 처리
-        const isNewDir = !existsSync(dest);
-        copyDirRecursive(src, dest);
+        const isNewDir = !(await pathExists(dest));
+        await copyDirRecursive(src, dest);
         if (isNewDir) {
           injectedDirs.push(dest);
         }
       } else {
-        copyFileSync(src, dest);
+        await copyFile(src, dest);
       }
     }
 
@@ -286,34 +308,34 @@ class CheatInjector {
     return join(app.getPath("userData"), REGISTRY_FILE);
   }
 
-  private loadRegistry(): InjectionRecord[] {
+  private async loadRegistry(): Promise<InjectionRecord[]> {
     const path = this.getRegistryPath();
-    if (!existsSync(path)) return [];
+    if (!(await pathExists(path))) return [];
     try {
-      return JSON.parse(readFileSync(path, "utf-8"));
+      return JSON.parse(await readFile(path, "utf-8"));
     } catch {
       return [];
     }
   }
 
-  private saveRegistry(records: InjectionRecord[]): void {
-    writeFileSync(
+  private async saveRegistry(records: InjectionRecord[]): Promise<void> {
+    await writeFile(
       this.getRegistryPath(),
       JSON.stringify(records, null, 2),
       "utf-8",
     );
   }
 
-  private addToRegistry(record: InjectionRecord): void {
-    const records = this.loadRegistry();
+  private async addToRegistry(record: InjectionRecord): Promise<void> {
+    const records = await this.loadRegistry();
     const filtered = records.filter((r) => r.gamePath !== record.gamePath);
     filtered.push(record);
-    this.saveRegistry(filtered);
+    await this.saveRegistry(filtered);
   }
 
-  private removeFromRegistry(gamePath: string): void {
-    const records = this.loadRegistry();
-    this.saveRegistry(records.filter((r) => r.gamePath !== gamePath));
+  private async removeFromRegistry(gamePath: string): Promise<void> {
+    const records = await this.loadRegistry();
+    await this.saveRegistry(records.filter((r) => r.gamePath !== gamePath));
   }
 }
 

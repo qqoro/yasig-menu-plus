@@ -7,22 +7,25 @@
 import archiver from "archiver";
 import { app, clipboard, dialog, shell } from "electron";
 import type { IpcMainInvokeEvent } from "electron";
-import {
-  createWriteStream,
-  existsSync,
-  readFileSync,
-  statSync,
-  unlinkSync,
-  writeFile,
-} from "fs";
+import { createWriteStream } from "fs";
+import { access, readFile, stat, unlink, writeFile } from "fs/promises";
 import os from "os";
 import { join, resolve } from "path";
-import { promisify } from "util";
 import { db } from "../db/db-manager.js";
 import type { IpcMainEventMap, IpcRendererEventMap } from "../events.js";
 import { wrapIpcHandler } from "../utils/ipc-wrapper.js";
 
-const writeFileAsync = promisify(writeFile);
+/**
+ * 경로 존재 여부 확인 (async)
+ */
+async function pathExists(p: string): Promise<boolean> {
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * DB 파일 경로 반환
@@ -110,8 +113,8 @@ async function generateSystemInfo(): Promise<string> {
     gameCount = -1; // 조회 실패
   }
   try {
-    if (existsSync(dbPath)) {
-      dbFileSize = formatFileSize(statSync(dbPath).size);
+    if (await pathExists(dbPath)) {
+      dbFileSize = formatFileSize((await stat(dbPath)).size);
     }
   } catch {
     dbFileSize = "N/A";
@@ -131,9 +134,9 @@ async function generateSystemInfo(): Promise<string> {
     `| 항목 | 경로 |`,
     `|------|------|`,
     `| userData | ${userDataPath} |`,
-    `| 설정 파일 | ${settingsPath} (${existsSync(settingsPath) ? "존재" : "없음"}) |`,
-    `| DB 파일 | ${dbPath} (${existsSync(dbPath) ? "존재" : "없음"}) |`,
-    `| 로그 파일 | ${logPath} (${existsSync(logPath) ? "존재" : "없음"}) |`,
+    `| 설정 파일 | ${settingsPath} (${(await pathExists(settingsPath)) ? "존재" : "없음"}) |`,
+    `| DB 파일 | ${dbPath} (${(await pathExists(dbPath)) ? "존재" : "없음"}) |`,
+    `| 로그 파일 | ${logPath} (${(await pathExists(logPath)) ? "존재" : "없음"}) |`,
     "",
     "## DB 통계",
     "",
@@ -179,7 +182,7 @@ export const exportDebugDataHandler = wrapIpcHandler(
     try {
       // 2. system-info.md 생성
       const systemInfo = await generateSystemInfo();
-      await writeFileAsync(tempInfoPath, systemInfo, "utf-8");
+      await writeFile(tempInfoPath, systemInfo, "utf-8");
 
       // 3. ZIP 압축 생성
       await new Promise<void>((resolvePromise, rejectPromise) => {
@@ -201,22 +204,16 @@ export const exportDebugDataHandler = wrapIpcHandler(
 
         // settings.json 추가 (있으면)
         const settingsPath = getSettingsPath();
-        if (existsSync(settingsPath)) {
-          archive.file(settingsPath, { name: "settings.json" });
-        }
+        archive.file(settingsPath, { name: "settings.json" });
 
         // main.log 추가 (있으면)
         const logPath = getLogPath();
-        if (existsSync(logPath)) {
-          archive.file(logPath, { name: "main.log" });
-        }
+        archive.file(logPath, { name: "main.log" });
 
         // DB 파일 추가 (선택 + 있으면)
         if (includeDb) {
           const dbPath = getDbPath();
-          if (existsSync(dbPath)) {
-            archive.file(dbPath, { name: "database.db" });
-          }
+          archive.file(dbPath, { name: "database.db" });
         }
 
         archive.finalize();
@@ -226,8 +223,8 @@ export const exportDebugDataHandler = wrapIpcHandler(
     } finally {
       // 4. 임시 파일 정리
       try {
-        if (existsSync(tempInfoPath)) {
-          unlinkSync(tempInfoPath);
+        if (await pathExists(tempInfoPath)) {
+          await unlink(tempInfoPath);
         }
       } catch {
         // 임시 파일 정리 실패는 무시
@@ -249,9 +246,9 @@ export const openGitHubIssueHandler = wrapIpcHandler(
     // 최근 로그 읽기 (마지막 100줄)
     let logSection = "";
     const logPath = getLogPath();
-    if (existsSync(logPath)) {
+    if (await pathExists(logPath)) {
       try {
-        const logContent = readFileSync(logPath, "utf-8");
+        const logContent = await readFile(logPath, "utf-8");
         const lines = logContent.split("\n").filter(Boolean);
         const lastLines = lines.slice(-100);
         logSection = [

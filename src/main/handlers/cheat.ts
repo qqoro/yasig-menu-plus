@@ -17,7 +17,7 @@ import { executeGameLaunch } from "./home-game-control.js";
 const detectRpgMakerHandler = wrapIpcHandler(
   "detectRpgMaker",
   async (_event, payload: { path: string }) => {
-    return cheatInjector.detect(payload.path);
+    return await cheatInjector.detect(payload.path);
   },
 );
 
@@ -34,7 +34,7 @@ const playGameWithCheatHandler = wrapIpcHandler(
     const { path } = payload;
 
     // RPG Maker 게임 감지
-    const detection = cheatInjector.detect(path);
+    const detection = await cheatInjector.detect(path);
     if (!detection.isRpgMaker) {
       throw new Error("RPG Maker MV/MZ 게임이 아닙니다.");
     }

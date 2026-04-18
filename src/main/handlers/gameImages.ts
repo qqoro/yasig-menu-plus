@@ -14,7 +14,7 @@ export async function getGameImagesHandler(
   const { gamePath } = payload;
 
   // gamePath 유효성 검증
-  validatePath(gamePath);
+  await validatePath(gamePath);
 
   const images = await db("gameImages")
     .where("game_path", gamePath)

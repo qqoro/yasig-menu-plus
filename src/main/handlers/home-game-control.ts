@@ -10,7 +10,7 @@
  */
 
 import { spawn } from "child_process";
-import { existsSync, readdirSync } from "fs";
+import { readdir, access } from "fs/promises";
 import { extname, join } from "path";
 import type { IpcMainInvokeEvent } from "electron";
 import { shell } from "electron";
@@ -34,14 +34,26 @@ const VIDEO_EXTENSIONS = [".mp4", ".avi", ".mkv", ".wmv"];
 const MEDIA_EXTENSIONS = [...AUDIO_EXTENSIONS, ...VIDEO_EXTENSIONS];
 
 /**
+ * 경로 존재 여부 확인 (async)
+ */
+async function pathExists(p: string): Promise<boolean> {
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * 폴더를 재귀 탐색하여 상대 경로 기준 사전순 첫 번째 미디어 파일 반환
  */
-function findFirstMediaFile(folderPath: string): string | null {
+async function findFirstMediaFile(folderPath: string): Promise<string | null> {
   const mediaFiles: string[] = [];
 
-  function traverse(currentPath: string): void {
+  async function traverse(currentPath: string): Promise<void> {
     try {
-      const entries = readdirSync(currentPath, { withFileTypes: true });
+      const entries = await readdir(currentPath, { withFileTypes: true });
       const sorted = [...entries].sort((a, b) => a.name.localeCompare(b.name));
 
       for (const entry of sorted) {
@@ -55,7 +67,7 @@ function findFirstMediaFile(folderPath: string): string | null {
             return;
           }
         } else if (entry.isDirectory()) {
-          traverse(fullPath);
+          await traverse(fullPath);
           if (mediaFiles.length > 0) return;
         }
       }
@@ -64,7 +76,7 @@ function findFirstMediaFile(folderPath: string): string | null {
     }
   }
 
-  traverse(folderPath);
+  await traverse(folderPath);
   return mediaFiles[0] ?? null;
 }
 
@@ -86,7 +98,7 @@ export async function executeGameLaunch(
   isCheatMode = false,
 ): Promise<IpcMainEventMap["gamePlayed"]> {
   // 오프라인 경로 안내: 경로가 존재하지 않고 오프라인 경로인 경우 친화적 메시지
-  if (!existsSync(path)) {
+  if (!(await pathExists(path))) {
     const offlinePaths = getOfflineLibraryPaths();
     const game = await db("games").where("path", path).select("source").first();
     if (
@@ -98,7 +110,7 @@ export async function executeGameLaunch(
   }
 
   // 경로 유효성 검증
-  validatePath(path, { mustExist: true });
+  await validatePath(path, { mustExist: true });
 
   // DB에서 게임 정보 조회
   const game = await db("games").where("path", path).first();
@@ -124,7 +136,7 @@ export async function executeGameLaunch(
 
   if (!executablePath) {
     // 미디어 재생 fallback
-    const mediaFile = findFirstMediaFile(path);
+    const mediaFile = await findFirstMediaFile(path);
     if (!mediaFile) {
       throw new Error("실행 파일을 찾을 수 없습니다.");
     }
@@ -135,7 +147,7 @@ export async function executeGameLaunch(
       ? playerSettings.audioPlayerPath
       : playerSettings.videoPlayerPath;
 
-    if (playerPath && existsSync(playerPath)) {
+    if (playerPath && (await pathExists(playerPath))) {
       spawn(playerPath, [mediaFile], {
         detached: true,
         stdio: "ignore",
@@ -343,7 +355,7 @@ export async function setExecutablePathHandler(
   const { path, executablePath } = payload;
 
   // 경로 유효성 검증
-  validateDirectoryPath(path);
+  await validateDirectoryPath(path);
 
   // 게임 존재 확인
   const game = await db("games").where("path", path).first();

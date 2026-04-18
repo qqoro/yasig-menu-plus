@@ -12,13 +12,8 @@
  */
 
 import { createHash } from "crypto";
-import {
-  type Dirent,
-  existsSync,
-  readdirSync,
-  readFileSync,
-  statSync,
-} from "fs";
+import { type Dirent } from "fs";
+import { readFile, stat, readdir, access } from "fs/promises";
 import { join } from "path";
 import { EXECUTABLE_EXTENSIONS } from "./scan-logic.js";
 
@@ -65,13 +60,25 @@ const EXCLUDED_FILE_NAMES = new Set(["thumbs.db", "desktop.ini", ".ds_store"]);
 /** 디렉토리당 최대 수집 파일 수 */
 const MAX_FILES_PER_DIR = 100;
 
+/** 경로 존재 여부 확인 (async) */
+async function pathExists(p: string): Promise<boolean> {
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * System.json에서 gameTitle 추출 시도
  * @returns gameTitle 또는 null
  */
-function tryGetGameTitle(systemJsonPath: string): { gameTitle: string } | null {
+async function tryGetGameTitle(
+  systemJsonPath: string,
+): Promise<{ gameTitle: string } | null> {
   try {
-    const systemJson = JSON.parse(readFileSync(systemJsonPath, "utf-8")) as {
+    const systemJson = JSON.parse(await readFile(systemJsonPath, "utf-8")) as {
       gameTitle?: string;
     };
     if (systemJson?.gameTitle) {
@@ -99,23 +106,23 @@ function isExcludedFile(fileName: string): boolean {
 /**
  * Dirent 배열에서 블랙리스트 제외 후 파일 엔트리 수집
  *
- * @param dirPath 파일들이 위치한 디렉토리 절대경로 (statSync용)
+ * @param dirPath 파일들이 위치한 디렉토리 절대경로 (stat용)
  * @param entries 이미 읽은 Dirent 배열
  * @param prefix 상대경로 프리픽스 (루트이면 "", 하위이면 "subdir/")
  * @returns "상대경로:크기" 형식의 엔트리 배열 (정렬+상한 적용)
  */
-function collectFileEntries(
+async function collectFileEntries(
   dirPath: string,
   entries: Dirent[],
   prefix: string,
-): string[] {
+): Promise<string[]> {
   const fileEntries: string[] = [];
 
   for (const entry of entries) {
     if (!entry.isFile()) continue;
     if (isExcludedFile(entry.name)) continue;
 
-    const fileStat = statSync(join(dirPath, entry.name));
+    const fileStat = await stat(join(dirPath, entry.name));
     fileEntries.push(`${prefix}${entry.name}:${fileStat.size}`);
   }
 
@@ -128,21 +135,21 @@ function collectFileEntries(
  * - 폴더: 블랙리스트 기반 전체 파일 목록의 이름:크기를 SHA-256
  * - 단일 파일(압축 등): 파일명:크기를 SHA-256
  */
-export function computeFingerprint(
+export async function computeFingerprint(
   gamePath: string,
   isCompressFile: boolean,
-): string | null {
+): Promise<string | null> {
   try {
-    const stat = statSync(gamePath);
-    if (isCompressFile || !stat.isDirectory()) {
+    const fileStat = await stat(gamePath);
+    if (isCompressFile || !fileStat.isDirectory()) {
       // 단일 파일: 파일명 + 크기
       const name = gamePath.split(/[\\/]/).pop() || "";
-      const data = `${name}:${stat.size}`;
+      const data = `${name}:${fileStat.size}`;
       return createHash("sha256").update(data).digest("hex");
     }
 
     // 폴더: 실행파일 및 RGSS 파일 목록 수집
-    const entries = readdirSync(gamePath, { withFileTypes: true });
+    const entries = await readdir(gamePath, { withFileTypes: true });
     const execEntries: string[] = [];
     const rgssEntries: string[] = [];
     let firstExecSize = 0;
@@ -155,9 +162,9 @@ export function computeFingerprint(
         entry.isFile() &&
         EXECUTABLE_EXTENSIONS.some((ext) => lowerName.endsWith(ext))
       ) {
-        const fileStat = statSync(join(gamePath, entry.name));
-        execEntries.push(`${entry.name}:${fileStat.size}`);
-        if (firstExecSize === 0) firstExecSize = fileStat.size;
+        const es = await stat(join(gamePath, entry.name));
+        execEntries.push(`${entry.name}:${es.size}`);
+        if (firstExecSize === 0) firstExecSize = es.size;
       }
 
       // RGSS 파일 수집 (RPG Maker VX/Ace/XP)
@@ -165,15 +172,15 @@ export function computeFingerprint(
         entry.isFile() &&
         RGSS_EXTENSIONS.some((ext) => lowerName.endsWith(ext))
       ) {
-        const fileStat = statSync(join(gamePath, entry.name));
-        rgssEntries.push(`${entry.name}:${fileStat.size}`);
+        const es = await stat(join(gamePath, entry.name));
+        rgssEntries.push(`${entry.name}:${es.size}`);
       }
     }
 
     // 1. www/data/System.json (RPG Maker MV/MZ NW.js 패키징) - 최우선
     const wwwSystemPath = join(gamePath, "www", "data", "System.json");
-    if (existsSync(wwwSystemPath)) {
-      const result = tryGetGameTitle(wwwSystemPath);
+    if (await pathExists(wwwSystemPath)) {
+      const result = await tryGetGameTitle(wwwSystemPath);
       if (result) {
         const data = `${result.gameTitle}:${firstExecSize}`;
         return createHash("sha256").update(data).digest("hex");
@@ -182,8 +189,8 @@ export function computeFingerprint(
 
     // 2. data/System.json (RPG Maker MV/MZ 직접 배포)
     const dataSystemPath = join(gamePath, "data", "System.json");
-    if (existsSync(dataSystemPath)) {
-      const result = tryGetGameTitle(dataSystemPath);
+    if (await pathExists(dataSystemPath)) {
+      const result = await tryGetGameTitle(dataSystemPath);
       if (result) {
         const data = `${result.gameTitle}:${firstExecSize}`;
         return createHash("sha256").update(data).digest("hex");
@@ -201,7 +208,7 @@ export function computeFingerprint(
     const allEntries: string[] = [];
 
     // 루트 파일 수집 (이미 읽은 entries 재사용)
-    allEntries.push(...collectFileEntries(gamePath, entries, ""));
+    allEntries.push(...(await collectFileEntries(gamePath, entries, "")));
 
     // 1단계 하위 디렉토리 파일 수집
     for (const entry of entries) {
@@ -211,8 +218,8 @@ export function computeFingerprint(
 
       try {
         const subPath = join(gamePath, entry.name);
-        const subDirEntries = readdirSync(subPath, { withFileTypes: true });
-        const subEntries = collectFileEntries(
+        const subDirEntries = await readdir(subPath, { withFileTypes: true });
+        const subEntries = await collectFileEntries(
           subPath,
           subDirEntries,
           `${entry.name}/`,

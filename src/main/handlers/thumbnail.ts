@@ -23,7 +23,7 @@ export async function downloadThumbnailHandler(
   const { gamePath, url } = payload;
 
   // gamePath 유효성 검증
-  validatePath(gamePath);
+  await validatePath(gamePath);
 
   const filePath = await downloadImage(url, gamePath);
 
@@ -45,7 +45,7 @@ export async function deleteThumbnailHandler(
   const { gamePath } = payload;
 
   // gamePath 유효성 검증
-  validatePath(gamePath);
+  await validatePath(gamePath);
 
   // DB에서 썸네일 경로 조회
   const game = await db("games").where("path", gamePath).first();

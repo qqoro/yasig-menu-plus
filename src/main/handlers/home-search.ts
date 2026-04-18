@@ -25,7 +25,16 @@ import {
   validateDirectoryPath,
   validateSearchQuery,
 } from "../utils/validator.js";
-import { existsSync } from "fs";
+import { access } from "fs/promises";
+
+async function pathExists(p: string): Promise<boolean> {
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
 import {
   buildGameItems,
   buildTitleOrderParts,
@@ -147,16 +156,19 @@ export async function searchGamesHandler(
 
   // 오프라인 경로는 존재 여부 검증 우회
   const offlinePaths = getOfflineLibraryPaths();
-  const validPaths = sourcePaths.filter((p) => {
-    if (offlinePaths.some((op) => op.toLowerCase() === p.toLowerCase()))
-      return true;
-    try {
-      validateDirectoryPath(p);
-      return true;
-    } catch {
-      return false;
+  const validPaths: string[] = [];
+  for (const p of sourcePaths) {
+    if (offlinePaths.some((op) => op.toLowerCase() === p.toLowerCase())) {
+      validPaths.push(p);
+      continue;
     }
-  });
+    try {
+      await validateDirectoryPath(p);
+      validPaths.push(p);
+    } catch {
+      // 유효하지 않은 경로는 제외
+    }
+  }
 
   // 기본 쿼리 빌더
   let query = leftJoinUserGameData(db("games"))
@@ -402,7 +414,12 @@ export async function searchGamesHandler(
   const plainGames = buildGameItems(games, relations);
 
   // 오프라인 경로 중 현재 연결되지 않은 경로 계산
-  const unavailableOfflinePaths = offlinePaths.filter((p) => !existsSync(p));
+  const existsResults = await Promise.all(
+    offlinePaths.map((p) => pathExists(p)),
+  );
+  const unavailableOfflinePaths = offlinePaths.filter(
+    (_, i) => !existsResults[i],
+  );
 
   // 각 게임에 isOffline 필드 설정
   for (const game of plainGames) {
@@ -428,16 +445,19 @@ export async function getRandomGameHandler(
 
   // 오프라인 경로는 존재 여부 검증 우회
   const offlinePaths = getOfflineLibraryPaths();
-  const validPaths = sourcePaths.filter((p) => {
-    if (offlinePaths.some((op) => op.toLowerCase() === p.toLowerCase()))
-      return true;
-    try {
-      validateDirectoryPath(p);
-      return true;
-    } catch {
-      return false;
+  const validPaths: string[] = [];
+  for (const p of sourcePaths) {
+    if (offlinePaths.some((op) => op.toLowerCase() === p.toLowerCase())) {
+      validPaths.push(p);
+      continue;
     }
-  });
+    try {
+      await validateDirectoryPath(p);
+      validPaths.push(p);
+    } catch {
+      // 유효하지 않은 경로는 제외
+    }
+  }
 
   // 기본 쿼리 빌더
   let query = leftJoinUserGameData(db("games"))
@@ -643,7 +663,12 @@ export async function getRandomGameHandler(
   const plainGames = buildGameItems(games, relations);
 
   // 오프라인 경로 중 현재 연결되지 않은 경로 계산
-  const unavailableOfflinePaths = offlinePaths.filter((p) => !existsSync(p));
+  const existsResults = await Promise.all(
+    offlinePaths.map((p) => pathExists(p)),
+  );
+  const unavailableOfflinePaths = offlinePaths.filter(
+    (_, i) => !existsResults[i],
+  );
 
   // 각 게임에 isOffline 필드 설정
   for (const game of plainGames) {

@@ -9,7 +9,7 @@
 
 import type { IpcMainInvokeEvent } from "electron";
 import { shell } from "electron";
-import { existsSync, readdirSync } from "fs";
+import { access, readdir } from "fs/promises";
 import { dirname, join } from "path";
 import { COMPRESS_FILE_TYPE } from "../constants.js";
 import { db } from "../db/db-manager.js";
@@ -35,15 +35,27 @@ import {
 } from "./home-utils.js";
 
 /**
+ * 경로 존재 여부 비동기 확인
+ */
+async function pathExists(p: string): Promise<boolean> {
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * 게임 경로에서 실행 파일 후보들을 찾음
  */
 export async function findExecutables(folderPath: string): Promise<string[]> {
-  if (!existsSync(folderPath)) {
+  if (!(await pathExists(folderPath))) {
     return [];
   }
 
   try {
-    const entries = readdirSync(folderPath, { withFileTypes: true });
+    const entries = await readdir(folderPath, { withFileTypes: true });
     const executables: string[] = [];
 
     // 스토어에서 실행 제외 목록 가져오기
@@ -99,7 +111,7 @@ export function selectBestExecutable(executables: string[]): string | null {
 export async function scanFolder(
   sourcePath: string,
 ): Promise<{ addedCount: number; deletedCount: number }> {
-  if (!existsSync(sourcePath)) {
+  if (!(await pathExists(sourcePath))) {
     return { addedCount: 0, deletedCount: 0 };
   }
 
@@ -138,7 +150,10 @@ export async function scanFolder(
       }
 
       // 게임 정보 생성
-      const fingerprint = computeFingerprint(fullPath, Boolean(isCompressFile));
+      const fingerprint = await computeFingerprint(
+        fullPath,
+        Boolean(isCompressFile),
+      );
       const gameData = {
         path: fullPath,
         title: title,
@@ -278,11 +293,16 @@ export const refreshListHandler = wrapIpcHandler(
       totalDeleted += result.deletedCount;
     }
 
+    // sourcePaths 중 존재하는 경로만 필터링
+    const sourcePathsExist = await Promise.all(
+      sourcePaths.map(async (p) => ({ p, exists: await pathExists(p) })),
+    );
+
     // 스캔 후 다시 목록 로드
     const games = await leftJoinUserGameData(db("games"))
       .whereIn(
         "games.source",
-        sourcePaths.filter((p) => existsSync(p)),
+        sourcePathsExist.filter((r) => r.exists).map((r) => r.p),
       )
       .where("games.isHidden", 0)
       .orderBy("games.title", "asc")
@@ -332,7 +352,7 @@ export const openFolderHandler = wrapIpcHandler(
 
     // 게임이 없으면 일반 폴더로 처리
     if (!game) {
-      validateDirectoryPath(path);
+      await validateDirectoryPath(path);
       const openResult = await shell.openPath(path);
       if (openResult) {
         throw new Error(`폴더를 열 수 없습니다: ${openResult}`);
@@ -345,7 +365,7 @@ export const openFolderHandler = wrapIpcHandler(
 
     if (isCompressFile || isShortcutFile) {
       // 압축파일이거나 바로가기 파일인 경우 파일이 있는 폴더에서 파일 선택
-      if (existsSync(path)) {
+      if (await pathExists(path)) {
         shell.showItemInFolder(path);
       } else {
         // 파일이 삭제된 경우 상위 폴더 열기
@@ -357,7 +377,7 @@ export const openFolderHandler = wrapIpcHandler(
       }
     } else {
       // 폴더인 경우 해당 폴더 열기
-      validateDirectoryPath(path);
+      await validateDirectoryPath(path);
       const openResult = await shell.openPath(path);
       if (openResult) {
         throw new Error(`폴더를 열 수 없습니다: ${openResult}`);

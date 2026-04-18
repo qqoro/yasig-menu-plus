@@ -58,6 +58,23 @@ vi.mock("fs", async (importOriginal) => {
   };
 });
 
+// fs/promises 모킹 — 프로덕션 코드가 fs/promises를 사용
+vi.mock("fs/promises", async (importOriginal) => {
+  const actual = (await importOriginal()) as any;
+  return {
+    ...actual,
+    access: vi.fn(() => Promise.resolve()),
+    stat: vi.fn(() =>
+      Promise.resolve({
+        birthtime: new Date(),
+        mtime: new Date(),
+        isDirectory: () => true,
+        size: 100,
+      }),
+    ),
+  };
+});
+
 // db-manager 모킹: testDb를 동적 참조
 const dbRef: { current: Knex | null } = { current: null };
 vi.mock("../db/db-manager.js", () => ({
@@ -472,9 +489,10 @@ describe("deleteGamesHandler — 빈 paths", () => {
 // deleteGamesHandler — shell.trashItem 호출
 // ============================================
 describe("deleteGamesHandler — 파일 시스템 삭제", () => {
-  it("existsSync가 true인 경로에 대해 shell.trashItem이 호출되어야 한다", async () => {
-    const { existsSync } = await import("fs");
-    vi.mocked(existsSync).mockReturnValue(true);
+  it("pathExists가 true인 경로에 대해 shell.trashItem이 호출되어야 한다", async () => {
+    // fs/promises의 access는 기본적으로 resolve() (경로 존재)
+    const { access } = await import("fs/promises");
+    vi.mocked(access).mockResolvedValue(undefined);
 
     await seedGame(db, {
       path: "/games/trash-target",
@@ -490,9 +508,10 @@ describe("deleteGamesHandler — 파일 시스템 삭제", () => {
     expect(shell.trashItem).toHaveBeenCalledWith("/games/trash-target");
   });
 
-  it("existsSync가 false인 경로에 대해 shell.trashItem이 호출되지 않아야 한다", async () => {
-    const { existsSync } = await import("fs");
-    vi.mocked(existsSync).mockReturnValue(false);
+  it("pathExists가 false인 경로에 대해 shell.trashItem이 호출되지 않아야 한다", async () => {
+    // access가 reject되면 pathExists가 false를 반환
+    const { access } = await import("fs/promises");
+    vi.mocked(access).mockRejectedValue(new Error("ENOENT"));
 
     await seedGame(db, {
       path: "/games/missing-file",

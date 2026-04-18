@@ -34,7 +34,7 @@ export async function updateGameMetadata(
   },
 ): Promise<void> {
   // 경로 유효성 검증
-  validatePath(path);
+  await validatePath(path);
 
   const updates: Record<string, unknown> = {};
 
@@ -76,7 +76,7 @@ export async function updateRating(
   rating: number | null,
 ): Promise<void> {
   // 경로 유효성 검증
-  validatePath(path);
+  await validatePath(path);
 
   // 범위 검증
   if (rating !== null && (rating < 1 || rating > 5)) {
@@ -92,7 +92,7 @@ export async function updateRating(
  */
 export async function addMaker(path: string, name: string): Promise<void> {
   // 경로 유효성 검증
-  validatePath(path);
+  await validatePath(path);
 
   // 기존 제작사 확인
   const existingMaker = await db("makers").where("name", name).first();
@@ -130,7 +130,7 @@ export async function addMaker(path: string, name: string): Promise<void> {
  */
 export async function removeMaker(path: string, name: string): Promise<void> {
   // 경로 유효성 검증
-  validatePath(path);
+  await validatePath(path);
 
   // 제작사 ID 조회
   const maker = await db("makers").where("name", name).first();
@@ -149,7 +149,7 @@ export async function removeMaker(path: string, name: string): Promise<void> {
  */
 export async function addCategory(path: string, name: string): Promise<void> {
   // 경로 유효성 검증
-  validatePath(path);
+  await validatePath(path);
 
   // 기존 카테고리 확인
   const existingCategory = await db("categories").where("name", name).first();
@@ -191,7 +191,7 @@ export async function removeCategory(
   name: string,
 ): Promise<void> {
   // 경로 유효성 검증
-  validatePath(path);
+  await validatePath(path);
 
   // 카테고리 ID 조회
   const category = await db("categories").where("name", name).first();
@@ -210,7 +210,7 @@ export async function removeCategory(
  */
 export async function addTag(path: string, name: string): Promise<void> {
   // 경로 유효성 검증
-  validatePath(path);
+  await validatePath(path);
 
   // 기존 태그 확인
   const existingTag = await db("tags").where("name", name).first();
@@ -248,7 +248,7 @@ export async function addTag(path: string, name: string): Promise<void> {
  */
 export async function removeTag(path: string, name: string): Promise<void> {
   // 경로 유효성 검증
-  validatePath(path);
+  await validatePath(path);
 
   // 태그 ID 조회
   const tag = await db("tags").where("name", name).first();
@@ -267,7 +267,7 @@ export async function setThumbnailFromUrl(
   url: string,
 ): Promise<string> {
   // 경로 유효성 검증
-  validatePath(path);
+  await validatePath(path);
   // URL 유효성 검증
   validateUrl(url);
 
@@ -292,7 +292,7 @@ export async function setThumbnailFromFile(
   sourceFilePath: string,
 ): Promise<string> {
   // 경로 유효성 검증
-  validatePath(path);
+  await validatePath(path);
 
   const thumbnailDir = getThumbnailDir();
   await mkdir(thumbnailDir, { recursive: true });
@@ -323,7 +323,7 @@ export async function setThumbnailFromFile(
  */
 export async function hideThumbnail(path: string): Promise<void> {
   // 경로 유효성 검증
-  validatePath(path);
+  await validatePath(path);
 
   // 현재 썸네일 경로 조회
   const game = await db("games").where("path", path).first();

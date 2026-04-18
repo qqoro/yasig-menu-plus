@@ -54,6 +54,7 @@ vi.mock("../store.js", () => ({
   }),
   getExcludedExecutables: () => [],
   getLibraryPaths: () => [],
+  getOfflineLibraryPaths: () => [],
   getScanDepth: () => 5,
   getEnableNonGameContent: () => false,
   DEFAULT_TITLE_DISPLAY_PRIORITY: ["translated", "collected", "original"],
@@ -77,7 +78,7 @@ vi.mock("../services/ProcessMonitor.js", () => ({
   processMonitor: { isExeFile: vi.fn(), startSession: vi.fn() },
 }));
 vi.mock("../lib/fingerprint.js", () => ({
-  computeFingerprint: vi.fn(() => "mock-fp"),
+  computeFingerprint: vi.fn(() => Promise.resolve("mock-fp")),
 }));
 vi.mock("../utils/downloader.js", () => ({
   deleteImage: vi.fn(),
@@ -99,8 +100,7 @@ vi.mock("../db/db-manager.js", () => ({
   },
 }));
 
-// fs 모킹 — scanFolder에서 existsSync 사용
-// readdirSync/statSync는 원본 유지 (마이그레이션 소스에서 사용하므로)
+// fs 모킹 — 원본 유지 (test-utils 등에서 사용)
 vi.mock("fs", async (importOriginal) => {
   const actual = (await importOriginal()) as any;
   return {
@@ -109,12 +109,21 @@ vi.mock("fs", async (importOriginal) => {
   };
 });
 
+// fs/promises 모킹 — home-scan에서 pathExists(access) 사용
+vi.mock("fs/promises", async (importOriginal) => {
+  const actual = (await importOriginal()) as any;
+  return {
+    ...actual,
+    access: vi.fn(() => Promise.resolve()),
+  };
+});
+
 // 모킹 후 import (vi.mock 호이스팅)
 import { selectBestExecutable, scanFolder } from "./home-scan.js";
 import { removeLibraryPathHandler } from "./home-library.js";
 import { runScanWorker } from "../workers/run-scan-worker.js";
 import { deleteImage } from "../utils/downloader.js";
-import { existsSync } from "fs";
+import { access } from "fs/promises";
 import { computeFingerprint } from "../lib/fingerprint.js";
 import {
   removeLibraryPath,
@@ -136,10 +145,10 @@ afterAll(async () => {
 beforeEach(async () => {
   await truncateAll(db);
   vi.clearAllMocks();
-  // 기본: existsSync는 true 반환
-  vi.mocked(existsSync).mockReturnValue(true);
+  // 기본: access는 경로 존재함 (resolve)
+  vi.mocked(access).mockImplementation(() => Promise.resolve());
   // 기본: computeFingerprint는 "mock-fp" 반환
-  vi.mocked(computeFingerprint).mockReturnValue("mock-fp");
+  vi.mocked(computeFingerprint).mockResolvedValue("mock-fp");
 });
 
 // ============================================
@@ -189,7 +198,7 @@ describe("selectBestExecutable — 실행 파일 우선순위 선택", () => {
 // ============================================
 describe("scanFolder — 폴더 스캔", () => {
   it("존재하지 않는 경로 → {addedCount: 0, deletedCount: 0} 반환해야 한다", async () => {
-    vi.mocked(existsSync).mockReturnValue(false);
+    vi.mocked(access).mockRejectedValue(new Error("ENOENT"));
 
     const result = await scanFolder("/nonexistent/path");
 
@@ -273,7 +282,7 @@ describe("scanFolder — 폴더 스캔", () => {
         hasExecutable: true,
       },
     ]);
-    vi.mocked(computeFingerprint).mockReturnValue("new-fp");
+    vi.mocked(computeFingerprint).mockResolvedValue("new-fp");
 
     const result = await scanFolder("/library");
 
@@ -313,7 +322,7 @@ describe("scanFolder — 폴더 스캔", () => {
         hasExecutable: true,
       },
     ]);
-    vi.mocked(computeFingerprint).mockReturnValue("new-fp");
+    vi.mocked(computeFingerprint).mockResolvedValue("new-fp");
 
     await scanFolder("/library");
 
