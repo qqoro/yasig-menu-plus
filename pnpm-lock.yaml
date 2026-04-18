@@ -17,6 +17,9 @@ importers:
       '@internationalized/date':
         specifier: ^3.11.0
         version: 3.11.0
+      '@kfonts/d2coding':
+        specifier: ^0.2.0
+        version: 0.2.0
       '@tailwindcss/typography':
         specifier: ^0.5.19
         version: 0.5.19(tailwindcss@4.1.18)
@@ -684,6 +687,9 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.30':
     resolution: {integrity: sha512-GQ7Nw5G2lTu/BtHTKfXhKHok2WGetd4XYcVKGx00SjAk8GMwgJM3zr6zORiPGuOE+/vkc90KtTosSSvaCjKb2Q==}
+
+  '@kfonts/d2coding@0.2.0':
+    resolution: {integrity: sha512-jKhz5i6O9IRcygKeKO2T9bOZfOigbSQkLxcf2vGssiFkB1awjSBjmE+IWxT2ArkVx4yrlFdCvc5o3tArViEOdA==}
 
   '@malept/cross-spawn-promise@2.0.0':
     resolution: {integrity: sha512-1DpKU0Z5ThltBwjNySMC14g0CkbyhCaz9FkhxqNsZI6uAPJXFS8cMXlBKo26FJ8ZuW6S9GCMcR9IO5k2X5/9Fg==}
@@ -4428,6 +4434,8 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
+
+  '@kfonts/d2coding@0.2.0': {}
 
   '@malept/cross-spawn-promise@2.0.0':
     dependencies:

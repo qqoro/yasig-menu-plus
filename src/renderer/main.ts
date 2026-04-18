@@ -4,6 +4,7 @@ import { createApp } from "vue";
 import App from "./App.vue";
 import router from "./router";
 
+import "@kfonts/d2coding";
 import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import "vue-sonner/style.css";
 import "./style.css";
