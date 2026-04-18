@@ -7,6 +7,7 @@ import {
   Plus,
   RefreshCw,
   Trash2,
+  Unplug,
 } from "lucide-vue-next";
 import { ref } from "vue";
 import { toast } from "vue-sonner";
@@ -323,81 +324,90 @@ async function handleRemoveExcludedExecutable(
                 :key="path"
                 :class="[
                   'bg-muted/50 hover:bg-muted group flex flex-col gap-2 rounded-md p-3 transition-colors',
-                  isPathOffline(path) ? 'border-l-primary/30 border-l-2' : '',
+                  isPathOffline(path) ? 'opacity-60' : '',
                 ]"
               >
                 <div class="flex items-center gap-3">
-                  <Folder :size="18" class="text-muted-foreground shrink-0" />
+                  <Folder
+                    v-if="!isPathOffline(path)"
+                    :size="18"
+                    class="text-muted-foreground shrink-0"
+                  />
+                  <Unplug
+                    v-else
+                    :size="18"
+                    class="text-muted-foreground shrink-0"
+                  />
                   <span class="min-w-0 flex-1 truncate font-mono text-sm">{{
                     path
                   }}</span>
-                  <div class="flex shrink-0 items-center gap-1.5">
+                  <div class="flex shrink-0 items-center">
+                    <Button
+                      @click="handleOpenPath(path)"
+                      variant="ghost"
+                      size="icon"
+                      class="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                      title="폴더 열기"
+                    >
+                      <FolderOpen :size="14" />
+                    </Button>
+                    <Button
+                      @click="handleRefreshSinglePath(path)"
+                      variant="ghost"
+                      size="icon"
+                      class="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                      title="새로고침"
+                      :disabled="refreshingPaths.has(path)"
+                    >
+                      <Loader2
+                        v-if="refreshingPaths.has(path)"
+                        :size="14"
+                        class="animate-spin"
+                      />
+                      <RefreshCw v-else :size="14" />
+                    </Button>
+                    <Button
+                      @click="handleRemovePath(path)"
+                      variant="ghost"
+                      size="icon"
+                      class="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                      title="삭제"
+                    >
+                      <Trash2 :size="14" class="text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+                <!-- 마지막 스캔 시간 + 오프라인 토글 -->
+                <div
+                  class="text-muted-foreground ml-7 flex items-center gap-1.5 text-xs"
+                >
+                  <template v-if="libraryScanHistories?.[path]">
+                    <Clock :size="12" />
+                    <span
+                      >마지막 스캔:
+                      {{
+                        formatLastScannedAt(
+                          libraryScanHistories[path].lastScannedAt,
+                        )
+                      }}</span
+                    >
+                    <span
+                      >({{ libraryScanHistories[path].lastGameCount }}개
+                      게임)</span
+                    >
+                  </template>
+                  <template v-else>
+                    <Clock :size="12" />
+                    <span>아직 스캔하지 않음</span>
+                  </template>
+                  <div class="ml-auto flex shrink-0 items-center gap-1.5">
                     <Switch
                       :model-value="isPathOffline(path)"
                       @update:model-value="handleToggleOffline(path)"
                       class="scale-75"
                     />
-                    <span class="text-muted-foreground text-xs">오프라인</span>
+                    <span>오프라인</span>
                   </div>
-                  <Button
-                    @click="handleOpenPath(path)"
-                    variant="ghost"
-                    size="icon"
-                    class="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-                    title="폴더 열기"
-                  >
-                    <FolderOpen :size="16" />
-                  </Button>
-                  <Button
-                    @click="handleRefreshSinglePath(path)"
-                    variant="ghost"
-                    size="icon"
-                    class="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-                    title="새로고침"
-                    :disabled="refreshingPaths.has(path)"
-                  >
-                    <Loader2
-                      v-if="refreshingPaths.has(path)"
-                      :size="18"
-                      class="animate-spin"
-                    />
-                    <RefreshCw v-else :size="18" />
-                  </Button>
-                  <Button
-                    @click="handleRemovePath(path)"
-                    variant="ghost"
-                    size="icon"
-                    class="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-                    title="삭제"
-                  >
-                    <Trash2 :size="16" class="text-destructive" />
-                  </Button>
-                </div>
-                <!-- 마지막 스캔 시간 표시 -->
-                <div
-                  v-if="libraryScanHistories?.[path]"
-                  class="text-muted-foreground ml-7 flex items-center gap-1.5 text-xs"
-                >
-                  <Clock :size="12" />
-                  <span
-                    >마지막 스캔:
-                    {{
-                      formatLastScannedAt(
-                        libraryScanHistories[path].lastScannedAt,
-                      )
-                    }}</span
-                  >
-                  <span
-                    >({{ libraryScanHistories[path].lastGameCount }}개
-                    게임)</span
-                  >
-                </div>
-                <div
-                  v-else
-                  class="text-muted-foreground ml-7 flex items-center gap-1.5 text-xs"
-                >
-                  <Clock :size="12" />
-                  <span>아직 스캔하지 않음</span>
                 </div>
               </div>
             </div>
