@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { version as APP_VERSION } from "../../package.json";
 import { CircleHelp, Minus, Moon, Square, Sun, X } from "lucide-vue-next";
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { toast, Toaster } from "vue-sonner";
 import BotBlockDialog from "./components/BotBlockDialog.vue";
@@ -10,6 +10,8 @@ import ChangelogDialog from "./components/ChangelogDialog.vue";
 import HelpDialog from "./components/HelpDialog.vue";
 import { initializeTheme } from "./composables/useTheme";
 import { useWindow } from "./composables/useWindow";
+import { queryKeys } from "./queryKeys";
+import { useQueryClient } from "@tanstack/vue-query";
 import { useUIStore } from "./stores/uiStore";
 
 const {
@@ -22,6 +24,7 @@ const {
 
 const route = useRoute();
 const router = useRouter();
+const queryClient = useQueryClient();
 const uiStore = useUIStore();
 
 // 현재 경로가 홈인지 확인
@@ -43,6 +46,19 @@ const changelogMode = ref<"afterVersion" | "recent">("afterVersion");
 // 봇 차단 다이얼로그 상태
 const showBotBlockDialog = ref(false);
 const botBlockGameTitle = ref("");
+
+// 게임 세션 종료 이벤트 - 캐시 무효화
+function onGameSessionEnded(data: {
+  path: string;
+  durationSeconds: number;
+  totalPlayTime: number;
+}) {
+  queryClient.invalidateQueries({ queryKey: queryKeys.games.all });
+  queryClient.invalidateQueries({ queryKey: queryKeys.playTime(data.path) });
+  queryClient.invalidateQueries({
+    queryKey: queryKeys.playSessions(data.path),
+  });
+}
 
 onMounted(async () => {
   // 컬러 테마 초기화 (설정에서 불러오기)
@@ -219,6 +235,13 @@ onMounted(async () => {
       showBotBlockDialog.value = true;
     },
   );
+
+  window.api.on("gameSessionEnded", onGameSessionEnded);
+});
+
+// 언마운트 시 이벤트 리스너 정리
+onUnmounted(() => {
+  window.api.removeListener("gameSessionEnded", onGameSessionEnded);
 });
 </script>
 
