@@ -63,6 +63,7 @@ import {
   exportDebugDataHandler,
   openGitHubIssueHandler,
 } from "./handlers/debugExport.js";
+import { registerCheatHandlers } from "./handlers/cheat.js";
 import {
   closeWindowHandler,
   maximizeWindowHandler,
@@ -77,6 +78,7 @@ import {
   toggleLibraryPathOfflineHandler,
 } from "./handlers/libraryPathOffline.js";
 import { processMonitor } from "./services/ProcessMonitor.js";
+import { cheatInjector } from "./services/cheat-injector.js";
 import { autoUpdaterService } from "./services/AutoUpdater.js";
 import {
   getAutoScanOnStartup,
@@ -445,6 +447,9 @@ function registerIpcHandlers() {
 
   // ========== GitHub 이슈 열기 ==========
   ipcMain.handle(IpcRendererSend.OpenGitHubIssue, openGitHubIssueHandler);
+
+  // ========== 치트 플러그인 관련 ==========
+  registerCheatHandlers();
 }
 
 // 중복 실행 방지
@@ -476,6 +481,9 @@ app.whenReady().then(async () => {
 
   createWindow();
   registerIpcHandlers();
+
+  // 치트 미복원 항목 정리 (비정상 종료 후 복원)
+  await cheatInjector.restoreAllPending();
 
   // 앱 시작 시 자동 스캔 (설정된 경우)
   if (getAutoScanOnStartup()) {

@@ -15,6 +15,7 @@ interface ActiveSession {
   executablePath: string;
   startedAt: Date;
   process: ChildProcess;
+  isCheatMode?: boolean;
 }
 
 export class ProcessMonitor {
@@ -46,6 +47,7 @@ export class ProcessMonitor {
   async startSession(
     gamePath: string,
     executablePath: string,
+    isCheatMode = false,
   ): Promise<boolean> {
     // .exe가 아니면 추적하지 않음
     if (!this.isExeFile(executablePath)) {
@@ -83,6 +85,7 @@ export class ProcessMonitor {
       executablePath,
       startedAt,
       process: gameProcess,
+      isCheatMode,
     };
 
     this.activeSessions.set(gamePath, session);
@@ -156,6 +159,7 @@ export class ProcessMonitor {
           path: gamePath,
           durationSeconds,
           totalPlayTime: updatedData?.totalPlayTime ?? 0,
+          wasCheatMode: session.isCheatMode ?? false,
         });
       } catch (error) {
         console.error("플레이 타임 기록 실패:", error);
@@ -169,6 +173,24 @@ export class ProcessMonitor {
       console.log(
         `플레이 타임 미달 (${durationSeconds}초): ${gamePath}, 기록하지 않음`,
       );
+    }
+
+    // 치트 모드였면 복원
+    if (session.isCheatMode) {
+      try {
+        const { cheatInjector } = await import("./cheat-injector.js");
+        const success = await cheatInjector.restore(session.gamePath);
+        this.sendEvent("cheatInjectionRestored", {
+          path: session.gamePath,
+          success,
+        });
+      } catch (error) {
+        console.error("치트 복원 실패:", error);
+        this.sendEvent("cheatInjectionRestored", {
+          path: session.gamePath,
+          success: false,
+        });
+      }
     }
   }
 

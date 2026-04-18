@@ -20,6 +20,10 @@ export const enum IpcRendererSend {
   PlayGame = "playGame",
   OpenFolder = "openFolder",
 
+  // 치트 플러그인 관련
+  DetectRpgMaker = "detectRpgMaker", // RPG Maker 게임 감지
+  PlayGameWithCheat = "playGameWithCheat", // 치트 모드로 게임 실행
+
   // 윈도우 제어
   MinimizeWindow = "minimizeWindow",
   MaximizeWindow = "maximizeWindow",
@@ -229,6 +233,7 @@ export const enum IpcMainSend {
   PlayTimeLoaded = "playTimeLoaded", // 플레이 타임 로드 완료
   PlaySessionsLoaded = "playSessionsLoaded", // 플레이 세션 로드 완료
   GameSessionEnded = "gameSessionEnded", // 게임 세션 종료
+  CheatInjectionRestored = "cheatInjectionRestored", // 치트 주입 복원 완료
 
   // 자동 업데이트 관련
   UpdateChecking = "updateChecking", // 업데이트 확인 중
@@ -300,6 +305,7 @@ export type IpcMainSendChannel =
   | "playTimeLoaded"
   | "playSessionsLoaded"
   | "gameSessionEnded"
+  | "cheatInjectionRestored"
   | "updateChecking"
   | "updateAvailable"
   | "updateNotAvailable"
@@ -412,6 +418,8 @@ export interface SearchQuery {
 export interface IpcRendererEventMap {
   refreshList: { sourcePaths: string[] };
   playGame: { path: string };
+  detectRpgMaker: { path: string };
+  playGameWithCheat: { path: string };
   openFolder: { path: string };
   minimizeWindow: undefined;
   maximizeWindow: undefined;
@@ -645,6 +653,8 @@ export interface IpcMainEventMap {
 
   // 게임 실행
   gamePlayed: { executablePath: string };
+  gamePlayedWithCheat: { executablePath: string };
+  cheatInjectionRestored: { path: string; success: boolean };
 
   // 썸네일 관리
   thumbnailSet: { path: string; thumbnailPath: string };
@@ -707,6 +717,7 @@ export interface IpcMainEventMap {
     path: string;
     durationSeconds: number;
     totalPlayTime: number;
+    wasCheatMode?: boolean;
   };
 
   // 자동 업데이트 관련

@@ -1,10 +1,11 @@
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { toast } from "vue-sonner";
 import { useAddExcludedExecutable } from "./useExcludedExecutables";
 import { useOpenOriginalSite } from "./useGameDetail";
 import { useGameImages } from "./useGameImages";
 import { useOpenFolder, usePlayGame } from "./useGames";
 import { useDeleteGames } from "./useDuplicates";
+import { usePlayGameWithCheat } from "./useCheat";
 import type { GameItem } from "../types";
 import type { SearchState } from "./useSearch";
 
@@ -18,6 +19,10 @@ export function useHomeActions({ searchState }: UseHomeActionsOptions) {
   const openFolderMutation = useOpenFolder();
   const openOriginalSite = useOpenOriginalSite();
   const deleteGamesMutation = useDeleteGames();
+  const cheatPlayMutation = usePlayGameWithCheat();
+
+  // 치트 모드 실행 중 여부
+  const isPlayingCheat = computed(() => cheatPlayMutation.isPending.value);
 
   // 게임 상세 다이얼로그 상태
   const showGameDetail = ref(false);
@@ -61,6 +66,17 @@ export function useHomeActions({ searchState }: UseHomeActionsOptions) {
       toast.error(
         err instanceof Error ? err.message : "게임 실행에 실패했습니다.",
       );
+    }
+  }
+
+  /**
+   * 치트 모드로 게임 실행 핸들러
+   */
+  async function handlePlayGameWithCheat(game: GameItem): Promise<void> {
+    try {
+      await cheatPlayMutation.mutateAsync(game.path);
+    } catch {
+      // composable에서 에러 처리
     }
   }
 
@@ -194,8 +210,10 @@ export function useHomeActions({ searchState }: UseHomeActionsOptions) {
     gameImages,
     deleteTargetGame,
     showDeleteConfirm,
+    isPlayingCheat,
     // 핸들러
     handlePlayGame,
+    handlePlayGameWithCheat,
     handleOpenFolder,
     handleToggleFavorite,
     handleToggleHidden,

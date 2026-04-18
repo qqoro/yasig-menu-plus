@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { rmSync } from "fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, rmSync } from "fs";
 import { join } from "path";
 import { build } from "vite";
 import { buildLicenseInfo } from "./license.js";
@@ -70,6 +70,20 @@ buildLicenseInfo()
     // tsc가 출력한 ESM preload를 CJS로 덮어쓰기
     console.log(blueBright("Bundling preload (CJS)..."));
     await buildPreload();
+
+    // 치트 플러그인 파일 복사 (mv/, mz/ 폴더 전체)
+    const cheatSrcDir = join(import.meta.dirname, "..", "src", "main", "cheat");
+    const cheatDestDir = join(
+      import.meta.dirname,
+      "..",
+      "build",
+      "main",
+      "cheat",
+    );
+    if (existsSync(cheatSrcDir)) {
+      cpSync(cheatSrcDir, cheatDestDir, { recursive: true, force: true });
+      console.log(greenBright("Cheat plugin copied to build output."));
+    }
 
     console.log(
       greenBright(

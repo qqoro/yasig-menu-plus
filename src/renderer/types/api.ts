@@ -100,6 +100,10 @@ type IpcInvokeReturn = {
   findDuplicates: IpcMainEventMap["duplicatesFound"];
   deleteGames: IpcMainEventMap["gamesDeleted"];
 
+  // 치트 플러그인 관련
+  detectRpgMaker: { isRpgMaker: boolean; version: "mv" | "mz" | null };
+  playGameWithCheat: IpcMainEventMap["gamePlayedWithCheat"];
+
   // 체인지로그 관련
   getChangelog: IpcMainEventMap["changelogResult"];
 

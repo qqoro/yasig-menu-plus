@@ -76,6 +76,117 @@ function isAudioFile(filePath: string): boolean {
 }
 
 /**
+ * 게임 실행 공통 로직
+ *
+ * playGameHandler와 playGameWithCheatHandler에서 공유하는 게임 실행 로직.
+ * isCheatMode가 true인 경우 ProcessMonitor 세션에 치트 모드 플래그가 전달됩니다.
+ */
+export async function executeGameLaunch(
+  path: string,
+  isCheatMode = false,
+): Promise<IpcMainEventMap["gamePlayed"]> {
+  // 오프라인 경로 안내: 경로가 존재하지 않고 오프라인 경로인 경우 친화적 메시지
+  if (!existsSync(path)) {
+    const offlinePaths = getOfflineLibraryPaths();
+    const game = await db("games").where("path", path).select("source").first();
+    if (
+      game &&
+      offlinePaths.some((p) => p.toLowerCase() === game.source.toLowerCase())
+    ) {
+      throw new Error("이 게임이 있는 드라이브가 연결되지 않았습니다");
+    }
+  }
+
+  // 경로 유효성 검증
+  validatePath(path, { mustExist: true });
+
+  // DB에서 게임 정보 조회
+  const game = await db("games").where("path", path).first();
+  if (!game) {
+    throw new Error("게임을 찾을 수 없습니다.");
+  }
+
+  const isCompressFile = Boolean(game.isCompressFile);
+  const isShortcutFile = path.toLowerCase().endsWith(".lnk");
+  let executablePath: string | null = null;
+
+  // 압축파일이거나 바로가기 파일인 경우 파일 자체를 실행
+  if (isCompressFile || isShortcutFile) {
+    executablePath = path;
+  } else if (game.executablePath) {
+    // 직접 지정한 실행 파일이 있으면 사용
+    executablePath = game.executablePath;
+  } else {
+    // 폴더에서 실행 파일 찾기
+    const executables = await findExecutables(path);
+    executablePath = selectBestExecutable(executables);
+  }
+
+  if (!executablePath) {
+    // 미디어 재생 fallback
+    const mediaFile = findFirstMediaFile(path);
+    if (!mediaFile) {
+      throw new Error("실행 파일을 찾을 수 없습니다.");
+    }
+
+    const playerSettings = getMediaPlayerSettings();
+    const isAudio = isAudioFile(mediaFile);
+    const playerPath = isAudio
+      ? playerSettings.audioPlayerPath
+      : playerSettings.videoPlayerPath;
+
+    if (playerPath && existsSync(playerPath)) {
+      spawn(playerPath, [mediaFile], {
+        detached: true,
+        stdio: "ignore",
+      }).unref();
+    } else {
+      const openResult = await shell.openPath(mediaFile);
+      if (openResult) {
+        throw new Error(`미디어 파일을 열 수 없습니다: ${openResult}`);
+      }
+    }
+
+    // lastPlayedAt 업데이트
+    const userGameDataId = await getOrCreateUserGameData(path);
+    await db("userGameData").where("id", userGameDataId).update({
+      lastPlayedAt: new Date(),
+    });
+    await db("games").where("path", path).update({ updatedAt: new Date() });
+
+    return { executablePath: mediaFile };
+  }
+
+  // .exe 파일인 경우 ProcessMonitor로 실행 (플레이 타임 추적)
+  if (processMonitor.isExeFile(executablePath)) {
+    const started = await processMonitor.startSession(
+      path,
+      executablePath,
+      isCheatMode,
+    );
+    if (started) {
+      return { executablePath };
+    }
+    // 이미 실행 중이거나 다른 이유로 시작 실패 시 기존 방식으로 실행
+  }
+
+  // 마지막 플레이 시간 업데이트 (.exe가 아니거나 spawn 실패 시)
+  const userGameDataId = await getOrCreateUserGameData(path);
+  await db("userGameData").where("id", userGameDataId).update({
+    lastPlayedAt: new Date(),
+  });
+  await db("games").where("path", path).update({ updatedAt: new Date() });
+
+  // 게임 실행 (shell.openPath 사용)
+  const openResult = await shell.openPath(executablePath);
+  if (openResult) {
+    throw new Error(`게임을 실행할 수 없습니다: ${openResult}`);
+  }
+
+  return { executablePath };
+}
+
+/**
  * 게임 실행 핸들러
  */
 export const playGameHandler = wrapIpcHandler(
@@ -84,106 +195,7 @@ export const playGameHandler = wrapIpcHandler(
     _event: IpcMainInvokeEvent,
     payload: IpcRendererEventMap["playGame"],
   ): Promise<IpcMainEventMap["gamePlayed"]> => {
-    const { path } = payload;
-
-    // 오프라인 경로 안내: 경로가 존재하지 않고 오프라인 경로인 경우 친화적 메시지
-    if (!existsSync(path)) {
-      const offlinePaths = getOfflineLibraryPaths();
-      const game = await db("games")
-        .where("path", path)
-        .select("source")
-        .first();
-      if (
-        game &&
-        offlinePaths.some((p) => p.toLowerCase() === game.source.toLowerCase())
-      ) {
-        throw new Error("이 게임이 있는 드라이브가 연결되지 않았습니다");
-      }
-    }
-
-    // 경로 유효성 검증
-    validatePath(path, { mustExist: true });
-
-    // DB에서 게임 정보 조회
-    const game = await db("games").where("path", path).first();
-    if (!game) {
-      throw new Error("게임을 찾을 수 없습니다.");
-    }
-
-    const isCompressFile = Boolean(game.isCompressFile);
-    const isShortcutFile = path.toLowerCase().endsWith(".lnk");
-    let executablePath: string | null = null;
-
-    // 압축파일이거나 바로가기 파일인 경우 파일 자체를 실행
-    if (isCompressFile || isShortcutFile) {
-      executablePath = path;
-    } else if (game.executablePath) {
-      // 직접 지정한 실행 파일이 있으면 사용
-      executablePath = game.executablePath;
-    } else {
-      // 폴더에서 실행 파일 찾기
-      const executables = await findExecutables(path);
-      executablePath = selectBestExecutable(executables);
-    }
-
-    if (!executablePath) {
-      // 미디어 재생 fallback
-      const mediaFile = findFirstMediaFile(path);
-      if (!mediaFile) {
-        throw new Error("실행 파일을 찾을 수 없습니다.");
-      }
-
-      const playerSettings = getMediaPlayerSettings();
-      const isAudio = isAudioFile(mediaFile);
-      const playerPath = isAudio
-        ? playerSettings.audioPlayerPath
-        : playerSettings.videoPlayerPath;
-
-      if (playerPath && existsSync(playerPath)) {
-        spawn(playerPath, [mediaFile], {
-          detached: true,
-          stdio: "ignore",
-        }).unref();
-      } else {
-        const openResult = await shell.openPath(mediaFile);
-        if (openResult) {
-          throw new Error(`미디어 파일을 열 수 없습니다: ${openResult}`);
-        }
-      }
-
-      // lastPlayedAt 업데이트
-      const userGameDataId = await getOrCreateUserGameData(path);
-      await db("userGameData").where("id", userGameDataId).update({
-        lastPlayedAt: new Date(),
-      });
-      await db("games").where("path", path).update({ updatedAt: new Date() });
-
-      return { executablePath: mediaFile };
-    }
-
-    // .exe 파일인 경우 ProcessMonitor로 실행 (플레이 타임 추적)
-    if (processMonitor.isExeFile(executablePath)) {
-      const started = await processMonitor.startSession(path, executablePath);
-      if (started) {
-        return { executablePath };
-      }
-      // 이미 실행 중이거나 다른 이유로 시작 실패 시 기존 방식으로 실행
-    }
-
-    // 마지막 플레이 시간 업데이트 (.exe가 아니거나 spawn 실패 시)
-    const userGameDataId = await getOrCreateUserGameData(path);
-    await db("userGameData").where("id", userGameDataId).update({
-      lastPlayedAt: new Date(),
-    });
-    await db("games").where("path", path).update({ updatedAt: new Date() });
-
-    // 게임 실행 (shell.openPath 사용)
-    const openResult = await shell.openPath(executablePath);
-    if (openResult) {
-      throw new Error(`게임을 실행할 수 없습니다: ${openResult}`);
-    }
-
-    return { executablePath };
+    return executeGameLaunch(payload.path);
   },
 );
 

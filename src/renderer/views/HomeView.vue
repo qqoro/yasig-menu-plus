@@ -148,7 +148,9 @@ const {
   gameImages,
   deleteTargetGame,
   showDeleteConfirm,
+  isPlayingCheat,
   handlePlayGame,
+  handlePlayGameWithCheat,
   handleOpenFolder,
   handleToggleFavorite,
   handleToggleHidden,
@@ -463,6 +465,7 @@ onMounted(() => {
             :is-selection-mode="multiSelect.isSelectionMode.value"
             :selected-count="multiSelect.selectedCount.value"
             :playing-game-path="playingGamePath"
+            :is-playing-cheat="isPlayingCheat"
             :is-selected="multiSelect.isSelected"
             :is-active-tag="searchState.hasTag"
             :is-active-circle="searchState.hasCircle"
@@ -471,6 +474,7 @@ onMounted(() => {
             @game-select="handleGameSelect"
             @game-dblclick="handleGameDoubleClick"
             @play="handlePlayGame"
+            @play-cheat="handlePlayGameWithCheat"
             @open-folder="handleOpenFolder"
             @toggle-favorite="handleToggleFavorite"
             @toggle-hidden="handleToggleHidden"

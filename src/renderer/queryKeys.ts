@@ -167,4 +167,13 @@ export const queryKeys = {
   helpRedDot: {
     all: ["helpRedDot"] as const,
   },
+
+  /**
+   * RPG Maker 치트 관련 쿼리 키
+   */
+  cheat: {
+    /** RPG Maker 게임 감지 */
+    detection: (path: string | Ref<string>) =>
+      ["cheat", "detection", path] as const,
+  },
 } as const;

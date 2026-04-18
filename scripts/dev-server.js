@@ -81,6 +81,7 @@ function restartElectron() {
 
 function copyStaticFiles() {
   copy("static");
+  copy("cheat");
 }
 
 /*

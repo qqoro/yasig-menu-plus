@@ -3,6 +3,10 @@ import { FolderOpen, Loader2, Play, RefreshCw } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
 import { toast } from "vue-sonner";
 import { useRunCollector } from "../composables/useCollector";
+import {
+  useDetectRpgMaker,
+  usePlayGameWithCheat,
+} from "../composables/useCheat";
 import { useAddExcludedExecutable } from "../composables/useExcludedExecutables";
 import {
   useGameDetail,
@@ -23,6 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "./ui/dialog";
+import CheatPlayButton from "./CheatPlayButton.vue";
 
 interface Props {
   open?: boolean;
@@ -60,6 +65,16 @@ const addExcludedExecutable = useAddExcludedExecutable();
 const runCollectorMutation = useRunCollector();
 const playGameMutation = usePlayGame();
 const openFolderMutation = useOpenFolderMutation();
+
+// RPG Maker 감지
+const rpgMakerDetection = useDetectRpgMaker(gamePathRef);
+const isRpgMaker = computed(
+  () => rpgMakerDetection.data.value?.isRpgMaker ?? false,
+);
+
+// 치트 모드 실행
+const cheatPlayMutation = usePlayGameWithCheat();
+const isPlayingCheat = computed(() => cheatPlayMutation.isPending.value);
 
 // 플레이 타임 이벤트 리스너
 usePlayTimeListener(gamePathRef);
@@ -128,6 +143,19 @@ async function handlePlay() {
     toast.error(
       err instanceof Error ? err.message : "게임 실행에 실패했습니다.",
     );
+  }
+}
+
+// 치트 모드로 게임 실행
+async function handlePlayCheat() {
+  if (!props.gamePath) return;
+
+  try {
+    await cheatPlayMutation.mutateAsync(props.gamePath);
+    // 실행 후 다이얼로그 닫기 (handlePlay와 동일)
+    closeDialog();
+  } catch {
+    // composable에서 에러 처리
   }
 }
 
@@ -226,10 +254,14 @@ async function handleRunCollector() {
           <FolderOpen :size="16" />
           폴더 열기
         </Button>
-        <Button @click="handlePlay">
-          <Play :size="16" />
-          실행
-        </Button>
+        <CheatPlayButton
+          :game-path="gamePath ?? ''"
+          :is-rpg-maker="isRpgMaker"
+          :is-playing="playGameMutation.isPending.value"
+          :is-playing-cheat="isPlayingCheat"
+          @play="handlePlay"
+          @play-cheat="handlePlayCheat"
+        />
       </DialogFooter>
     </DialogContent>
   </Dialog>

@@ -17,6 +17,7 @@ interface Props {
   isSelectionMode: boolean;
   selectedCount: number;
   playingGamePath: string | null;
+  isPlayingCheat: boolean;
   isSelected: (path: string) => boolean;
   isActiveTag: (tag: string) => boolean;
   isActiveCircle: (circle: string) => boolean;
@@ -31,6 +32,7 @@ interface Emits {
   (e: "gameSelect", game: GameItem, event: MouseEvent): void;
   (e: "gameDblclick", game: GameItem): void;
   (e: "play", game: GameItem): void;
+  (e: "playCheat", game: GameItem): void;
   (e: "openFolder", game: GameItem): void;
   (e: "toggleFavorite", game: GameItem): void;
   (e: "toggleHidden", game: GameItem): void;
@@ -122,7 +124,9 @@ onUnmounted(() => {
           :game="game"
           :is-selection-mode="isSelectionMode"
           :selected-count="selectedCount"
+          :is-playing-cheat="isPlayingCheat"
           @play="emit('play', $event)"
+          @play-cheat="emit('playCheat', $event)"
           @open-folder="emit('openFolder', $event)"
           @toggle-favorite="emit('toggleFavorite', $event)"
           @toggle-hidden="emit('toggleHidden', $event)"
@@ -138,6 +142,7 @@ onUnmounted(() => {
           <GameCard
             :game="game"
             :is-playing="playingGamePath === game.path"
+            :is-playing-cheat="isPlayingCheat"
             :is-selected="isSelected(game.path)"
             :is-selection-mode="isSelectionMode"
             :is-active-tag="isActiveTag"
@@ -147,6 +152,7 @@ onUnmounted(() => {
             :is-excluded-circle="isExcludedCircle"
             :is-excluded-category="isExcludedCategory"
             @play="emit('play', $event)"
+            @play-cheat="emit('playCheat', $event)"
             @open-folder="emit('openFolder', $event)"
             @toggle-favorite="emit('toggleFavorite', $event)"
             @toggle-hidden="emit('toggleHidden', $event)"

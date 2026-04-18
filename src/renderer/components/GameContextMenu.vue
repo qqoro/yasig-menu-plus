@@ -7,11 +7,15 @@ import {
   FolderOpen,
   Globe,
   Info,
+  Loader2,
   Play,
   Star,
   StarOff,
   Trash2,
+  Zap,
 } from "lucide-vue-next";
+import { computed } from "vue";
+import { useDetectRpgMaker } from "../composables/useCheat";
 import type { GameItem } from "../types";
 import {
   ContextMenu,
@@ -25,10 +29,12 @@ interface Props {
   game: GameItem;
   isSelectionMode?: boolean;
   selectedCount?: number;
+  isPlayingCheat?: boolean;
 }
 
 interface Emits {
   (e: "play", game: GameItem): void;
+  (e: "play-cheat", game: GameItem): void;
   (e: "open-folder", game: GameItem): void;
   (e: "toggle-favorite", game: GameItem): void;
   (e: "toggle-clear", game: GameItem): void;
@@ -42,11 +48,18 @@ interface Emits {
   (e: "batch-delete"): void;
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   isSelectionMode: false,
   selectedCount: 0,
+  isPlayingCheat: false,
 });
 const emit = defineEmits<Emits>();
+
+// RPG Maker 감지 (GameCard와 쿼리 캐시 공유)
+const rpgMakerDetection = useDetectRpgMaker(computed(() => props.game.path));
+const isRpgMaker = computed(
+  () => rpgMakerDetection.data.value?.isRpgMaker ?? false,
+);
 </script>
 
 <template>
@@ -97,6 +110,16 @@ const emit = defineEmits<Emits>();
         <ContextMenuItem @select="emit('play', game)">
           <Play :size="14" />
           {{ game.hasExecutable === false ? "재생" : "실행" }}
+        </ContextMenuItem>
+        <!-- 치트 모드 실행 (RPG Maker 게임만) -->
+        <ContextMenuItem
+          v-if="isRpgMaker"
+          @select="emit('play-cheat', game)"
+          :disabled="isPlayingCheat"
+        >
+          <Loader2 v-if="isPlayingCheat" :size="14" class="animate-spin" />
+          <Zap v-else :size="14" />
+          치트 모드로 실행
         </ContextMenuItem>
         <ContextMenuItem @select="emit('open-folder', game)">
           <FolderOpen :size="14" />

@@ -18,11 +18,13 @@ import {
 } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import { useAllSettings } from "../composables/useAllSettings";
+import { useDetectRpgMaker } from "../composables/useCheat";
 import { formatPlayTime } from "../composables/usePlayTime";
 import { useTranslationSettings } from "../composables/useTranslationSettings";
 import type { GameItem } from "../types";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
+import CheatPlayButton from "./CheatPlayButton.vue";
 
 interface Props {
   game: GameItem;
@@ -33,6 +35,7 @@ interface Props {
   isExcludedCircle?: (circle: string) => boolean;
   isExcludedCategory?: (category: string) => boolean;
   isPlaying?: boolean;
+  isPlayingCheat?: boolean;
   isToggling?: boolean;
   isSelected?: boolean;
   isSelectionMode?: boolean;
@@ -40,6 +43,7 @@ interface Props {
 
 interface Emits {
   (e: "play", game: GameItem): void;
+  (e: "play-cheat", game: GameItem): void;
   (e: "open-folder", game: GameItem): void;
   (e: "toggle-favorite", game: GameItem): void;
   (e: "toggle-hidden", game: GameItem): void;
@@ -57,12 +61,19 @@ interface Emits {
 
 const props = withDefaults(defineProps<Props>(), {
   isPlaying: false,
+  isPlayingCheat: false,
   isToggling: false,
   isSelected: false,
   isSelectionMode: false,
 });
 
 const emit = defineEmits<Emits>();
+
+// RPG Maker 감지
+const rpgMakerDetection = useDetectRpgMaker(computed(() => props.game.path));
+const isRpgMaker = computed(
+  () => rpgMakerDetection.data.value?.isRpgMaker ?? false,
+);
 
 // 번역 설정 조회
 const { data: translationSettings } = useTranslationSettings();
@@ -554,31 +565,24 @@ function handleMouseDown(event: MouseEvent): void {
 
       <!-- 액션 버튼들 -->
       <div class="mt-auto flex gap-1" @click.stop>
-        <Button
-          @click="handlePlay"
-          :disabled="isPlaying || game.isOffline"
+        <CheatPlayButton
+          class="min-w-0 flex-1"
+          :game-path="game.path"
+          :is-rpg-maker="isRpgMaker"
+          :is-playing="isPlaying"
+          :is-playing-cheat="isPlayingCheat"
+          :has-executable="game.hasExecutable"
+          :disabled="game.isOffline"
           size="sm"
-          class="flex-1 disabled:pointer-events-auto disabled:cursor-not-allowed"
-          :title="game.hasExecutable === false ? '미디어 재생' : '게임 실행'"
-        >
-          <Loader2 v-if="isPlaying" :size="12" class="animate-spin" />
-          <Play v-else :size="12" />
-          {{
-            isPlaying
-              ? game.hasExecutable === false
-                ? "재생 중..."
-                : "실행 중..."
-              : game.hasExecutable === false
-                ? "재생"
-                : "실행"
-          }}
-        </Button>
+          @play="handlePlay"
+          @play-cheat="emit('play-cheat', game)"
+        />
         <Button
           @click="handleOpenFolder"
           :disabled="game.isOffline"
           size="sm"
           variant="secondary"
-          class="disabled:pointer-events-auto disabled:cursor-not-allowed"
+          class="shrink-0 disabled:pointer-events-auto disabled:cursor-not-allowed"
           title="폴더 열기"
         >
           <FolderOpen :size="16" />
