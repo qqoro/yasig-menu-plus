@@ -8,7 +8,7 @@
  */
 
 import type { IpcMainInvokeEvent } from "electron";
-import { existsSync, readdirSync, statSync } from "fs";
+import { access, readdir, stat } from "fs/promises";
 import { join } from "path";
 import { COMPRESS_FILE_TYPE } from "../constants.js";
 import { db } from "../db/db-manager.js";
@@ -35,6 +35,27 @@ import { toAbsolutePath } from "../utils/image-path.js";
 import { wrapIpcHandler } from "../utils/ipc-wrapper.js";
 import { normalizePath } from "../lib/normalize-path.js";
 import { scanFolder } from "./home-scan.js";
+
+/**
+ * 경로 존재 여부를 비동기로 확인 (타임아웃 포함)
+ * 연결 해제된 네트워크 드라이브에서 블로킹 방지
+ */
+async function pathExists(
+  filePath: string,
+  timeoutMs = 3000,
+): Promise<boolean> {
+  try {
+    await Promise.race([
+      access(filePath),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("timeout")), timeoutMs),
+      ),
+    ]);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * 라이브러리 경로 목록 조회 핸들러
@@ -147,11 +168,13 @@ export async function getLastRefreshedHandler(
 // ========== 라이브러리 스캔 기록 관리 ==========
 
 /**
- * 폴더의 게임 수를 셈 (재귀 스캔)
+ * 폴더의 게임 수를 셈 (재귀 스캔, 비동기)
  * 실행파일이 있는 폴더, 압축파일, 실행파일(.exe, .lnk, .url)을 게임으로 간주
  */
-function countGames(sourcePath: string): number {
-  if (!existsSync(sourcePath)) {
+async function countGames(sourcePath: string): Promise<number> {
+  try {
+    await access(sourcePath);
+  } catch {
     return 0;
   }
 
@@ -167,7 +190,7 @@ function countGames(sourcePath: string): number {
     if (depth > maxDepth) continue;
 
     try {
-      const entries = readdirSync(currentPath, { withFileTypes: true });
+      const entries = await readdir(currentPath, { withFileTypes: true });
 
       for (const entry of entries) {
         if (entry.name.startsWith(".")) continue;
@@ -202,7 +225,7 @@ function countGames(sourcePath: string): number {
 }
 
 /**
- * 라이브러리 변경 감지 (하이브리드 방식)
+ * 라이브러리 변경 감지 (하이브리드 방식, 비동기)
  * 1단계: 폴더 mtime 빠른 체크
  * 2단계: 파일 개수 비교
  */
@@ -214,11 +237,11 @@ async function hasLibraryChanges(libraryPath: string): Promise<boolean> {
 
   try {
     // 1단계: 폴더 mtime 빠른 체크
-    const stat = statSync(libraryPath);
-    if (stat.mtime > new Date(history.lastScannedAt)) return true;
+    const fileStat = await stat(libraryPath);
+    if (fileStat.mtime > new Date(history.lastScannedAt)) return true;
 
     // 2단계: 파일 개수 비교
-    const currentCount = countGames(libraryPath);
+    const currentCount = await countGames(libraryPath);
     return currentCount !== history.lastGameCount;
   } catch {
     return false;
@@ -266,9 +289,11 @@ export async function autoScanLibraries(): Promise<number> {
       continue;
     }
 
-    // 드라이브/경로가 존재하지 않으면 스킵 (블로킹 방지)
-    if (!existsSync(path)) {
-      console.log(`자동 스캔 스킵: 경로 없음 — ${path}`);
+    // 드라이브/경로 존재 여부 비동기 확인 (타임아웃 포함)
+    // 연결 해제된 네트워크 드라이브에서 블로킹 방지
+    const exists = await pathExists(path);
+    if (!exists) {
+      console.log(`자동 스캔 스킵: 경로 없음 (또는 응답 없음) — ${path}`);
       continue;
     }
 
