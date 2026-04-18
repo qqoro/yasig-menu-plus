@@ -9,6 +9,7 @@ import { Button } from "./components/ui/button";
 import ChangelogDialog from "./components/ChangelogDialog.vue";
 import HelpDialog from "./components/HelpDialog.vue";
 import { initializeTheme } from "./composables/useTheme";
+import { useViewedHelpSections } from "./composables/useHelpRedDot";
 import { useWindow } from "./composables/useWindow";
 import { queryKeys } from "./queryKeys";
 import { useQueryClient } from "@tanstack/vue-query";
@@ -21,6 +22,15 @@ const {
   closeWindow,
   setupWindowListeners,
 } = useWindow();
+
+// 도움말 레드닷
+const { data: viewedHelpSections } = useViewedHelpSections();
+
+const hasUnviewedHelp = computed(() => {
+  const viewed = viewedHelpSections.value;
+  if (!viewed) return false; // 로딩 중에는 표시 안 함
+  return viewed.length < 10; // 총 섹션 수 = 10
+});
 
 const route = useRoute();
 const router = useRouter();
@@ -267,8 +277,13 @@ onUnmounted(() => {
           variant="ghost"
           size="icon-sm"
           title="도움말"
+          class="relative"
         >
           <CircleHelp :size="14" />
+          <span
+            v-if="hasUnviewedHelp"
+            class="bg-destructive absolute top-1 right-1 inline-block size-1.5 rounded-full"
+          />
         </Button>
         <!-- 테마 토글 버튼 -->
         <Button

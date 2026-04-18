@@ -10,7 +10,7 @@ import {
   Type,
   Zap,
 } from "lucide-vue-next";
-import { onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { Button } from "@/components/ui/button";
 import HelpSidebar, {
   type HelpSection,
@@ -25,6 +25,10 @@ import HelpSpecialFeatures from "@/components/help/sections/HelpSpecialFeatures.
 import HelpDashboardDuplicates from "@/components/help/sections/HelpDashboardDuplicates.vue";
 import HelpSettings from "@/components/help/sections/HelpSettings.vue";
 import HelpShortcuts from "@/components/help/sections/HelpShortcuts.vue";
+import {
+  useMarkHelpSectionViewed,
+  useViewedHelpSections,
+} from "@/composables/useHelpRedDot";
 
 const sections: HelpSection[] = [
   { id: "getting-started", icon: Home, label: "시작하기" },
@@ -40,6 +44,16 @@ const sections: HelpSection[] = [
 ];
 
 const activeId = ref(sections[0].id);
+
+// 레드닷 관련
+const { data: viewedHelpSections } = useViewedHelpSections();
+const markViewed = useMarkHelpSectionViewed();
+
+// 읽지 않은 섹션 ID 목록
+const unviewedIds = computed(() => {
+  const viewed = viewedHelpSections.value || [];
+  return sections.filter((s) => !viewed.includes(s.id)).map((s) => s.id);
+});
 
 // IntersectionObserver로 스크롤 추적
 let observer: IntersectionObserver | null = null;
@@ -58,6 +72,8 @@ onMounted(() => {
             : curr,
         );
         activeId.value = topEntry.target.id;
+        // 레드닷: 뷰포트에 들어온 섹션 읽음 처리
+        markViewed.mutate(topEntry.target.id);
       }
     },
     {
@@ -105,6 +121,7 @@ function scrollToSection(id: string) {
         <HelpSidebar
           :sections="sections"
           :active-id="activeId"
+          :unviewed-ids="unviewedIds"
           @select="scrollToSection"
         />
       </div>

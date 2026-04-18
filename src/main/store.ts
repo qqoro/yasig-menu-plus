@@ -72,6 +72,7 @@ export interface StoreSchema {
     audioPlayerPath: string | null; // 오디오 플레이어 경로
     videoPlayerPath: string | null; // 비디오 플레이어 경로
   };
+  viewedHelpSections?: string[]; // 사용자가 본 도움말 섹션 ID 목록
 }
 
 /**
@@ -116,6 +117,7 @@ const DEFAULTS: StoreSchema = {
     audioPlayerPath: null,
     videoPlayerPath: null,
   },
+  viewedHelpSections: [],
 };
 
 /**
@@ -330,6 +332,7 @@ export function getAllSettings(): StoreSchema {
     enableNonGameContent: store.get("enableNonGameContent"),
     enableGoogleCollector: store.get("enableGoogleCollector"),
     mediaPlayerSettings: store.get("mediaPlayerSettings"),
+    viewedHelpSections: store.get("viewedHelpSections"),
   };
 }
 
@@ -670,4 +673,24 @@ export function runLibraryPathsNormalization(): void {
   console.log(
     `[설정] 라이브러리 경로 정규화 완료: libraryPaths ${paths.length}개, disabledPaths ${disabled.length}개, scanHistory ${Object.keys(history).length}개`,
   );
+}
+
+/**
+ * 읽은 도움말 섹션 목록 조회
+ */
+export function getViewedHelpSections(): string[] {
+  const store = getStore();
+  return store.get("viewedHelpSections") || [];
+}
+
+/**
+ * 도움말 섹션 읽음 표시
+ */
+export function markHelpSectionViewed(sectionId: string): void {
+  const store = getStore();
+  const viewed = getViewedHelpSections();
+  if (!viewed.includes(sectionId)) {
+    viewed.push(sectionId);
+    store.set("viewedHelpSections", viewed);
+  }
 }

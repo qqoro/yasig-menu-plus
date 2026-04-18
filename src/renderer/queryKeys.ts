@@ -160,4 +160,11 @@ export const queryKeys = {
    */
   changelog: (currentVersion: string, mode: "afterVersion" | "recent") =>
     ["changelog", currentVersion, mode] as const,
+
+  /**
+   * 도움말 조회 이력 쿼리 키
+   */
+  helpRedDot: {
+    all: ["helpRedDot"] as const,
+  },
 } as const;

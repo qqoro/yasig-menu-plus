@@ -7,7 +7,12 @@
 import { app, shell } from "electron";
 import type { IpcMainInvokeEvent } from "electron";
 import type { IpcMainEventMap, IpcRendererEventMap } from "../events.js";
-import { getAllSettings, updateSettings } from "../store.js";
+import {
+  getAllSettings,
+  getViewedHelpSections,
+  markHelpSectionViewed,
+  updateSettings,
+} from "../store.js";
 import { wrapIpcHandler } from "../utils/ipc-wrapper.js";
 
 /**
@@ -57,5 +62,33 @@ export const openDataFolderHandler = wrapIpcHandler(
       throw new Error(`폴더를 열 수 없습니다: ${result}`);
     }
     return { path: dataPath };
+  },
+);
+
+/**
+ * 읽은 도움말 섹션 목록 조회 핸들러
+ */
+export const getViewedHelpSectionsHandler = wrapIpcHandler(
+  "getViewedHelpSections",
+  async (
+    _event: IpcMainInvokeEvent,
+    _payload: IpcRendererEventMap["getViewedHelpSections"],
+  ): Promise<IpcMainEventMap["viewedHelpSections"]> => {
+    const sectionIds = getViewedHelpSections();
+    return { sectionIds };
+  },
+);
+
+/**
+ * 도움말 섹션 읽음 표시 핸들러
+ */
+export const markHelpSectionViewedHandler = wrapIpcHandler(
+  "markHelpSectionViewed",
+  async (
+    _event: IpcMainInvokeEvent,
+    payload: IpcRendererEventMap["markHelpSectionViewed"],
+  ): Promise<IpcMainEventMap["helpSectionViewed"]> => {
+    markHelpSectionViewed(payload.sectionId);
+    return { sectionId: payload.sectionId };
   },
 );

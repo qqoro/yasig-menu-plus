@@ -150,6 +150,10 @@ export const enum IpcRendererSend {
 
   // GitHub 이슈 열기
   OpenGitHubIssue = "openGitHubIssue",
+
+  // 도움말 조회 이력 관련
+  GetViewedHelpSections = "getViewedHelpSections",
+  MarkHelpSectionViewed = "markHelpSectionViewed",
 }
 
 // ========== Main → Renderer 이벤트 ==========
@@ -310,7 +314,9 @@ export type IpcMainSendChannel =
   | "libraryPathOfflineToggled"
   | "offlineLibraryPaths"
   | "thumbnailsMigrated"
-  | "imagesConvertedToWebp";
+  | "imagesConvertedToWebp"
+  | "viewedHelpSections"
+  | "helpSectionViewed";
 
 // ========== 이벤트 페이로드 타입 ==========
 
@@ -569,6 +575,10 @@ export interface IpcRendererEventMap {
 
   // GitHub 이슈 열기
   openGitHubIssue: undefined;
+
+  // 도움말 조회 이력 관련
+  getViewedHelpSections: undefined;
+  markHelpSectionViewed: { sectionId: string };
 }
 
 // Main → Renderer 페이로드
@@ -763,6 +773,10 @@ export interface IpcMainEventMap {
 
   // GitHub 이슈 열기
   gitHubIssueOpened: void;
+
+  // 도움말 조회 이력 관련
+  viewedHelpSections: { sectionIds: string[] };
+  helpSectionViewed: { sectionId: string };
 }
 
 // 대시보드 통계

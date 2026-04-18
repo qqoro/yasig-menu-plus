@@ -11,6 +11,7 @@ export interface HelpSection {
 defineProps<{
   sections: HelpSection[];
   activeId: string;
+  unviewedIds: string[];
 }>();
 
 const emit = defineEmits<{
@@ -29,7 +30,13 @@ const emit = defineEmits<{
       @click="emit('select', section.id)"
     >
       <component :is="section.icon" :size="14" />
-      {{ section.label }}
+      <span class="relative">
+        {{ section.label }}
+        <span
+          v-if="unviewedIds.includes(section.id)"
+          class="bg-destructive absolute -top-1 -right-2 inline-block size-1.5 rounded-full"
+        />
+      </span>
     </Button>
   </nav>
 </template>

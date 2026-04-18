@@ -116,6 +116,10 @@ type IpcInvokeReturn = {
 
   // GitHub 이슈 열기
   openGitHubIssue: IpcMainEventMap["gitHubIssueOpened"];
+
+  // 도움말 조회 이력 관련
+  getViewedHelpSections: IpcMainEventMap["viewedHelpSections"];
+  markHelpSectionViewed: IpcMainEventMap["helpSectionViewed"];
 };
 
 const api = {
