@@ -41,7 +41,7 @@ const specialQueries = [
           기본 검색
           <span
             v-if="isNewCard('search-filter--basic-search')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -72,7 +72,7 @@ const specialQueries = [
           특별 검색어
           <span
             v-if="isNewCard('search-filter--special-query')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -113,7 +113,7 @@ const specialQueries = [
           자동완성
           <span
             v-if="isNewCard('search-filter--autocomplete')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -154,7 +154,7 @@ const specialQueries = [
           제외 검색
           <span
             v-if="isNewCard('search-filter--exclude-search')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -176,7 +176,7 @@ const specialQueries = [
           필터 패널
           <span
             v-if="isNewCard('search-filter--filter-panel')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>

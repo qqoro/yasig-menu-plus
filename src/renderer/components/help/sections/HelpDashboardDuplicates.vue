@@ -21,7 +21,7 @@ const isNewCard = useIsNewCard();
           대시보드
           <span
             v-if="isNewCard('dashboard--overview')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -70,7 +70,7 @@ const isNewCard = useIsNewCard();
           중복 게임 관리
           <span
             v-if="isNewCard('dashboard--duplicates')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>

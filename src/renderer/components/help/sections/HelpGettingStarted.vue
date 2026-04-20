@@ -21,7 +21,7 @@ const isNewCard = useIsNewCard();
           1. 라이브러리 경로 추가
           <span
             v-if="isNewCard('getting-started--library-path')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -51,7 +51,7 @@ const isNewCard = useIsNewCard();
           2. 첫 스캔 실행
           <span
             v-if="isNewCard('getting-started--first-scan')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -76,7 +76,7 @@ const isNewCard = useIsNewCard();
           3. 폴더 구조 권장사항
           <span
             v-if="isNewCard('getting-started--folder-structure')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -112,7 +112,7 @@ const isNewCard = useIsNewCard();
           4. 자동 정보 수집
           <span
             v-if="isNewCard('getting-started--auto-collect')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>

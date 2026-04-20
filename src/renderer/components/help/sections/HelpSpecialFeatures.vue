@@ -28,7 +28,7 @@ const isNewCard = useIsNewCard();
           RPG Maker 치트 모드
           <span
             v-if="isNewCard('special-features--rpg-cheat')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -105,7 +105,7 @@ const isNewCard = useIsNewCard();
           오프라인 라이브러리 경로
           <span
             v-if="isNewCard('special-features--offline-library')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -151,7 +151,7 @@ const isNewCard = useIsNewCard();
           랜덤 선택
           <span
             v-if="isNewCard('special-features--random-select')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -191,7 +191,7 @@ const isNewCard = useIsNewCard();
           줌 레벨
           <span
             v-if="isNewCard('special-features--zoom-level')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -220,7 +220,7 @@ const isNewCard = useIsNewCard();
           플레이 시간 추적
           <span
             v-if="isNewCard('special-features--play-time')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>

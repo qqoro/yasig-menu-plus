@@ -28,7 +28,7 @@ const isNewCard = useIsNewCard();
           게임 실행
           <span
             v-if="isNewCard('game-management--launch')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -57,7 +57,7 @@ const isNewCard = useIsNewCard();
           상태 토글
           <span
             v-if="isNewCard('game-management--status-toggle')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -93,7 +93,7 @@ const isNewCard = useIsNewCard();
           다중 선택
           <span
             v-if="isNewCard('game-management--multi-select')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -145,7 +145,7 @@ const isNewCard = useIsNewCard();
           정렬
           <span
             v-if="isNewCard('game-management--sort')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>

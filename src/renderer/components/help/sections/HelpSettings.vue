@@ -21,7 +21,7 @@ const isNewCard = useIsNewCard();
           테마
           <span
             v-if="isNewCard('settings--theme')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -49,7 +49,7 @@ const isNewCard = useIsNewCard();
           번역 설정
           <span
             v-if="isNewCard('settings--translation')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -81,7 +81,7 @@ const isNewCard = useIsNewCard();
           제외 실행파일
           <span
             v-if="isNewCard('settings--excluded-exe')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -103,7 +103,7 @@ const isNewCard = useIsNewCard();
           자동 업데이트
           <span
             v-if="isNewCard('settings--auto-update')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -132,7 +132,7 @@ const isNewCard = useIsNewCard();
           디버그 데이터 내보내기
           <span
             v-if="isNewCard('settings--debug-export')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>

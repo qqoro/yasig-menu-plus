@@ -49,7 +49,7 @@ const mouseInteractions = [
           키보드 단축키
           <span
             v-if="isNewCard('shortcuts--keyboard')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -83,7 +83,7 @@ const mouseInteractions = [
           마우스 인터랙션
           <span
             v-if="isNewCard('shortcuts--mouse')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>

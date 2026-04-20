@@ -21,7 +21,7 @@ const isNewCard = useIsNewCard();
           상세 정보 열기
           <span
             v-if="isNewCard('game-detail--open')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -44,7 +44,7 @@ const isNewCard = useIsNewCard();
           메타데이터 편집
           <span
             v-if="isNewCard('game-detail--metadata-edit')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -73,7 +73,7 @@ const isNewCard = useIsNewCard();
           태그 관리
           <span
             v-if="isNewCard('game-detail--tags')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -100,7 +100,7 @@ const isNewCard = useIsNewCard();
           평점
           <span
             v-if="isNewCard('game-detail--rating')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -122,7 +122,7 @@ const isNewCard = useIsNewCard();
           썸네일 관리
           <span
             v-if="isNewCard('game-detail--thumbnail')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>

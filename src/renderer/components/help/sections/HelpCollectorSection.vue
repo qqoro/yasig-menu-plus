@@ -46,7 +46,7 @@ const collectors = [
           자동 수집 규칙
           <span
             v-if="isNewCard('collectors--auto-rules')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -90,7 +90,7 @@ const collectors = [
           수동 새로고침
           <span
             v-if="isNewCard('collectors--manual-refresh')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -118,7 +118,7 @@ const collectors = [
           수집 결과
           <span
             v-if="isNewCard('collectors--collect-results')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>

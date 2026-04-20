@@ -21,7 +21,7 @@ const isNewCard = useIsNewCard();
           캐러셀 열기
           <span
             v-if="isNewCard('image-carousel--open')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -44,7 +44,7 @@ const isNewCard = useIsNewCard();
           이미지 네비게이션
           <span
             v-if="isNewCard('image-carousel--navigation')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>
@@ -83,7 +83,7 @@ const isNewCard = useIsNewCard();
           이미지 추가/삭제
           <span
             v-if="isNewCard('image-carousel--add-delete')"
-            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
           >
             NEW
           </span>

@@ -56,12 +56,18 @@ const markCardsViewed = useMarkHelpCardsViewed();
 
 // 이번 세션에서 본 카드 ID (페이지 이탈 시 일괄 저장)
 const sessionViewedCards = new Set<string>();
+// 반응형 트리거 (Set 변경 시 computed 갱신용)
+const sessionViewedTick = ref(0);
 
-// 읽지 않은 카드가 포함된 섹션 ID 목록
+// 읽지 않은 카드가 포함된 섹션 ID 목록 (세션에서 본 카드도 즉시 반영)
 const unviewedSectionIds = computed(() => {
-  const viewed = viewedHelpCards.value || [];
+  void sessionViewedTick.value;
+  const viewed = new Set([
+    ...(viewedHelpCards.value || []),
+    ...sessionViewedCards,
+  ]);
   return (Object.entries(HELP_CARDS) as [HelpSectionId, readonly string[]][])
-    .filter(([, cardIds]) => cardIds.some((id) => !viewed.includes(id)))
+    .filter(([, cardIds]) => cardIds.some((id) => !viewed.has(id)))
     .map(([sectionId]) => sectionId);
 });
 
@@ -79,6 +85,7 @@ onMounted(() => {
         const cardId = entry.target.id;
         if (ALL_CARD_IDS.includes(cardId)) {
           sessionViewedCards.add(cardId);
+          sessionViewedTick.value++;
         }
 
         // 활성 섹션 추적 (카드 → 섹션 매핑)
@@ -102,6 +109,19 @@ onMounted(() => {
     const el = document.getElementById(cardId);
     if (el) observer.observe(el);
   }
+
+  // 스크롤 바닥 도달 시 남은 카드 모두 읽음 처리
+  contentEl.addEventListener("scroll", () => {
+    const atBottom =
+      contentEl.scrollHeight - contentEl.scrollTop - contentEl.clientHeight <
+      50;
+    if (atBottom) {
+      for (const cardId of ALL_CARD_IDS) {
+        sessionViewedCards.add(cardId);
+      }
+      sessionViewedTick.value++;
+    }
+  });
 });
 
 onUnmounted(() => {
