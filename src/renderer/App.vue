@@ -9,7 +9,8 @@ import { Button } from "./components/ui/button";
 import ChangelogDialog from "./components/ChangelogDialog.vue";
 import HelpDialog from "./components/HelpDialog.vue";
 import { initializeTheme } from "./composables/useTheme";
-import { useViewedHelpSections } from "./composables/useHelpRedDot";
+import { useViewedHelpCards } from "./composables/useHelpRedDot";
+import { ALL_CARD_IDS } from "./lib/helpCardRegistry";
 import { useWindow } from "./composables/useWindow";
 import { queryKeys } from "./queryKeys";
 import { useQueryClient } from "@tanstack/vue-query";
@@ -24,12 +25,12 @@ const {
 } = useWindow();
 
 // 도움말 레드닷
-const { data: viewedHelpSections } = useViewedHelpSections();
+const { data: viewedHelpCards } = useViewedHelpCards();
 
 const hasUnviewedHelp = computed(() => {
-  const viewed = viewedHelpSections.value;
-  if (!viewed) return false; // 로딩 중에는 표시 안 함
-  return viewed.length < 10; // 총 섹션 수 = 10
+  const viewed = viewedHelpCards.value;
+  if (!viewed) return false;
+  return viewed.length < ALL_CARD_IDS.length;
 });
 
 const route = useRoute();

@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { Image, Plus, Trash2, Mouse } from "lucide-vue-next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useIsNewCard } from "@/composables/useHelpRedDot";
+
+const isNewCard = useIsNewCard();
 </script>
 
 <template>
@@ -11,11 +14,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </p>
 
     <!-- 캐러셀 열기 -->
-    <Card class="gap-2">
+    <Card id="image-carousel--open" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Image :size="16" />
           캐러셀 열기
+          <span
+            v-if="isNewCard('image-carousel--open')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -28,11 +37,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </Card>
 
     <!-- 네비게이션 -->
-    <Card class="gap-2">
+    <Card id="image-carousel--navigation" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Mouse :size="16" />
           이미지 네비게이션
+          <span
+            v-if="isNewCard('image-carousel--navigation')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -61,11 +76,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </Card>
 
     <!-- 이미지 관리 -->
-    <Card class="gap-2">
+    <Card id="image-carousel--add-delete" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Plus :size="16" />
           이미지 추가/삭제
+          <span
+            v-if="isNewCard('image-carousel--add-delete')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>

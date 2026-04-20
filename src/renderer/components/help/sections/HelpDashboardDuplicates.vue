@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { BarChart3, Copy, Trash2 } from "lucide-vue-next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useIsNewCard } from "@/composables/useHelpRedDot";
+
+const isNewCard = useIsNewCard();
 </script>
 
 <template>
@@ -11,11 +14,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </p>
 
     <!-- 대시보드 -->
-    <Card class="gap-2">
+    <Card id="dashboard--overview" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <BarChart3 :size="16" />
           대시보드
+          <span
+            v-if="isNewCard('dashboard--overview')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -54,11 +63,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </Card>
 
     <!-- 중복 관리 -->
-    <Card class="gap-2">
+    <Card id="dashboard--duplicates" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Copy :size="16" />
           중복 게임 관리
+          <span
+            v-if="isNewCard('dashboard--duplicates')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>

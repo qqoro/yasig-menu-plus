@@ -26,8 +26,13 @@ import HelpDashboardDuplicates from "@/components/help/sections/HelpDashboardDup
 import HelpSettings from "@/components/help/sections/HelpSettings.vue";
 import HelpShortcuts from "@/components/help/sections/HelpShortcuts.vue";
 import {
-  useMarkHelpSectionViewed,
-  useViewedHelpSections,
+  HELP_CARDS,
+  ALL_CARD_IDS,
+  type HelpSectionId,
+} from "@/lib/helpCardRegistry";
+import {
+  useViewedHelpCards,
+  useMarkHelpCardsViewed,
 } from "@/composables/useHelpRedDot";
 
 const sections: HelpSection[] = [
@@ -46,16 +51,21 @@ const sections: HelpSection[] = [
 const activeId = ref(sections[0].id);
 
 // 레드닷 관련
-const { data: viewedHelpSections } = useViewedHelpSections();
-const markViewed = useMarkHelpSectionViewed();
+const { data: viewedHelpCards } = useViewedHelpCards();
+const markCardsViewed = useMarkHelpCardsViewed();
 
-// 읽지 않은 섹션 ID 목록
-const unviewedIds = computed(() => {
-  const viewed = viewedHelpSections.value || [];
-  return sections.filter((s) => !viewed.includes(s.id)).map((s) => s.id);
+// 이번 세션에서 본 카드 ID (페이지 이탈 시 일괄 저장)
+const sessionViewedCards = new Set<string>();
+
+// 읽지 않은 카드가 포함된 섹션 ID 목록
+const unviewedSectionIds = computed(() => {
+  const viewed = viewedHelpCards.value || [];
+  return (Object.entries(HELP_CARDS) as [HelpSectionId, readonly string[]][])
+    .filter(([, cardIds]) => cardIds.some((id) => !viewed.includes(id)))
+    .map(([sectionId]) => sectionId);
 });
 
-// IntersectionObserver로 스크롤 추적
+// IntersectionObserver로 개별 카드 스크롤 추적
 let observer: IntersectionObserver | null = null;
 
 onMounted(() => {
@@ -65,15 +75,19 @@ onMounted(() => {
   observer = new IntersectionObserver(
     (entries) => {
       const visible = entries.filter((e) => e.isIntersecting);
-      if (visible.length > 0) {
-        const topEntry = visible.reduce((prev, curr) =>
-          prev.boundingClientRect.top < curr.boundingClientRect.top
-            ? prev
-            : curr,
-        );
-        activeId.value = topEntry.target.id;
-        // 레드닷: 뷰포트에 들어온 섹션 읽음 처리
-        markViewed.mutate(topEntry.target.id);
+      for (const entry of visible) {
+        const cardId = entry.target.id;
+        if (ALL_CARD_IDS.includes(cardId)) {
+          sessionViewedCards.add(cardId);
+        }
+
+        // 활성 섹션 추적 (카드 → 섹션 매핑)
+        const sectionId = Object.entries(HELP_CARDS).find(([, ids]) =>
+          (ids as readonly string[]).includes(cardId),
+        )?.[0];
+        if (sectionId) {
+          activeId.value = sectionId;
+        }
       }
     },
     {
@@ -83,28 +97,36 @@ onMounted(() => {
     },
   );
 
-  for (const section of sections) {
-    const el = document.getElementById(section.id);
+  // 모든 카드 요소 관찰
+  for (const cardId of ALL_CARD_IDS) {
+    const el = document.getElementById(cardId);
     if (el) observer.observe(el);
   }
 });
 
 onUnmounted(() => {
   observer?.disconnect();
+
+  // 세션에서 본 카드를 일괄 저장
+  if (sessionViewedCards.size > 0) {
+    markCardsViewed.mutate([...sessionViewedCards]);
+  }
 });
 
 // 사이드바 클릭 → 스크롤 이동
 function scrollToSection(id: string) {
-  const el = document.getElementById(id);
-  if (el) {
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  const firstCardId = HELP_CARDS[id as HelpSectionId]?.[0];
+  if (firstCardId) {
+    const el = document.getElementById(firstCardId);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   }
 }
 </script>
 
 <template>
   <div class="flex h-full flex-col overflow-hidden">
-    <!-- 도구 모음 -->
     <div class="flex items-center justify-between border-b px-4 py-2">
       <h1 class="text-base font-semibold">도움말</h1>
       <RouterLink to="/">
@@ -114,49 +136,46 @@ function scrollToSection(id: string) {
       </RouterLink>
     </div>
 
-    <!-- 사이드바 + 콘텐츠 -->
     <div class="flex min-h-0 flex-1">
-      <!-- 사이드바 -->
       <div class="w-40 shrink-0 overflow-y-auto border-r">
         <HelpSidebar
           :sections="sections"
           :active-id="activeId"
-          :unviewed-ids="unviewedIds"
+          :unviewed-section-ids="unviewedSectionIds"
           @select="scrollToSection"
         />
       </div>
 
-      <!-- 콘텐츠 -->
       <div id="help-content" class="flex-1 overflow-y-auto p-6">
         <div class="mx-auto flex max-w-3xl flex-col gap-6">
-          <div id="getting-started">
+          <div>
             <HelpGettingStarted />
           </div>
-          <div id="game-management">
+          <div>
             <HelpGameManagement />
           </div>
-          <div id="collectors">
+          <div>
             <HelpCollectorSection />
           </div>
-          <div id="search-filter">
+          <div>
             <HelpSearchFilter />
           </div>
-          <div id="image-carousel">
+          <div>
             <HelpImageCarousel />
           </div>
-          <div id="game-detail">
+          <div>
             <HelpGameDetail />
           </div>
-          <div id="special-features">
+          <div>
             <HelpSpecialFeatures />
           </div>
-          <div id="dashboard">
+          <div>
             <HelpDashboardDuplicates />
           </div>
-          <div id="settings">
+          <div>
             <HelpSettings />
           </div>
-          <div id="shortcuts">
+          <div>
             <HelpShortcuts />
           </div>
         </div>

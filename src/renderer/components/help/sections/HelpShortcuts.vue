@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { Keyboard, Mouse } from "lucide-vue-next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useIsNewCard } from "@/composables/useHelpRedDot";
+
+const isNewCard = useIsNewCard();
 
 // 키보드 단축키
 const keyboardShortcuts = [
@@ -39,11 +42,17 @@ const mouseInteractions = [
     </p>
 
     <!-- 키보드 단축키 -->
-    <Card class="gap-2">
+    <Card id="shortcuts--keyboard" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Keyboard :size="16" />
           키보드 단축키
+          <span
+            v-if="isNewCard('shortcuts--keyboard')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -67,11 +76,17 @@ const mouseInteractions = [
     </Card>
 
     <!-- 마우스 인터랙션 -->
-    <Card class="gap-2">
+    <Card id="shortcuts--mouse" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Mouse :size="16" />
           마우스 인터랙션
+          <span
+            v-if="isNewCard('shortcuts--mouse')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>

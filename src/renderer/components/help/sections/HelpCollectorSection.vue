@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { RefreshCw, Search, Database } from "lucide-vue-next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useIsNewCard } from "@/composables/useHelpRedDot";
+
+const isNewCard = useIsNewCard();
 
 // 콜렉터 정보
 const collectors = [
@@ -36,11 +39,17 @@ const collectors = [
     </p>
 
     <!-- 자동 수집 규칙 -->
-    <Card class="gap-2">
+    <Card id="collectors--auto-rules" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Search :size="16" />
           자동 수집 규칙
+          <span
+            v-if="isNewCard('collectors--auto-rules')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -74,11 +83,17 @@ const collectors = [
     </Card>
 
     <!-- 수동 새로고침 -->
-    <Card class="gap-2">
+    <Card id="collectors--manual-refresh" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <RefreshCw :size="16" />
           수동 새로고침
+          <span
+            v-if="isNewCard('collectors--manual-refresh')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -96,11 +111,17 @@ const collectors = [
     </Card>
 
     <!-- 수집 결과 -->
-    <Card class="gap-2">
+    <Card id="collectors--collect-results" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Database :size="16" />
           수집 결과
+          <span
+            v-if="isNewCard('collectors--collect-results')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>

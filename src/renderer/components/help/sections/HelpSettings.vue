@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { Palette, Languages, FileX, RefreshCw, Bug } from "lucide-vue-next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useIsNewCard } from "@/composables/useHelpRedDot";
+
+const isNewCard = useIsNewCard();
 </script>
 
 <template>
@@ -11,11 +14,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </p>
 
     <!-- 테마 -->
-    <Card class="gap-2">
+    <Card id="settings--theme" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Palette :size="16" />
           테마
+          <span
+            v-if="isNewCard('settings--theme')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -33,11 +42,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </Card>
 
     <!-- 번역 -->
-    <Card class="gap-2">
+    <Card id="settings--translation" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Languages :size="16" />
           번역 설정
+          <span
+            v-if="isNewCard('settings--translation')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -59,11 +74,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </Card>
 
     <!-- 제외 실행파일 -->
-    <Card class="gap-2">
+    <Card id="settings--excluded-exe" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <FileX :size="16" />
           제외 실행파일
+          <span
+            v-if="isNewCard('settings--excluded-exe')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -75,11 +96,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </Card>
 
     <!-- 자동 업데이트 -->
-    <Card class="gap-2">
+    <Card id="settings--auto-update" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <RefreshCw :size="16" />
           자동 업데이트
+          <span
+            v-if="isNewCard('settings--auto-update')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -98,11 +125,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </Card>
 
     <!-- 디버그 데이터 내보내기 -->
-    <Card class="gap-2">
+    <Card id="settings--debug-export" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Bug :size="16" />
           디버그 데이터 내보내기
+          <span
+            v-if="isNewCard('settings--debug-export')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>

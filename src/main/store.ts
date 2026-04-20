@@ -72,7 +72,7 @@ export interface StoreSchema {
     audioPlayerPath: string | null; // 오디오 플레이어 경로
     videoPlayerPath: string | null; // 비디오 플레이어 경로
   };
-  viewedHelpSections?: string[]; // 사용자가 본 도움말 섹션 ID 목록
+  viewedHelpCards?: string[]; // 사용자가 본 도움말 카드 ID 목록
 }
 
 /**
@@ -117,7 +117,7 @@ const DEFAULTS: StoreSchema = {
     audioPlayerPath: null,
     videoPlayerPath: null,
   },
-  viewedHelpSections: [],
+  viewedHelpCards: [],
 };
 
 /**
@@ -136,8 +136,91 @@ function getStore(): StoreInstance {
       cwd: app.getPath("userData"),
     }) as unknown as StoreInstance;
     storeInstance = store;
+
+    // 기존 viewedHelpSections → viewedHelpCards 마이그레이션
+    migrateViewedHelpSections(store);
   }
   return storeInstance;
+}
+
+/**
+ * 기존 섹션 기반 조회 이력을 카드 기반으로 마이그레이션
+ * 이미 viewedHelpCards가 있으면 건너뜀
+ */
+function migrateViewedHelpSections(store: StoreInstance): void {
+  const viewedCards = store.get("viewedHelpCards");
+  if (viewedCards && viewedCards.length > 0) return;
+
+  const viewedSections = (store as any).get("viewedHelpSections") as
+    | string[]
+    | undefined;
+  if (!viewedSections || viewedSections.length === 0) return;
+
+  // 섹션 ID → 카드 ID 매핑 (레지스트리와 동일)
+  const sectionToCards: Record<string, string[]> = {
+    "getting-started": [
+      "getting-started--library-path",
+      "getting-started--first-scan",
+      "getting-started--folder-structure",
+      "getting-started--auto-collect",
+    ],
+    "game-management": [
+      "game-management--launch",
+      "game-management--status-toggle",
+      "game-management--multi-select",
+      "game-management--sort",
+    ],
+    collectors: [
+      "collectors--auto-rules",
+      "collectors--manual-refresh",
+      "collectors--collect-results",
+    ],
+    "search-filter": [
+      "search-filter--basic-search",
+      "search-filter--special-query",
+      "search-filter--autocomplete",
+      "search-filter--exclude-search",
+      "search-filter--filter-panel",
+    ],
+    "image-carousel": [
+      "image-carousel--open",
+      "image-carousel--navigation",
+      "image-carousel--add-delete",
+    ],
+    "game-detail": [
+      "game-detail--open",
+      "game-detail--metadata-edit",
+      "game-detail--tags",
+      "game-detail--rating",
+      "game-detail--thumbnail",
+    ],
+    "special-features": [
+      "special-features--rpg-cheat",
+      "special-features--offline-library",
+      "special-features--random-select",
+      "special-features--zoom-level",
+      "special-features--play-time",
+    ],
+    dashboard: ["dashboard--overview", "dashboard--duplicates"],
+    settings: [
+      "settings--theme",
+      "settings--translation",
+      "settings--excluded-exe",
+      "settings--auto-update",
+      "settings--debug-export",
+    ],
+    shortcuts: ["shortcuts--keyboard", "shortcuts--mouse"],
+  };
+
+  const cardIds = viewedSections.flatMap(
+    (sectionId) => sectionToCards[sectionId] || [],
+  );
+  store.set("viewedHelpCards", cardIds);
+  (store as any).delete("viewedHelpSections");
+
+  console.log(
+    `[설정] 도움말 조회 이력 마이그레이션: ${viewedSections.length}개 섹션 → ${cardIds.length}개 카드`,
+  );
 }
 
 /**
@@ -332,7 +415,7 @@ export function getAllSettings(): StoreSchema {
     enableNonGameContent: store.get("enableNonGameContent"),
     enableGoogleCollector: store.get("enableGoogleCollector"),
     mediaPlayerSettings: store.get("mediaPlayerSettings"),
-    viewedHelpSections: store.get("viewedHelpSections"),
+    viewedHelpCards: store.get("viewedHelpCards"),
   };
 }
 
@@ -676,21 +759,19 @@ export function runLibraryPathsNormalization(): void {
 }
 
 /**
- * 읽은 도움말 섹션 목록 조회
+ * 본 도움말 카드 ID 목록 조회
  */
-export function getViewedHelpSections(): string[] {
+export function getViewedHelpCards(): string[] {
   const store = getStore();
-  return store.get("viewedHelpSections") || [];
+  return store.get("viewedHelpCards") || [];
 }
 
 /**
- * 도움말 섹션 읽음 표시
+ * 도움말 카드 일괄 읽음 표시
  */
-export function markHelpSectionViewed(sectionId: string): void {
+export function markHelpCardsViewed(cardIds: string[]): void {
   const store = getStore();
-  const viewed = getViewedHelpSections();
-  if (!viewed.includes(sectionId)) {
-    viewed.push(sectionId);
-    store.set("viewedHelpSections", viewed);
-  }
+  const viewed = getViewedHelpCards();
+  const newViewed = [...new Set([...viewed, ...cardIds])];
+  store.set("viewedHelpCards", newViewed);
 }

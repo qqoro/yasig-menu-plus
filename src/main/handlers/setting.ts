@@ -9,8 +9,8 @@ import type { IpcMainInvokeEvent } from "electron";
 import type { IpcMainEventMap, IpcRendererEventMap } from "../events.js";
 import {
   getAllSettings,
-  getViewedHelpSections,
-  markHelpSectionViewed,
+  getViewedHelpCards,
+  markHelpCardsViewed,
   updateSettings,
 } from "../store.js";
 import { wrapIpcHandler } from "../utils/ipc-wrapper.js";
@@ -66,29 +66,29 @@ export const openDataFolderHandler = wrapIpcHandler(
 );
 
 /**
- * 읽은 도움말 섹션 목록 조회 핸들러
+ * 본 도움말 카드 목록 조회 핸들러
  */
-export const getViewedHelpSectionsHandler = wrapIpcHandler(
-  "getViewedHelpSections",
+export const getViewedHelpCardsHandler = wrapIpcHandler(
+  "getViewedHelpCards",
   async (
     _event: IpcMainInvokeEvent,
-    _payload: IpcRendererEventMap["getViewedHelpSections"],
-  ): Promise<IpcMainEventMap["viewedHelpSections"]> => {
-    const sectionIds = getViewedHelpSections();
-    return { sectionIds };
+    _payload: IpcRendererEventMap["getViewedHelpCards"],
+  ): Promise<IpcMainEventMap["viewedHelpCards"]> => {
+    const cardIds = getViewedHelpCards();
+    return { cardIds };
   },
 );
 
 /**
- * 도움말 섹션 읽음 표시 핸들러
+ * 도움말 카드 일괄 읽음 표시 핸들러
  */
-export const markHelpSectionViewedHandler = wrapIpcHandler(
-  "markHelpSectionViewed",
+export const markHelpCardsViewedHandler = wrapIpcHandler(
+  "markHelpCardsViewed",
   async (
     _event: IpcMainInvokeEvent,
-    payload: IpcRendererEventMap["markHelpSectionViewed"],
-  ): Promise<IpcMainEventMap["helpSectionViewed"]> => {
-    markHelpSectionViewed(payload.sectionId);
-    return { sectionId: payload.sectionId };
+    payload: IpcRendererEventMap["markHelpCardsViewed"],
+  ): Promise<IpcMainEventMap["helpCardsViewed"]> => {
+    markHelpCardsViewed(payload.cardIds);
+    return { cardIds: payload.cardIds };
   },
 );

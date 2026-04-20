@@ -8,6 +8,9 @@ import {
   ArrowUpDown,
 } from "lucide-vue-next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useIsNewCard } from "@/composables/useHelpRedDot";
+
+const isNewCard = useIsNewCard();
 </script>
 
 <template>
@@ -18,11 +21,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </p>
 
     <!-- 게임 실행 -->
-    <Card class="gap-2">
+    <Card id="game-management--launch" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Play :size="16" />
           게임 실행
+          <span
+            v-if="isNewCard('game-management--launch')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -41,11 +50,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </Card>
 
     <!-- 상태 토글 -->
-    <Card class="gap-2">
+    <Card id="game-management--status-toggle" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Star :size="16" />
           상태 토글
+          <span
+            v-if="isNewCard('game-management--status-toggle')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -71,11 +86,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </Card>
 
     <!-- 다중 선택 -->
-    <Card class="gap-2">
+    <Card id="game-management--multi-select" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <MousePointerClick :size="16" />
           다중 선택
+          <span
+            v-if="isNewCard('game-management--multi-select')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -117,11 +138,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </Card>
 
     <!-- 정렬 -->
-    <Card class="gap-2">
+    <Card id="game-management--sort" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <ArrowUpDown :size="16" />
           정렬
+          <span
+            v-if="isNewCard('game-management--sort')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>

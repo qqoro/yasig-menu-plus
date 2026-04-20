@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { FolderPlus, RefreshCw, FolderTree, Sparkles } from "lucide-vue-next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useIsNewCard } from "@/composables/useHelpRedDot";
+
+const isNewCard = useIsNewCard();
 </script>
 
 <template>
@@ -11,11 +14,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </p>
 
     <!-- 1단계: 라이브러리 경로 추가 -->
-    <Card class="gap-2">
+    <Card id="getting-started--library-path" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <FolderPlus :size="16" />
           1. 라이브러리 경로 추가
+          <span
+            v-if="isNewCard('getting-started--library-path')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -35,11 +44,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </Card>
 
     <!-- 2단계: 첫 스캔 -->
-    <Card class="gap-2">
+    <Card id="getting-started--first-scan" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <RefreshCw :size="16" />
           2. 첫 스캔 실행
+          <span
+            v-if="isNewCard('getting-started--first-scan')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -54,11 +69,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </Card>
 
     <!-- 3단계: 폴더 구조 -->
-    <Card class="gap-2">
+    <Card id="getting-started--folder-structure" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <FolderTree :size="16" />
           3. 폴더 구조 권장사항
+          <span
+            v-if="isNewCard('getting-started--folder-structure')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -84,11 +105,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </Card>
 
     <!-- 4단계: 자동 수집 -->
-    <Card class="gap-2">
+    <Card id="getting-started--auto-collect" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Sparkles :size="16" />
           4. 자동 정보 수집
+          <span
+            v-if="isNewCard('getting-started--auto-collect')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>

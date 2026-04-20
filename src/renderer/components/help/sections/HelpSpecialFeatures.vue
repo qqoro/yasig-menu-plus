@@ -8,6 +8,9 @@ import {
   Zap,
 } from "lucide-vue-next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useIsNewCard } from "@/composables/useHelpRedDot";
+
+const isNewCard = useIsNewCard();
 </script>
 
 <template>
@@ -18,11 +21,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </p>
 
     <!-- RPG Maker 치트 모드 -->
-    <Card class="gap-2">
+    <Card id="special-features--rpg-cheat" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Zap :size="16" />
           RPG Maker 치트 모드
+          <span
+            v-if="isNewCard('special-features--rpg-cheat')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
           <span
             class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
           >
@@ -89,11 +98,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </Card>
 
     <!-- 오프라인 경로 -->
-    <Card class="gap-2">
+    <Card id="special-features--offline-library" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <WifiOff :size="16" />
           오프라인 라이브러리 경로
+          <span
+            v-if="isNewCard('special-features--offline-library')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -129,11 +144,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </Card>
 
     <!-- 랜덤 선택 -->
-    <Card class="gap-2">
+    <Card id="special-features--random-select" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Shuffle :size="16" />
           랜덤 선택
+          <span
+            v-if="isNewCard('special-features--random-select')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -163,11 +184,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </Card>
 
     <!-- 줌 레벨 -->
-    <Card class="gap-2">
+    <Card id="special-features--zoom-level" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <ZoomIn :size="16" />
           줌 레벨
+          <span
+            v-if="isNewCard('special-features--zoom-level')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -186,11 +213,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </Card>
 
     <!-- 플레이 시간 추적 -->
-    <Card class="gap-2">
+    <Card id="special-features--play-time" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Clock :size="16" />
           플레이 시간 추적
+          <span
+            v-if="isNewCard('special-features--play-time')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>

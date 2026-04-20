@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { FileText, Tag, Star, Image } from "lucide-vue-next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useIsNewCard } from "@/composables/useHelpRedDot";
+
+const isNewCard = useIsNewCard();
 </script>
 
 <template>
@@ -11,11 +14,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </p>
 
     <!-- 상세 정보 열기 -->
-    <Card class="gap-2">
+    <Card id="game-detail--open" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <FileText :size="16" />
           상세 정보 열기
+          <span
+            v-if="isNewCard('game-detail--open')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -28,11 +37,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </Card>
 
     <!-- 메타데이터 편집 -->
-    <Card class="gap-2">
+    <Card id="game-detail--metadata-edit" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <FileText :size="16" />
           메타데이터 편집
+          <span
+            v-if="isNewCard('game-detail--metadata-edit')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -51,11 +66,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </Card>
 
     <!-- 태그 관리 -->
-    <Card class="gap-2">
+    <Card id="game-detail--tags" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Tag :size="16" />
           태그 관리
+          <span
+            v-if="isNewCard('game-detail--tags')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -72,11 +93,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </Card>
 
     <!-- 평점 -->
-    <Card class="gap-2">
+    <Card id="game-detail--rating" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Star :size="16" />
           평점
+          <span
+            v-if="isNewCard('game-detail--rating')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -88,11 +115,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     </Card>
 
     <!-- 썸네일 관리 -->
-    <Card class="gap-2">
+    <Card id="game-detail--thumbnail" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Image :size="16" />
           썸네일 관리
+          <span
+            v-if="isNewCard('game-detail--thumbnail')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>

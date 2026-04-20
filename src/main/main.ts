@@ -46,8 +46,8 @@ import {
 } from "./handlers/home.js";
 import {
   getAllSettingsHandler,
-  getViewedHelpSectionsHandler,
-  markHelpSectionViewedHandler,
+  getViewedHelpCardsHandler,
+  markHelpCardsViewedHandler,
   openDataFolderHandler,
   updateSettingsHandler,
 } from "./handlers/setting.js";
@@ -387,13 +387,10 @@ function registerIpcHandlers() {
   ipcMain.handle(IpcRendererSend.OpenDataFolder, openDataFolderHandler);
 
   // ========== 도움말 조회 이력 ==========
+  ipcMain.handle(IpcRendererSend.GetViewedHelpCards, getViewedHelpCardsHandler);
   ipcMain.handle(
-    IpcRendererSend.GetViewedHelpSections,
-    getViewedHelpSectionsHandler,
-  );
-  ipcMain.handle(
-    IpcRendererSend.MarkHelpSectionViewed,
-    markHelpSectionViewedHandler,
+    IpcRendererSend.MarkHelpCardsViewed,
+    markHelpCardsViewedHandler,
   );
 
   // ========== 플레이 타임 관련 ==========

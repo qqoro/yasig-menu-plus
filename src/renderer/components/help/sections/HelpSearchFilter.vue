@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { Search, Filter, Ban } from "lucide-vue-next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useIsNewCard } from "@/composables/useHelpRedDot";
+
+const isNewCard = useIsNewCard();
 
 const specialQueries = [
   { prefix: "tag:", description: "태그명으로 검색", example: "tag:RPG" },
@@ -31,11 +34,17 @@ const specialQueries = [
     </p>
 
     <!-- 기본 검색 -->
-    <Card class="gap-2">
+    <Card id="search-filter--basic-search" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Search :size="16" />
           기본 검색
+          <span
+            v-if="isNewCard('search-filter--basic-search')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -56,11 +65,17 @@ const specialQueries = [
     </Card>
 
     <!-- 특별 검색어 -->
-    <Card class="gap-2">
+    <Card id="search-filter--special-query" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Search :size="16" />
           특별 검색어
+          <span
+            v-if="isNewCard('search-filter--special-query')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -91,11 +106,17 @@ const specialQueries = [
     </Card>
 
     <!-- 자동완성 -->
-    <Card class="gap-2">
+    <Card id="search-filter--autocomplete" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Search :size="16" />
           자동완성
+          <span
+            v-if="isNewCard('search-filter--autocomplete')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -126,11 +147,17 @@ const specialQueries = [
     </Card>
 
     <!-- 제외 검색 -->
-    <Card class="gap-2">
+    <Card id="search-filter--exclude-search" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Ban :size="16" />
           제외 검색
+          <span
+            v-if="isNewCard('search-filter--exclude-search')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -142,11 +169,17 @@ const specialQueries = [
     </Card>
 
     <!-- 필터 패널 -->
-    <Card class="gap-2">
+    <Card id="search-filter--filter-panel" class="gap-2">
       <CardHeader class="pb-2">
         <CardTitle class="flex items-center gap-2 text-sm">
           <Filter :size="16" />
           필터 패널
+          <span
+            v-if="isNewCard('search-filter--filter-panel')"
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent>
