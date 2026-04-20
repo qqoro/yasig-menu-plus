@@ -74,7 +74,25 @@ export function useHomeActions({ searchState }: UseHomeActionsOptions) {
    */
   async function handlePlayGameWithCheat(game: GameItem): Promise<void> {
     try {
-      await cheatPlayMutation.mutateAsync(game.path);
+      const { executablePath } = await cheatPlayMutation.mutateAsync(game.path);
+      const fileName = executablePath.split(/[/\\]/).pop() || executablePath;
+
+      toast.success(`치트 모드로 ${game.title} 실행했습니다.`, {
+        description: fileName,
+        action: {
+          label: "제외 목록에 추가",
+          onClick: async () => {
+            try {
+              await addExcludedExecutable.mutateAsync(fileName);
+              toast.success(
+                `"${fileName}"이(가) 실행 제외 목록에 추가되었습니다.`,
+              );
+            } catch {
+              toast.error("실행 제외 목록 추가에 실패했습니다.");
+            }
+          },
+        },
+      });
     } catch {
       // composable에서 에러 처리
     }

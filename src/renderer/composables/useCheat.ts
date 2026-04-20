@@ -42,7 +42,6 @@ export function usePlayGameWithCheat() {
       return await window.api.invoke("playGameWithCheat", { path });
     },
     onSuccess: () => {
-      toast.success("치트 모드로 게임을 실행했습니다.");
       queryClient.invalidateQueries({ queryKey: queryKeys.games.all });
     },
     onError: (error: Error) => {
