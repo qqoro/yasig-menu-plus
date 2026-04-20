@@ -21,6 +21,7 @@ interface GitHubRelease {
   body: string | null;
   published_at: string;
   html_url: string;
+  prerelease: boolean;
 }
 
 export class ChangelogService {
@@ -37,6 +38,9 @@ export class ChangelogService {
 
   /**
    * 현재 버전 이후의 릴리즈 목록 조회 (업데이트 알림용)
+   *
+   * 정식 릴리즈만 반환하며, 현재 버전이 pre-release인 경우에만
+   * 해당 pre-release 릴리즈도 포함
    */
   async getReleasesAfterVersion(
     currentVersion: string,
@@ -58,10 +62,17 @@ export class ChangelogService {
       // 현재 버전 정규화 (v1.2.3 -> 1.2.3)
       const normalizedCurrent = currentVersion.replace(/^v/, "");
 
-      // 현재 버전 이후 릴리즈만 필터링
+      // 현재 버전이 pre-release인지 확인
+      const isCurrentPrerelease = releases.some(
+        (r) =>
+          r.tag_name.replace(/^v/, "") === normalizedCurrent && r.prerelease,
+      );
+
+      // 현재 버전 이후 릴리즈 필터링
       const filteredReleases = this.filterReleasesAfterVersion(
         releases,
         normalizedCurrent,
+        isCurrentPrerelease,
       );
 
       return filteredReleases.map((release) => ({
@@ -79,8 +90,13 @@ export class ChangelogService {
 
   /**
    * 최근 N개 릴리즈 조회 (업데이트 후 첫 실행용)
+   *
+   * 정식 릴리즈만 반환하며, 현재 버전이 pre-release인 경우 해당 릴리즈도 포함
    */
-  async getRecentReleases(limit: number = 10): Promise<ReleaseInfo[]> {
+  async getRecentReleases(
+    limit: number = 10,
+    currentVersion?: string,
+  ): Promise<ReleaseInfo[]> {
     try {
       const response = await fetch(API_URL, {
         headers: {
@@ -95,7 +111,27 @@ export class ChangelogService {
 
       const releases: GitHubRelease[] = await response.json();
 
-      return releases.slice(0, limit).map((release) => ({
+      // 현재 버전이 pre-release인지 확인
+      const normalizedCurrent = currentVersion?.replace(/^v/, "");
+      const currentPrerelease = normalizedCurrent
+        ? releases.find(
+            (r) =>
+              r.tag_name.replace(/^v/, "") === normalizedCurrent &&
+              r.prerelease,
+          )
+        : undefined;
+
+      // 정식 릴리즈만 필터링
+      const stableReleases = releases.filter((r) => !r.prerelease);
+
+      // 현재 버전이 pre-release면 해당 릴리즈도 포함
+      const resultReleases =
+        currentPrerelease &&
+        !stableReleases.some((r) => r.tag_name === currentPrerelease.tag_name)
+          ? [currentPrerelease, ...stableReleases]
+          : stableReleases;
+
+      return resultReleases.slice(0, limit).map((release) => ({
         version: release.tag_name,
         name: release.name || release.tag_name,
         body: release.body || "",
@@ -110,10 +146,14 @@ export class ChangelogService {
 
   /**
    * 현재 버전 이후 릴리즈 필터링
+   *
+   * 정식 릴리즈만 포함하며, includePrerelease가 true면
+   * 현재 버전과 일치하는 pre-release도 포함
    */
   private filterReleasesAfterVersion(
     releases: GitHubRelease[],
     currentVersion: string,
+    includePrerelease: boolean = false,
   ): GitHubRelease[] {
     const result: GitHubRelease[] = [];
 
@@ -122,6 +162,8 @@ export class ChangelogService {
 
       // 현재 버전보다 높은 버전만 포함
       if (this.compareVersions(releaseVersion, currentVersion) > 0) {
+        // pre-release는 현재 버전이 pre-release일 때만 포함
+        if (release.prerelease && !includePrerelease) continue;
         result.push(release);
       }
     }

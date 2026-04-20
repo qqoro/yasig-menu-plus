@@ -5,7 +5,11 @@ import type { ReleaseInfo } from "./ChangelogService.js";
 // GitHub API 릴리즈 응답 헬퍼 함수
 function makeRelease(
   tagName: string,
-  options?: { name?: string | null; body?: string | null },
+  options?: {
+    name?: string | null;
+    body?: string | null;
+    prerelease?: boolean;
+  },
 ) {
   return {
     tag_name: tagName,
@@ -13,6 +17,7 @@ function makeRelease(
     body: options?.body !== undefined ? options.body : `Changes in ${tagName}`,
     published_at: "2025-01-01T00:00:00Z",
     html_url: `https://github.com/qqoro/yasig-menu-plus/releases/tag/${tagName}`,
+    prerelease: options?.prerelease ?? false,
   };
 }
 
@@ -134,6 +139,7 @@ describe("ChangelogService", () => {
           published_at: "2025-06-15T12:00:00Z",
           html_url:
             "https://github.com/qqoro/yasig-menu-plus/releases/tag/v2.0.0",
+          prerelease: false,
         },
       ];
       vi.stubGlobal("fetch", mockFetchSuccess(releases));
@@ -158,6 +164,51 @@ describe("ChangelogService", () => {
       const result = await service.getReleasesAfterVersion("1.0.0");
 
       expect(result).toHaveLength(0);
+    });
+
+    it("pre-release는 기본적으로 제외한다", async () => {
+      const releases = [
+        makeRelease("v1.3.0", { prerelease: true }),
+        makeRelease("v1.2.0"),
+        makeRelease("v1.1.0", { prerelease: true }),
+      ];
+      vi.stubGlobal("fetch", mockFetchSuccess(releases));
+
+      const result = await service.getReleasesAfterVersion("1.0.0");
+
+      expect(result).toHaveLength(1);
+      expect(result[0].version).toBe("v1.2.0");
+    });
+
+    it("현재 버전이 pre-release면 pre-release도 포함한다", async () => {
+      const releases = [
+        makeRelease("v1.3.0"),
+        makeRelease("v1.2.0", { prerelease: true }),
+        makeRelease("v1.1.0", { prerelease: true }),
+        makeRelease("v1.0.0"),
+      ];
+      vi.stubGlobal("fetch", mockFetchSuccess(releases));
+
+      // 현재 버전 v1.1.0이 pre-release이므로 상위 pre-release도 포함
+      const result = await service.getReleasesAfterVersion("1.1.0");
+
+      expect(result).toHaveLength(2);
+      expect(result[0].version).toBe("v1.3.0");
+      expect(result[1].version).toBe("v1.2.0");
+    });
+
+    it("현재 버전이 정식 릴리즈면 pre-release는 제외한다", async () => {
+      const releases = [
+        makeRelease("v1.2.0", { prerelease: true }),
+        makeRelease("v1.1.0"),
+        makeRelease("v1.0.0"),
+      ];
+      vi.stubGlobal("fetch", mockFetchSuccess(releases));
+
+      const result = await service.getReleasesAfterVersion("1.0.0");
+
+      expect(result).toHaveLength(1);
+      expect(result[0].version).toBe("v1.1.0");
     });
   });
 
@@ -227,6 +278,52 @@ describe("ChangelogService", () => {
 
       expect(result[0].name).toBe("v1.0.0");
       expect(result[0].body).toBe("");
+    });
+
+    it("pre-release는 제외하고 정식 릴리즈만 반환한다", async () => {
+      const releases = [
+        makeRelease("v1.3.0"),
+        makeRelease("v1.2.0", { prerelease: true }),
+        makeRelease("v1.1.0"),
+        makeRelease("v1.0.0", { prerelease: true }),
+      ];
+      vi.stubGlobal("fetch", mockFetchSuccess(releases));
+
+      const result = await service.getRecentReleases(10);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].version).toBe("v1.3.0");
+      expect(result[1].version).toBe("v1.1.0");
+    });
+
+    it("currentVersion이 pre-release면 해당 릴리즈도 포함한다", async () => {
+      const releases = [
+        makeRelease("v1.3.0"),
+        makeRelease("v1.2.0", { prerelease: true }),
+        makeRelease("v1.1.0"),
+      ];
+      vi.stubGlobal("fetch", mockFetchSuccess(releases));
+
+      const result = await service.getRecentReleases(10, "v1.2.0");
+
+      expect(result).toHaveLength(3);
+      expect(result[0].version).toBe("v1.2.0");
+      expect(result[0].name).toBe("Release v1.2.0");
+    });
+
+    it("currentVersion이 정식 릴리즈면 pre-release는 제외한다", async () => {
+      const releases = [
+        makeRelease("v1.3.0"),
+        makeRelease("v1.2.0", { prerelease: true }),
+        makeRelease("v1.1.0"),
+      ];
+      vi.stubGlobal("fetch", mockFetchSuccess(releases));
+
+      const result = await service.getRecentReleases(10, "v1.1.0");
+
+      expect(result).toHaveLength(2);
+      expect(result[0].version).toBe("v1.3.0");
+      expect(result[1].version).toBe("v1.1.0");
     });
   });
 

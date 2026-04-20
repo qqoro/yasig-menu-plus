@@ -23,7 +23,7 @@ export async function getChangelogHandler(
 ): Promise<IpcMainEventMap["changelogResult"]> {
   const releases =
     data.mode === "recent"
-      ? await changelogService.getRecentReleases(10)
+      ? await changelogService.getRecentReleases(10, data.currentVersion)
       : await changelogService.getReleasesAfterVersion(data.currentVersion);
   return { releases };
 }
