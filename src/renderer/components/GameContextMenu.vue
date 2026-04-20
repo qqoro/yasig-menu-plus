@@ -120,6 +120,11 @@ const isRpgMaker = computed(
           <Loader2 v-if="isPlayingCheat" :size="14" class="animate-spin" />
           <Zap v-else :size="14" />
           치트 모드로 실행
+          <span
+            class="bg-primary/15 text-primary ml-auto rounded px-1 text-[10px] font-semibold"
+          >
+            Beta
+          </span>
         </ContextMenuItem>
         <ContextMenuItem @select="emit('open-folder', game)">
           <FolderOpen :size="14" />

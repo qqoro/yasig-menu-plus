@@ -86,6 +86,11 @@ const playLabel = computed(() => {
         <Loader2 v-if="isPlayingCheat" :size="14" class="animate-spin" />
         <Zap v-else :size="14" />
         {{ isPlayingCheat ? "치트 실행 중..." : "치트 모드로 실행" }}
+        <span
+          class="bg-primary/15 text-primary ml-auto rounded px-1 text-[10px] font-semibold"
+        >
+          Beta
+        </span>
       </DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>

@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { Shuffle, WifiOff, ZoomIn, Clock, HardDrive } from "lucide-vue-next";
+import {
+  Shuffle,
+  WifiOff,
+  ZoomIn,
+  Clock,
+  HardDrive,
+  Zap,
+} from "lucide-vue-next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 </script>
 
@@ -9,6 +16,77 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
     <p class="text-muted-foreground text-sm">
       편리한 부가 기능들을 소개합니다.
     </p>
+
+    <!-- RPG Maker 치트 모드 -->
+    <Card class="gap-2">
+      <CardHeader class="pb-2">
+        <CardTitle class="flex items-center gap-2 text-sm">
+          <Zap :size="16" />
+          RPG Maker 치트 모드
+          <span
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            Beta
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div class="text-muted-foreground flex flex-col gap-2 text-sm">
+          <p>
+            <strong class="text-foreground">RPG Maker MV/MZ</strong> 엔진으로
+            만든 게임에 치트 플러그인을 자동 주입하여 실행합니다.
+          </p>
+          <div class="bg-muted/50 rounded-md p-3">
+            <p class="font-medium">사용 방법</p>
+            <ul class="mt-1 flex flex-col gap-1">
+              <li>
+                게임 카드의 실행 버튼 옆
+                <strong class="text-foreground">▼ 드롭다운</strong> →
+                <strong class="text-foreground">치트 모드로 실행</strong> 선택
+              </li>
+              <li>
+                또는 게임 카드
+                <strong class="text-foreground">우클릭</strong> →
+                <strong class="text-foreground">치트 모드로 실행</strong> 선택
+              </li>
+              <li>
+                게임 실행 후
+                <kbd
+                  class="bg-muted text-muted-foreground inline-flex items-center justify-center rounded border px-1.5 py-0.5 text-xs font-medium"
+                  >Ctrl+C</kbd
+                >
+                키로 치트 메뉴 열기
+              </li>
+            </ul>
+          </div>
+          <div class="bg-muted/50 rounded-md p-3">
+            <p class="font-medium">주요 기능</p>
+            <ul class="mt-1 flex flex-col gap-1">
+              <li>
+                <strong class="text-foreground">스피드 조작</strong>: 게임 속도
+                가속/감속
+              </li>
+              <li>
+                <strong class="text-foreground">HP/MP/골드 수정</strong>: 원하는
+                값으로 직접 설정
+              </li>
+              <li>
+                <strong class="text-foreground">아이템/무기/방어구 추가</strong
+                >: 전체 목록에서 원하는 항목 추가
+              </li>
+              <li>
+                <strong class="text-foreground">세이브 슬롯 관리</strong>:
+                세이브 덮어쓰기 및 불러오기
+              </li>
+            </ul>
+          </div>
+          <p>
+            치트 모드는 게임 데이터를 변경할 수 있습니다. 중요한 세이브 데이터가
+            있다면 백업 후 사용하는 것을 권장합니다.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
 
     <!-- 오프라인 경로 -->
     <Card class="gap-2">
