@@ -52,6 +52,11 @@
       "from": "build/main/db/migrations",
       "to": "migrations",
       "filter": ["**/*"]
+    },
+    {
+      "from": "build/main/cheat",
+      "to": "cheat",
+      "filter": ["**/*"]
     }
   ]
 }
