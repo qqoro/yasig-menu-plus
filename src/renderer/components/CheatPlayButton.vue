@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+defineOptions({ inheritAttrs: false });
 import { Play, Loader2, ChevronDown, Zap } from "lucide-vue-next";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,7 +46,7 @@ const playLabel = computed(() => {
 <template>
   <!-- RPG Maker 게임: 드롭다운 (일반 실행 + 치트 모드) -->
   <DropdownMenu v-if="isRpgMaker">
-    <div class="flex w-full">
+    <div class="flex" v-bind="$attrs">
       <!-- 기본 실행 버튼 -->
       <Button
         @click="emit('play')"
@@ -98,7 +99,7 @@ const playLabel = computed(() => {
   <!-- 일반 게임: 단일 실행 버튼 -->
   <Button
     v-else
-    class="w-full"
+    v-bind="$attrs"
     @click="emit('play')"
     :disabled="isPlaying || disabled"
     :size="size"
