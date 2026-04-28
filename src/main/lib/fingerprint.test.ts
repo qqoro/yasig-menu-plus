@@ -1,5 +1,5 @@
 import { createHash } from "crypto";
-import { Dirent } from "fs";
+import { Dirent, type Stats } from "fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { computeFingerprint } from "./fingerprint.js";
 
@@ -39,7 +39,7 @@ function createFileStat(size: number) {
     isDirectory: () => false,
     isFile: () => true,
     size,
-  });
+  } as Stats);
 }
 
 /**
@@ -50,7 +50,7 @@ function createDirStat() {
     isDirectory: () => true,
     isFile: () => false,
     size: 0,
-  });
+  } as Stats);
 }
 
 /**
