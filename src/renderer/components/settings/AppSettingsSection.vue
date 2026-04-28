@@ -45,7 +45,7 @@ watch(
 );
 
 function handleScanDepthChange() {
-  const depth = Math.max(1, Math.min(10, Number(scanDepthInput.value) || 5));
+  const depth = Math.max(0, Math.min(10, Number(scanDepthInput.value) || 5));
   scanDepthInput.value = depth;
   updateSettingsMutation.mutate({ scanDepth: depth });
 }
@@ -193,13 +193,13 @@ async function handleGetNewCookie(): Promise<void> {
                   스캔 깊이
                 </label>
                 <p class="text-muted-foreground text-xs">
-                  하위 폴더를 몇 단계까지 탐색할지 설정합니다 (1~10)
+                  하위 폴더를 몇 단계까지 탐색할지 설정합니다 (0~10, 0=직속만)
                 </p>
               </div>
               <Input
                 v-model.number="scanDepthInput"
                 type="number"
-                min="1"
+                min="0"
                 max="10"
                 class="w-20"
                 @change="handleScanDepthChange"
