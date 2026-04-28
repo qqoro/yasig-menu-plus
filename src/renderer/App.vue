@@ -130,29 +130,6 @@ onMounted(async () => {
     },
   );
 
-  // 번역 진행률 이벤트 리스너 (전체 번역 진행 상태 표시용)
-  window.api.on(
-    "translationProgress",
-    (data: { current: number; total: number; gameTitle: string }) => {
-      const { current, total, gameTitle } = data;
-      toast.info(`번역 중... (${current}/${total})`, {
-        description: gameTitle,
-        duration: 2000,
-      });
-    },
-  );
-
-  // 전체 번역 완료 이벤트
-  window.api.on(
-    "allTranslationsDone",
-    (data: { total: number; success: number; failed: number }) => {
-      const { success, failed } = data;
-      toast.success("전체 번역 완료", {
-        description: `성공: ${success}, 실패: ${failed}`,
-      });
-    },
-  );
-
   // 업데이트 발견 시 토스트 표시 (포터블/일반 분기)
   window.api.on(
     "updateAvailable",

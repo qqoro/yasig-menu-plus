@@ -10,6 +10,8 @@ import { queryKeys } from "../queryKeys";
 
 type RefreshStep = "scan" | "collect" | "translate" | "done";
 
+const SYNC_TOAST_ID = "sync-progress";
+
 // 진행 상태 (전역 공유)
 const currentStep = ref<RefreshStep | null>(null);
 const collectorProgress = ref({ current: 0, total: 0, gameTitle: "" });
@@ -53,6 +55,11 @@ export function useAllInOneRefreshMutation() {
 
       // 1단계: 폴더 스캔
       currentStep.value = "scan";
+      toast.info("동기화 중...", {
+        id: SYNC_TOAST_ID,
+        description: "폴더 스캔 중",
+        duration: Infinity,
+      });
       try {
         const paths = [...libraryPaths];
         const scanResult = await window.api.invoke("refreshList", {
@@ -85,12 +92,22 @@ export function useAllInOneRefreshMutation() {
 
       // 2단계: 정보 수집
       currentStep.value = "collect";
+      toast.info("동기화 중...", {
+        id: SYNC_TOAST_ID,
+        description: "정보 수집 중",
+        duration: Infinity,
+      });
       const progressListener = (data: {
         current: number;
         total: number;
         gameTitle: string;
       }) => {
         collectorProgress.value = data;
+        toast.info("동기화 중...", {
+          id: SYNC_TOAST_ID,
+          description: `정보 수집 중 (${data.current}/${data.total})`,
+          duration: Infinity,
+        });
       };
       window.api.on("collectorProgress", progressListener);
       try {
@@ -108,12 +125,22 @@ export function useAllInOneRefreshMutation() {
 
       // 3단계: 번역
       currentStep.value = "translate";
+      toast.info("동기화 중...", {
+        id: SYNC_TOAST_ID,
+        description: "번역 중",
+        duration: Infinity,
+      });
       const translateListener = (data: {
         current: number;
         total: number;
         gameTitle: string;
       }) => {
         translationProgress.value = data;
+        toast.info("동기화 중...", {
+          id: SYNC_TOAST_ID,
+          description: `번역 중 (${data.current}/${data.total})`,
+          duration: Infinity,
+        });
       };
       window.api.on("translationProgress", translateListener);
       try {
@@ -144,8 +171,15 @@ export function useAllInOneRefreshMutation() {
           `번역: ${results.translate.success}/${results.translate.success + results.translate.failed}`,
         );
       }
+      toast.dismiss(SYNC_TOAST_ID);
+
       if (parts.length > 0) {
-        toast.success("전체 동기화 완료", { description: parts.join(", ") });
+        toast.success("전체 동기화 완료", {
+          description: parts.join(", "),
+          duration: 3000,
+        });
+      } else {
+        toast.success("동기화 완료", { duration: 3000 });
       }
 
       return results;
