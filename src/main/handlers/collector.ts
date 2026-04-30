@@ -302,6 +302,51 @@ export async function getNewCookie() {
 }
 
 /**
+ * 동시 실행 제한을 위한 큐 기반 유틸리티
+ */
+class ConcurrencyQueue {
+  private running = 0;
+  private queue: Array<() => Promise<void>> = [];
+
+  constructor(private limit: number) {}
+
+  async add<T>(fn: () => Promise<T>): Promise<T> {
+    return new Promise((resolve, reject) => {
+      this.queue.push(async () => {
+        try {
+          resolve(await fn());
+        } catch (err) {
+          reject(err);
+        }
+      });
+      this.process();
+    });
+  }
+
+  private async process() {
+    while (this.queue.length > 0 && this.running < this.limit) {
+      this.running++;
+      const task = this.queue.shift();
+      if (task) {
+        try {
+          await task();
+        } finally {
+          this.running--;
+          this.process();
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Google 콜렉터/Fallback 호출 직렬화 큐.
+ * 동시 호출 시 구글 봇 감지가 트리거되어 매 게임마다 CAPTCHA가 뜨는 문제를 방지하기 위해
+ * 동시성을 1로 제한한다. (외부 ConcurrencyQueue(5)와는 별개)
+ */
+const googleSerialQueue = new ConcurrencyQueue(1);
+
+/**
  * 단일 게임 컬렉터 실행
  */
 export async function runCollectorHandler(
@@ -338,102 +383,113 @@ export async function runCollectorHandler(
       if (isGoogleCollectorIgnored()) {
         console.log("[Collector] 봇 차단 무시 중 - Google 컬렉터 스킵");
       } else {
-        try {
-          // 쿠키가 없으면 자동으로 획득 (store에 저장됨)
-          if (!getGoogleCookie()) {
-            await getNewCookie();
-          }
-
-          const browser = await initBrowser();
-          const page = await browser.newPage();
-
+        // Google 호출은 직렬화 (동시 요청 시 봇 감지 트리거 방지)
+        const earlyReturn = await googleSerialQueue.add<
+          IpcMainEventMap["collectorDone"] | undefined
+        >(async () => {
           try {
-            // 저장된 Google 쿠키 모두 적용 (NID + GOOGLE_ABUSE_EXEMPTION)
-            await applyGoogleCookies(page);
+            // 쿠키가 없으면 자동으로 획득 (store에 저장됨)
+            if (!getGoogleCookie()) {
+              await getNewCookie();
+            }
 
-            // 페이지 이동
-            const params = new URLSearchParams({ q: id, udm: "2" });
-            const searchUrl = "https://www.google.com/search?" + params;
-            await page.goto(searchUrl, { waitUntil: "networkidle2" });
+            const browser = await initBrowser();
+            const page = await browser.newPage();
 
-            // 봇 차단 감지
-            const botBlockResult = await detectBotBlock(page);
+            try {
+              // 저장된 Google 쿠키 모두 적용 (NID + GOOGLE_ABUSE_EXEMPTION)
+              await applyGoogleCookies(page);
 
-            if (botBlockResult.blocked) {
-              console.log(`[Collector] 봇 차단 감지: ${botBlockResult.reason}`);
+              // 페이지 이동
+              const params = new URLSearchParams({ q: id, udm: "2" });
+              const searchUrl = "https://www.google.com/search?" + params;
+              await page.goto(searchUrl, { waitUntil: "networkidle2" });
 
-              // headless 브라우저 페이지 닫기
-              await page.close();
+              // 봇 차단 감지
+              const botBlockResult = await detectBotBlock(page);
 
-              // non-headless 브라우저 실행
-              const visibleBrowser = await launchVisibleBrowser();
-              const visiblePage = await visibleBrowser.newPage();
-
-              try {
-                // 저장된 Google 쿠키 모두 적용
-                await applyGoogleCookies(visiblePage);
-
-                // 같은 페이지로 이동
-                await visiblePage.goto(searchUrl, {
-                  waitUntil: "networkidle2",
-                });
-
-                // 해결 대기 (사용자가 "해결 완료" 버튼 클릭 시까지)
-                const mainWindow = BrowserWindow.getAllWindows()[0];
-                const resolved = await waitForBotBlockResolution(
-                  mainWindow,
-                  gamePath,
-                  game?.title ?? id,
+              if (botBlockResult.blocked) {
+                console.log(
+                  `[Collector] 봇 차단 감지: ${botBlockResult.reason}`,
                 );
 
-                if (!resolved) {
-                  return {
+                // headless 브라우저 페이지 닫기
+                await page.close();
+
+                // non-headless 브라우저 실행
+                const visibleBrowser = await launchVisibleBrowser();
+                const visiblePage = await visibleBrowser.newPage();
+
+                try {
+                  // 저장된 Google 쿠키 모두 적용
+                  await applyGoogleCookies(visiblePage);
+
+                  // 같은 페이지로 이동
+                  await visiblePage.goto(searchUrl, {
+                    waitUntil: "networkidle2",
+                  });
+
+                  // 해결 대기 (사용자가 "해결 완료" 버튼 클릭 시까지)
+                  const mainWindow = BrowserWindow.getAllWindows()[0];
+                  const resolved = await waitForBotBlockResolution(
+                    mainWindow,
                     gamePath,
-                    success: false,
-                    error: "CAPTCHA 해결 시간 초과 또는 취소됨",
-                  };
+                    game?.title ?? id,
+                  );
+
+                  if (!resolved) {
+                    return {
+                      gamePath,
+                      success: false,
+                      error: "CAPTCHA 해결 시간 초과 또는 취소됨",
+                    };
+                  }
+
+                  // 해결됨 - 쿠키 추출하여 보존 (이후 headless 요청에서 재사용)
+                  await persistGoogleCookiesFromPage(visiblePage);
+
+                  // 다시 정보 수집
+                  const fetchResult = await collector.fetchInfo({
+                    path: gamePath,
+                    id,
+                    page: visiblePage,
+                  });
+                  if (fetchResult && "thumbnailUrl" in fetchResult) {
+                    info = fetchResult as CollectorResult;
+                  }
+                } finally {
+                  await visiblePage.close();
+                  // CAPTCHA 해결 후 visible 브라우저 닫기
+                  if (visibleBrowserInstance) {
+                    await visibleBrowserInstance.close();
+                    visibleBrowserInstance = null;
+                  }
                 }
-
-                // 해결됨 - 쿠키 추출하여 보존 (이후 headless 요청에서 재사용)
-                await persistGoogleCookiesFromPage(visiblePage);
-
-                // 다시 정보 수집
+              } else {
+                // 차단되지 않음 - 기존 로직대로 수집
                 const fetchResult = await collector.fetchInfo({
                   path: gamePath,
                   id,
-                  page: visiblePage,
+                  page,
                 });
                 if (fetchResult && "thumbnailUrl" in fetchResult) {
                   info = fetchResult as CollectorResult;
                 }
-              } finally {
-                await visiblePage.close();
-                // CAPTCHA 해결 후 visible 브라우저 닫기
-                if (visibleBrowserInstance) {
-                  await visibleBrowserInstance.close();
-                  visibleBrowserInstance = null;
-                }
               }
-            } else {
-              // 차단되지 않음 - 기존 로직대로 수집
-              const fetchResult = await collector.fetchInfo({
-                path: gamePath,
-                id,
-                page,
-              });
-              if (fetchResult && "thumbnailUrl" in fetchResult) {
-                info = fetchResult as CollectorResult;
+            } finally {
+              if (page && !page.isClosed()) {
+                await page.close();
               }
             }
-          } finally {
-            // headless 페이지가 아직 열려있으면 닫기
-            if (page && !page.isClosed()) {
-              await page.close();
-            }
+            return undefined;
+          } catch (chromeError) {
+            console.error(`[Collector] Chrome 에러:`, chromeError);
+            return { gamePath, success: false, error: String(chromeError) };
           }
-        } catch (chromeError) {
-          console.error(`[Collector] Chrome 에러:`, chromeError);
-          return { gamePath, success: false, error: String(chromeError) };
+        });
+
+        if (earlyReturn) {
+          return earlyReturn;
         }
       }
     } else {
@@ -457,99 +513,64 @@ export async function runCollectorHandler(
       collector.name !== "Google" &&
       !isGoogleCollectorIgnored()
     ) {
-      try {
-        const fallbackCollector = (
-          await import("../collectors/google-collector.js")
-        ).GoogleCollector;
-        const fallbackId = await fallbackCollector.getId(gamePath);
-        if (fallbackId) {
-          if (!getGoogleCookie()) {
-            await getNewCookie();
-          }
-
-          const browser = await initBrowser();
-          const page = await browser.newPage();
-
-          // 저장된 Google 쿠키 모두 적용
-          await applyGoogleCookies(page);
-
-          try {
-            const googleResult = await fallbackCollector.fetchInfo({
-              path: gamePath,
-              id: fallbackId,
-              page,
-            });
-            if (
-              googleResult &&
-              "thumbnailUrl" in googleResult &&
-              googleResult.thumbnailUrl
-            ) {
-              try {
-                const thumbnailPath = await downloadImage(
-                  googleResult.thumbnailUrl,
-                  gamePath,
-                );
-                await db("games")
-                  .where("path", gamePath)
-                  .update({ thumbnail: thumbnailPath });
-              } catch (error) {
-                console.error(
-                  `[Collector] Google 썸네일 다운로드 실패:`,
-                  error,
-                );
-              }
+      // Google fallback도 직렬 큐 사용 (주 Google 분기와 같은 큐)
+      await googleSerialQueue.add(async () => {
+        try {
+          const fallbackCollector = (
+            await import("../collectors/google-collector.js")
+          ).GoogleCollector;
+          const fallbackId = await fallbackCollector.getId(gamePath);
+          if (fallbackId) {
+            if (!getGoogleCookie()) {
+              await getNewCookie();
             }
-          } finally {
-            await page.close();
+
+            const browser = await initBrowser();
+            const page = await browser.newPage();
+
+            // 저장된 Google 쿠키 모두 적용
+            await applyGoogleCookies(page);
+
+            try {
+              const googleResult = await fallbackCollector.fetchInfo({
+                path: gamePath,
+                id: fallbackId,
+                page,
+              });
+              if (
+                googleResult &&
+                "thumbnailUrl" in googleResult &&
+                googleResult.thumbnailUrl
+              ) {
+                try {
+                  const thumbnailPath = await downloadImage(
+                    googleResult.thumbnailUrl,
+                    gamePath,
+                  );
+                  await db("games")
+                    .where("path", gamePath)
+                    .update({ thumbnail: thumbnailPath });
+                } catch (error) {
+                  console.error(
+                    `[Collector] Google 썸네일 다운로드 실패:`,
+                    error,
+                  );
+                }
+              }
+            } finally {
+              await page.close();
+            }
           }
+        } catch (error) {
+          console.error(`[Collector] Google fallback 실패:`, error);
         }
-      } catch (error) {
-        console.error(`[Collector] Google fallback 실패:`, error);
-      }
+      });
     }
 
     return { gamePath, success: true };
   } catch (error) {
     console.error(`[Collector] 에러: ${gamePath}`, error);
     return { gamePath, success: false, error: String(error) };
-  }
-}
-
-/**
- * 동시 실행 제한을 위한 큐 기반 유틸리티
- */
-class ConcurrencyQueue {
-  private running = 0;
-  private queue: Array<() => Promise<void>> = [];
-
-  constructor(private limit: number) {}
-
-  async add<T>(fn: () => Promise<T>): Promise<T> {
-    return new Promise((resolve, reject) => {
-      this.queue.push(async () => {
-        try {
-          resolve(await fn());
-        } catch (err) {
-          reject(err);
-        }
-      });
-      this.process();
-    });
-  }
-
-  private async process() {
-    while (this.queue.length > 0 && this.running < this.limit) {
-      this.running++;
-      const task = this.queue.shift();
-      if (task) {
-        try {
-          await task();
-        } finally {
-          this.running--;
-          this.process();
-        }
-      }
-    }
   }
 }
 
