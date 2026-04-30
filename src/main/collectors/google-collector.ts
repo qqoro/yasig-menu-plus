@@ -10,7 +10,9 @@ export interface BotBlockResult {
 
 /**
  * Google 봇 차단 감지
- * URL, CAPTCHA 요소, 페이지 내용을 종합적으로 분석
+ * URL 리다이렉트와 CAPTCHA DOM 요소만 검사한다.
+ * 텍스트 키워드 검사는 Google 검색 결과 페이지의 i18n 번들에 동일 문구가 포함되어 있어
+ * 오탐(매 게임마다 차단 감지)을 유발하므로 제거됨.
  */
 export async function detectBotBlock(page: Page): Promise<BotBlockResult> {
   try {
@@ -18,7 +20,9 @@ export async function detectBotBlock(page: Page): Promise<BotBlockResult> {
 
     // 1. URL 기반 감지
     const blockedUrls = ["/sorry/", "/recaptcha/"];
-    if (blockedUrls.some((blocked) => url.includes(blocked))) {
+    const matchedUrl = blockedUrls.find((blocked) => url.includes(blocked));
+    if (matchedUrl) {
+      console.log(`[BotBlock] URL 매칭: pattern="${matchedUrl}", url="${url}"`);
       return { blocked: true, reason: "차단 페이지로 리다이렉트됨" };
     }
 
@@ -33,31 +37,13 @@ export async function detectBotBlock(page: Page): Promise<BotBlockResult> {
     for (const selector of captchaSelectors) {
       const element = await page.$(selector);
       if (element) {
+        const outerHtml = await page
+          .evaluate((el) => el.outerHTML.slice(0, 300), element)
+          .catch(() => "(outerHTML 추출 실패)");
+        console.log(
+          `[BotBlock] DOM 셀렉터 매칭: selector="${selector}", url="${url}", outerHTML(앞 300자)="${outerHtml}"`,
+        );
         return { blocked: true, reason: "CAPTCHA 요소 감지됨" };
-      }
-    }
-
-    // 3. 페이지 내용 분석
-    const pageContent = await page.content();
-    // 실제 Google 차단 페이지에서 확인된 텍스트 기반 키워드
-    const blockedKeywords = [
-      // 한국어 키워드 (실제 차단 페이지에서 확인됨)
-      "Google의 시스템이 컴퓨터 네트워크에서 비정상적인 트래픽을 감지했습니다",
-      "로봇이 아니라 실제 사용자가 요청을 보내고 있는지를 확인하는 페이지입니다",
-      "비정상적인 트래픽",
-      "로봇이 아니라 실제 사용자",
-      "자동 요청",
-      "로봇이 아닙니다",
-      "잠시 후 다시 시도",
-      // 영어 키워드
-      "unusual traffic",
-      "not a robot",
-      "CAPTCHA",
-      "Our systems have detected",
-    ];
-    for (const keyword of blockedKeywords) {
-      if (pageContent.toLowerCase().includes(keyword.toLowerCase())) {
-        return { blocked: true, reason: `키워드 감지: ${keyword}` };
       }
     }
 
