@@ -11,8 +11,10 @@ import {
 import { db } from "../db/db-manager.js";
 import type { IpcMainEventMap, IpcRendererEventMap } from "../events.js";
 import {
-  getGoogleCookie,
+  getGoogleAbuseExemption,
   getGoogleCollectorIgnoreUntil,
+  getGoogleCookie,
+  setGoogleAbuseExemption,
   setGoogleCollectorIgnoreUntil,
   setGoogleCookie,
 } from "../store.js";
@@ -176,6 +178,38 @@ export async function resolveBotBlockHandler(
 }
 
 /**
+ * Google headless 페이지에 저장된 쿠키들을 모두 적용한다.
+ * - NID: 세이프서치 해제 쿠키
+ * - GOOGLE_ABUSE_EXEMPTION: CAPTCHA 통과 증명 쿠키
+ */
+async function applyGoogleCookies(page: Page): Promise<void> {
+  const nid = getGoogleCookie();
+  const abuseExemption = getGoogleAbuseExemption();
+
+  const cookies: Parameters<Page["setCookie"]>[0][] = [];
+  if (nid) {
+    cookies.push({
+      name: "NID",
+      value: nid,
+      domain: ".google.com",
+      path: "/",
+    });
+  }
+  if (abuseExemption) {
+    cookies.push({
+      name: "GOOGLE_ABUSE_EXEMPTION",
+      value: abuseExemption,
+      domain: ".google.com",
+      path: "/",
+    });
+  }
+
+  if (cookies.length > 0) {
+    await page.setCookie(...cookies);
+  }
+}
+
+/**
  * 요소가 나타날 때까지 대기 후 클릭
  */
 async function waitAndClick(page: Page, selector: string, timeout = 5000) {
@@ -281,25 +315,17 @@ export async function runCollectorHandler(
         console.log("[Collector] 봇 차단 무시 중 - Google 컬렉터 스킵");
       } else {
         try {
-          // 쿠키가 없으면 자동으로 획득
-          let cookieValue = getGoogleCookie();
-          if (!cookieValue) {
-            cookieValue = await getNewCookie();
+          // 쿠키가 없으면 자동으로 획득 (store에 저장됨)
+          if (!getGoogleCookie()) {
+            await getNewCookie();
           }
 
           const browser = await initBrowser();
           const page = await browser.newPage();
 
           try {
-            // 쿠키 설정
-            if (cookieValue) {
-              await page.setCookie({
-                name: "NID",
-                value: cookieValue,
-                domain: ".google.com",
-                path: "/",
-              });
-            }
+            // 저장된 Google 쿠키 모두 적용 (NID + GOOGLE_ABUSE_EXEMPTION)
+            await applyGoogleCookies(page);
 
             // 페이지 이동
             const params = new URLSearchParams({ q: id, udm: "2" });
@@ -320,15 +346,8 @@ export async function runCollectorHandler(
               const visiblePage = await visibleBrowser.newPage();
 
               try {
-                // 쿠키 설정
-                if (cookieValue) {
-                  await visiblePage.setCookie({
-                    name: "NID",
-                    value: cookieValue,
-                    domain: ".google.com",
-                    path: "/",
-                  });
-                }
+                // 저장된 Google 쿠키 모두 적용
+                await applyGoogleCookies(visiblePage);
 
                 // 같은 페이지로 이동
                 await visiblePage.goto(searchUrl, {
@@ -417,22 +436,15 @@ export async function runCollectorHandler(
         ).GoogleCollector;
         const fallbackId = await fallbackCollector.getId(gamePath);
         if (fallbackId) {
-          let cookieValue = getGoogleCookie();
-          if (!cookieValue) {
-            cookieValue = await getNewCookie();
+          if (!getGoogleCookie()) {
+            await getNewCookie();
           }
 
           const browser = await initBrowser();
           const page = await browser.newPage();
 
-          if (cookieValue) {
-            await page.setCookie({
-              name: "NID",
-              value: cookieValue,
-              domain: ".google.com",
-              path: "/",
-            });
-          }
+          // 저장된 Google 쿠키 모두 적용
+          await applyGoogleCookies(page);
 
           try {
             const googleResult = await fallbackCollector.fetchInfo({
