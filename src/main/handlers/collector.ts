@@ -210,6 +210,30 @@ async function applyGoogleCookies(page: Page): Promise<void> {
 }
 
 /**
+ * visible 페이지에서 Google 도메인 쿠키를 추출하여 store에 저장한다.
+ * CAPTCHA 통과 직후 호출되어, 갱신된 NID와 새로 발급된 GOOGLE_ABUSE_EXEMPTION을 보존한다.
+ */
+async function persistGoogleCookiesFromPage(page: Page): Promise<void> {
+  try {
+    const cookies = await page.cookies("https://www.google.com");
+    const nid = cookies.find((c) => c.name === "NID");
+    const abuseExemption = cookies.find(
+      (c) => c.name === "GOOGLE_ABUSE_EXEMPTION",
+    );
+
+    if (nid?.value) {
+      setGoogleCookie(nid.value);
+    }
+    if (abuseExemption?.value) {
+      setGoogleAbuseExemption(abuseExemption.value);
+      console.log("[Collector] GOOGLE_ABUSE_EXEMPTION 쿠키 저장됨");
+    }
+  } catch (error) {
+    console.error("[Collector] Google 쿠키 추출 실패:", error);
+  }
+}
+
+/**
  * 요소가 나타날 때까지 대기 후 클릭
  */
 async function waitAndClick(page: Page, selector: string, timeout = 5000) {
@@ -370,7 +394,10 @@ export async function runCollectorHandler(
                   };
                 }
 
-                // 해결됨 - 다시 정보 수집
+                // 해결됨 - 쿠키 추출하여 보존 (이후 headless 요청에서 재사용)
+                await persistGoogleCookiesFromPage(visiblePage);
+
+                // 다시 정보 수집
                 const fetchResult = await collector.fetchInfo({
                   path: gamePath,
                   id,
