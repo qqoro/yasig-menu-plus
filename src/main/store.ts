@@ -48,6 +48,7 @@ export const DEFAULT_TITLE_DISPLAY_PRIORITY: TitleDisplayMode[] = [
 export interface StoreSchema {
   excludedExecutables: string[];
   googleCookie?: string; // Google NID 쿠키 (세이프서치 해제용)
+  googleAbuseExemption?: string; // Google CAPTCHA 통과 후 발급되는 GOOGLE_ABUSE_EXEMPTION 쿠키
   googleCollectorIgnoreUntil?: string; // Google 컬렉터 봇 차단 일시 무시 만료 시간 (ISO 8601)
   libraryPaths: string[]; // 라이브러리 경로 목록
   translationSettings: {
@@ -277,6 +278,30 @@ export function setGoogleCookie(cookie: string): void {
 }
 
 /**
+ * Google CAPTCHA 통과 쿠키 가져오기
+ */
+export function getGoogleAbuseExemption(): string | undefined {
+  const store = getStore();
+  return store.get("googleAbuseExemption");
+}
+
+/**
+ * Google CAPTCHA 통과 쿠키 설정
+ */
+export function setGoogleAbuseExemption(cookie: string): void {
+  const store = getStore();
+  store.set("googleAbuseExemption", cookie);
+}
+
+/**
+ * Google CAPTCHA 통과 쿠키 삭제
+ */
+export function clearGoogleAbuseExemption(): void {
+  const store = getStore();
+  store.delete("googleAbuseExemption");
+}
+
+/**
  * Google 컬렉터 무시 만료 시간 가져오기
  */
 export function getGoogleCollectorIgnoreUntil(): string | undefined {
@@ -400,6 +425,7 @@ export function getAllSettings(): StoreSchema {
   return {
     excludedExecutables: store.get("excludedExecutables"),
     googleCookie: store.get("googleCookie"),
+    googleAbuseExemption: store.get("googleAbuseExemption"),
     googleCollectorIgnoreUntil: store.get("googleCollectorIgnoreUntil"),
     libraryPaths: store.get("libraryPaths"),
     translationSettings: store.get("translationSettings"),
