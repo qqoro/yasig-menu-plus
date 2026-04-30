@@ -77,6 +77,53 @@ describe("ConcurrencyQueue", () => {
     expect(results).toEqual([1, 2, 3]);
   });
 
+  it("동시성 1: 여러 태스크가 추가되어도 동시 실행은 1개를 넘지 않음", async () => {
+    const queue = new ConcurrencyQueue(1);
+    let maxConcurrent = 0;
+    let currentConcurrent = 0;
+
+    const makeTask = (delay: number) => async () => {
+      currentConcurrent++;
+      maxConcurrent = Math.max(maxConcurrent, currentConcurrent);
+      await new Promise((r) => setTimeout(r, delay));
+      currentConcurrent--;
+    };
+
+    await Promise.all([
+      queue.add(makeTask(20)),
+      queue.add(makeTask(20)),
+      queue.add(makeTask(20)),
+      queue.add(makeTask(20)),
+      queue.add(makeTask(20)),
+    ]);
+
+    expect(maxConcurrent).toBe(1);
+  });
+
+  it("동시성 1: 한 태스크가 reject되어도 다음 태스크가 정상 실행됨", async () => {
+    const queue = new ConcurrencyQueue(1);
+    const results: string[] = [];
+
+    const okPromise = queue.add(async () => {
+      results.push("ok-1");
+      return "ok-1";
+    });
+    const failPromise = queue.add(async () => {
+      results.push("fail");
+      throw new Error("boom");
+    });
+    const okPromise2 = queue.add(async () => {
+      results.push("ok-2");
+      return "ok-2";
+    });
+
+    await okPromise;
+    await expect(failPromise).rejects.toThrow("boom");
+    await okPromise2;
+
+    expect(results).toEqual(["ok-1", "fail", "ok-2"]);
+  });
+
   it("동시 실행 제한이 적용됨", async () => {
     const limit = 3;
     const queue = new ConcurrencyQueue(limit);
