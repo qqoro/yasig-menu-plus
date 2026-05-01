@@ -34,6 +34,16 @@ const autoScanOnStartup = computed({
   },
 });
 
+// 포커스 스캔 설정
+const scanOnFocus = computed({
+  get: () => settings.value?.scanOnFocus ?? true,
+  set: (value) => {
+    updateSettingsMutation.mutate({
+      scanOnFocus: value,
+    });
+  },
+});
+
 // 스캔 깊이 설정
 const scanDepthInput = ref(settings.value?.scanDepth ?? 5);
 
@@ -185,6 +195,19 @@ async function handleGetNewCookie(): Promise<void> {
               </p>
             </div>
             <Switch v-model="autoScanOnStartup" />
+          </div>
+          <div class="border-border mt-4 border-t pt-4">
+            <div class="flex items-center justify-between">
+              <div class="space-y-0.5">
+                <label class="text-sm leading-none font-medium">
+                  포커스 시 자동 스캔
+                </label>
+                <p class="text-muted-foreground text-xs">
+                  다른 창에서 돌아올 때 변경 사항을 감지합니다
+                </p>
+              </div>
+              <Switch v-model="scanOnFocus" />
+            </div>
           </div>
           <div class="border-border mt-4 border-t pt-4">
             <div class="flex items-center justify-between">

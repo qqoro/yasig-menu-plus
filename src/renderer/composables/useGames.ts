@@ -207,14 +207,16 @@ export function useRandomGameMutation() {
 export function useAutoScanListener() {
   const queryClient = useQueryClient();
 
-  function onAutoScanDone(...args: unknown[]) {
-    const data = args[0] as { addedCount: number };
+  function onAutoScanDone(data: { addedCount: number; deletedCount: number }) {
     // Vue Query 캐시 무효화 → 자동으로 게임 목록 리페치
     queryClient.invalidateQueries({ queryKey: queryKeys.games.all });
     // 중복 게임 목록도 무효화 (게임 수집 시 중복 상태가 변경될 수 있음)
     queryClient.invalidateQueries({ queryKey: queryKeys.duplicates.all });
     if (data.addedCount > 0) {
       toast.success(`${data.addedCount}개의 새 게임이 추가되었습니다.`);
+    }
+    if (data.deletedCount > 0) {
+      toast.info(`${data.deletedCount}개의 게임이 삭제되었습니다.`);
     }
   }
 

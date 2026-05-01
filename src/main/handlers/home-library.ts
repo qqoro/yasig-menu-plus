@@ -168,66 +168,8 @@ export async function getLastRefreshedHandler(
 // ========== 라이브러리 스캔 기록 관리 ==========
 
 /**
- * 폴더의 게임 수를 셈 (재귀 스캔, 비동기)
- * 실행파일이 있는 폴더, 압축파일, 실행파일(.exe, .lnk, .url)을 게임으로 간주
- */
-async function countGames(sourcePath: string): Promise<number> {
-  try {
-    await access(sourcePath);
-  } catch {
-    return 0;
-  }
-
-  let count = 0;
-  const queue: Array<{ path: string; depth: number }> = [
-    { path: sourcePath, depth: 0 },
-  ];
-  const maxDepth = getScanDepth();
-
-  while (queue.length > 0) {
-    const { path: currentPath, depth } = queue.shift()!;
-
-    if (depth > maxDepth) continue;
-
-    try {
-      const entries = await readdir(currentPath, { withFileTypes: true });
-
-      for (const entry of entries) {
-        if (entry.name.startsWith(".")) continue;
-
-        const fullPath = join(currentPath, entry.name);
-        const isCompressFile = COMPRESS_FILE_TYPE.some((ext) =>
-          entry.name.toLowerCase().endsWith(ext),
-        );
-        const isExecutableFile =
-          entry.isFile() &&
-          EXECUTABLE_EXTENSIONS.some((ext) =>
-            entry.name.toLowerCase().endsWith(ext),
-          );
-
-        if (entry.isDirectory()) {
-          if (EXCLUDED_FOLDER_NAMES.has(entry.name.toLowerCase())) continue;
-          if (hasExecutableFile(fullPath)) {
-            count++;
-          } else {
-            queue.push({ path: fullPath, depth: depth + 1 });
-          }
-        } else if (isCompressFile || isExecutableFile) {
-          count++;
-        }
-      }
-    } catch {
-      // 권한 등의 문제로 읽기 실패 시 스킵
-    }
-  }
-
-  return count;
-}
-
-/**
- * 라이브러리 변경 감지 (하이브리드 방식, 비동기)
- * 1단계: 폴더 mtime 빠른 체크
- * 2단계: 파일 개수 비교
+ * 라이브러리 변경 감지
+ * 폴더 mtime으로 빠르게 변경 여부 확인
  */
 async function hasLibraryChanges(libraryPath: string): Promise<boolean> {
   const history = getLibraryScanHistory(libraryPath);
@@ -236,13 +178,8 @@ async function hasLibraryChanges(libraryPath: string): Promise<boolean> {
   if (!history) return true;
 
   try {
-    // 1단계: 폴더 mtime 빠른 체크
     const fileStat = await stat(libraryPath);
-    if (fileStat.mtime > new Date(history.lastScannedAt)) return true;
-
-    // 2단계: 파일 개수 비교
-    const currentCount = await countGames(libraryPath);
-    return currentCount !== history.lastGameCount;
+    return fileStat.mtime > new Date(history.lastScannedAt);
   } catch {
     return false;
   }
@@ -272,42 +209,81 @@ export async function getAllLibraryScanHistoryHandler(
 }
 
 /**
- * 라이브러리 자동 스캔 (변경 있는 폴더만)
- * 앱 시작 시 호출됨
+ * 자동 스캔 실행 중 플래그 (동시 실행 방지)
  */
-export async function autoScanLibraries(): Promise<number> {
-  const paths = getLibraryPaths();
-  if (paths.length === 0) return 0;
+let isAutoScanning = false;
 
-  const offlinePaths = getOfflineLibraryPaths();
-  let totalAdded = 0;
-  let totalDeleted = 0;
-  for (const path of paths) {
-    // 오프라인 경로는 자동 스캔에서 제외
-    if (offlinePaths.includes(path)) {
-      console.log(`자동 스캔 스킵: 오프라인 경로 — ${path}`);
-      continue;
+/**
+ * 자동 스캔 결과 타입
+ */
+export interface AutoScanResult {
+  addedCount: number;
+  deletedCount: number;
+}
+
+/**
+ * 라이브러리 자동 스캔 (변경 있는 폴더만)
+ * 앱 시작 시, 포커스 시 호출됨
+ * 동시 실행을 방지하여 중복 스캔/알림 방지
+ */
+export async function autoScanLibraries(): Promise<AutoScanResult> {
+  // 이미 스캔 중이면 스킵
+  if (isAutoScanning) return { addedCount: 0, deletedCount: 0 };
+  isAutoScanning = true;
+
+  const startTime = performance.now();
+
+  try {
+    const paths = getLibraryPaths();
+    if (paths.length === 0) return { addedCount: 0, deletedCount: 0 };
+
+    const offlinePaths = getOfflineLibraryPaths();
+    let totalAdded = 0;
+    let totalDeleted = 0;
+    for (const path of paths) {
+      // 오프라인 경로는 자동 스캔에서 제외
+      if (offlinePaths.includes(path)) {
+        console.log(`자동 스캔 스킵: 오프라인 경로 — ${path}`);
+        continue;
+      }
+
+      // 드라이브/경로 존재 여부 비동기 확인 (타임아웃 포함)
+      // 연결 해제된 네트워크 드라이브에서 블로킹 방지
+      const exists = await pathExists(path);
+      if (!exists) {
+        console.log(`자동 스캔 스킵: 경로 없음 (또는 응답 없음) — ${path}`);
+        continue;
+      }
+
+      const checkStart = performance.now();
+      const hasChanges = await hasLibraryChanges(path);
+      console.log(
+        `[자동 스캔] 변경 감지 (${path}): ${hasChanges ? "변경 있음" : "변경 없음"} — ${(performance.now() - checkStart).toFixed(1)}ms`,
+      );
+
+      if (hasChanges) {
+        const scanStart = performance.now();
+        const result = await scanFolder(path);
+        console.log(
+          `[자동 스캔] 스캔 완료 (${path}): +${result.addedCount} -${result.deletedCount} — ${(performance.now() - scanStart).toFixed(1)}ms`,
+        );
+        totalAdded += result.addedCount;
+        totalDeleted += result.deletedCount;
+      }
     }
 
-    // 드라이브/경로 존재 여부 비동기 확인 (타임아웃 포함)
-    // 연결 해제된 네트워크 드라이브에서 블로킹 방지
-    const exists = await pathExists(path);
-    if (!exists) {
-      console.log(`자동 스캔 스킵: 경로 없음 (또는 응답 없음) — ${path}`);
-      continue;
+    // 변경 사항 있으면 마지막 갱신 시간 업데이트
+    if (totalAdded > 0 || totalDeleted > 0) {
+      setLastRefreshedAt(new Date().toISOString());
     }
 
-    if (await hasLibraryChanges(path)) {
-      const result = await scanFolder(path);
-      totalAdded += result.addedCount;
-      totalDeleted += result.deletedCount;
-    }
+    const elapsed = performance.now() - startTime;
+    console.log(
+      `[자동 스캔] 전체 완료: +${totalAdded} -${totalDeleted} — ${elapsed.toFixed(1)}ms`,
+    );
+
+    return { addedCount: totalAdded, deletedCount: totalDeleted };
+  } finally {
+    isAutoScanning = false;
   }
-
-  // 변경 사항 있으면 마지막 갱신 시간 업데이트
-  if (totalAdded > 0 || totalDeleted > 0) {
-    setLastRefreshedAt(new Date().toISOString());
-  }
-
-  return totalAdded;
 }

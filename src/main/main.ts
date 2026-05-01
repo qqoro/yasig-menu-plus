@@ -44,6 +44,7 @@ import {
   setLastRefreshedHandler,
   toggleGameHandler,
 } from "./handlers/home.js";
+import { getScanOnFocus } from "./store.js";
 import {
   getAllSettingsHandler,
   getViewedHelpCardsHandler,
@@ -216,6 +217,18 @@ function createWindow() {
 
   // AutoUpdater에 메인 윈도우 설정
   autoUpdaterService.setMainWindow(mainWindow);
+
+  // 윈도우 포커스 시 라이브러리 변경 감지 스캔
+  mainWindow.on("focus", () => {
+    if (!getScanOnFocus()) return;
+    autoScanLibraries()
+      .then((result) => {
+        if (result.addedCount > 0 || result.deletedCount > 0) {
+          mainWindow.webContents.send(IpcMainSend.AutoScanDone, result);
+        }
+      })
+      .catch((err) => console.error("포커스 스캔 오류:", err));
+  });
 }
 
 /**
@@ -487,14 +500,12 @@ app.whenReady().then(async () => {
     // 백그라운드에서 스캔 (UI 로딩 방지)
     setTimeout(async () => {
       try {
-        const added = await autoScanLibraries();
-        if (added > 0) {
-          console.log(`자동 스캔 완료: ${added}개의 새 게임 추가`);
+        const result = await autoScanLibraries();
+        if (result.addedCount > 0) {
+          console.log(`자동 스캔 완료: ${result.addedCount}개의 새 게임 추가`);
         }
         // Renderer에 자동 스캔 완료 알림
-        mainWindow.webContents.send(IpcMainSend.AutoScanDone, {
-          addedCount: added,
-        });
+        mainWindow.webContents.send(IpcMainSend.AutoScanDone, result);
       } catch (error) {
         console.error("자동 스캔 오류:", error);
       }

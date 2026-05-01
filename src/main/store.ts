@@ -61,6 +61,7 @@ export interface StoreSchema {
   };
   lastRefreshedAt?: string; // 마지막 게임 목록 갱신 시간 (ISO 8601 형식)
   autoScanOnStartup?: boolean; // 앱 시작 시 자동 스캔 여부
+  scanOnFocus?: boolean; // 윈도우 포커스 시 자동 스캔 여부
   libraryScanHistory?: Record<string, LibraryScanInfo>; // 경로별 스캔 기록
   colorTheme?: string; // 컬러 테마 (예: "default", "catppuccin", "cyberpunk")
   autoUpdateSettings?: AutoUpdateSettings; // 자동 업데이트 설정
@@ -104,6 +105,7 @@ const DEFAULTS: StoreSchema = {
     blurEnabled: false,
   },
   autoScanOnStartup: false,
+  scanOnFocus: true,
   libraryScanHistory: {},
   colorTheme: "default",
   autoUpdateSettings: {
@@ -432,6 +434,7 @@ export function getAllSettings(): StoreSchema {
     thumbnailSettings: store.get("thumbnailSettings"),
     lastRefreshedAt: store.get("lastRefreshedAt"),
     autoScanOnStartup: store.get("autoScanOnStartup"),
+    scanOnFocus: store.get("scanOnFocus"),
     libraryScanHistory: store.get("libraryScanHistory"),
     colorTheme: store.get("colorTheme"),
     autoUpdateSettings: store.get("autoUpdateSettings"),
@@ -502,6 +505,22 @@ export function getAutoScanOnStartup(): boolean {
 export function setAutoScanOnStartup(value: boolean): void {
   const store = getStore();
   store.set("autoScanOnStartup", value);
+}
+
+/**
+ * 윈도우 포커스 시 자동 스캔 여부 가져오기
+ */
+export function getScanOnFocus(): boolean {
+  const store = getStore();
+  return store.get("scanOnFocus") ?? true;
+}
+
+/**
+ * 윈도우 포커스 시 자동 스캔 여부 설정
+ */
+export function setScanOnFocus(value: boolean): void {
+  const store = getStore();
+  store.set("scanOnFocus", value);
 }
 
 /**

@@ -704,7 +704,7 @@ export interface IpcMainEventMap {
   allLibraryScanHistory: { history: Record<string, LibraryScanInfo> };
 
   // 자동 스캔 완료
-  autoScanDone: { addedCount: number };
+  autoScanDone: { addedCount: number; deletedCount: number };
 
   // 통합 설정 관리
   allSettings: { settings: StoreSchema };
