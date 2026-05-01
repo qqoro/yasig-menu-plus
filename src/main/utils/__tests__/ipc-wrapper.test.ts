@@ -1,8 +1,15 @@
 import { describe, it, expect, vi } from "vitest";
 
-// electron-log를 main.ts와 동일한 방식으로 모킹
-vi.mock("electron-log", () => ({
-  default: { error: vi.fn(), initialize: vi.fn() },
+// logger 모듈 모킹
+const mockLog = vi.hoisted(() => ({
+  error: vi.fn(),
+  warn: vi.fn(),
+  info: vi.fn(),
+  debug: vi.fn(),
+}));
+vi.mock("../logger.js", () => ({
+  createLogger: () => mockLog,
+  logger: mockLog,
 }));
 
 import { wrapIpcHandler } from "../ipc-wrapper.js";

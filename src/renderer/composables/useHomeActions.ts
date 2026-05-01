@@ -1,5 +1,6 @@
 import { computed, ref } from "vue";
 import { toast } from "vue-sonner";
+import { createLogger } from "../lib/logger";
 import { useAddExcludedExecutable } from "./useExcludedExecutables";
 import { useOpenOriginalSite } from "./useGameDetail";
 import { useGameImages } from "./useGameImages";
@@ -8,6 +9,8 @@ import { useDeleteGames } from "./useDuplicates";
 import { usePlayGameWithCheat } from "./useCheat";
 import type { GameItem } from "../types";
 import type { SearchState } from "./useSearch";
+
+const log = createLogger("HomeActions");
 
 interface UseHomeActionsOptions {
   searchState: SearchState;
@@ -62,7 +65,7 @@ export function useHomeActions({ searchState }: UseHomeActionsOptions) {
         },
       });
     } catch (err) {
-      console.error("게임 실행 실패:", err);
+      log.error("게임 실행 실패:", err);
       toast.error(
         err instanceof Error ? err.message : "게임 실행에 실패했습니다.",
       );
@@ -106,7 +109,7 @@ export function useHomeActions({ searchState }: UseHomeActionsOptions) {
       await openFolderMutation.mutateAsync(game.path);
       toast.success("폴더를 열었습니다.");
     } catch (err) {
-      console.error("폴더 열기 실패:", err);
+      log.error("폴더 열기 실패:", err);
       toast.error(
         err instanceof Error ? err.message : "폴더 열기에 실패했습니다.",
       );
@@ -125,7 +128,7 @@ export function useHomeActions({ searchState }: UseHomeActionsOptions) {
           : "즐겨찾기에서 제거했습니다.",
       );
     } catch (err) {
-      console.error("즐겨찾기 토글 실패:", err);
+      log.error("즐겨찾기 토글 실패:", err);
       toast.error(
         err instanceof Error ? err.message : "즐겨찾기 토글에 실패했습니다.",
       );
@@ -142,7 +145,7 @@ export function useHomeActions({ searchState }: UseHomeActionsOptions) {
         result.value ? "게임을 숨겼습니다." : "숨김을 해제했습니다.",
       );
     } catch (err) {
-      console.error("숨김 토글 실패:", err);
+      log.error("숨김 토글 실패:", err);
       toast.error(
         err instanceof Error ? err.message : "숨김 토글에 실패했습니다.",
       );
@@ -159,7 +162,7 @@ export function useHomeActions({ searchState }: UseHomeActionsOptions) {
         result.value ? "클리어로 표시했습니다." : "클리어를 취소했습니다.",
       );
     } catch (err) {
-      console.error("클리어 토글 실패:", err);
+      log.error("클리어 토글 실패:", err);
       toast.error(
         err instanceof Error ? err.message : "클리어 토글에 실패했습니다.",
       );
@@ -185,7 +188,7 @@ export function useHomeActions({ searchState }: UseHomeActionsOptions) {
     try {
       await deleteGamesMutation.mutateAsync([path]);
     } catch (err) {
-      console.error("게임 삭제 실패:", err);
+      log.error("게임 삭제 실패:", err);
     }
   }
 
@@ -196,7 +199,7 @@ export function useHomeActions({ searchState }: UseHomeActionsOptions) {
     try {
       await openOriginalSite.mutateAsync(game.path);
     } catch (err) {
-      console.error("원본 사이트 열기 실패:", err);
+      log.error("원본 사이트 열기 실패:", err);
       toast.error(
         err instanceof Error ? err.message : "원본 사이트 열기에 실패했습니다.",
       );

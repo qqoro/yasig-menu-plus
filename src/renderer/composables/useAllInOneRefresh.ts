@@ -6,7 +6,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, ref } from "vue";
 import { toast } from "vue-sonner";
+import { createLogger } from "../lib/logger";
 import { queryKeys } from "../queryKeys";
+
+const log = createLogger("AllInOneRefresh");
 
 type RefreshStep = "scan" | "collect" | "translate" | "done";
 
@@ -84,7 +87,7 @@ export function useAllInOneRefreshMutation() {
           toast.info(`${results.scan.deletedCount}개의 게임이 삭제되었습니다.`);
         }
       } catch (err) {
-        console.error(err);
+        log.error(err);
         toast.error("폴더 스캔 실패", {
           description: err instanceof Error ? err.message : "알 수 없는 오류",
         });

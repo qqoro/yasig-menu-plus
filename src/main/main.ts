@@ -6,6 +6,7 @@ import windowStateKeeper from "electron-window-state";
 import { join } from "path";
 import { dbManager } from "./db/db-manager.js";
 import { IpcMainSend, IpcRendererSend } from "./events.js";
+import { createLogger } from "./utils/logger.js";
 
 // 핸들러 임포트
 import * as AutoUpdateHandlers from "./handlers/autoUpdate.js";
@@ -88,7 +89,7 @@ import {
 } from "./store.js";
 
 log.initialize();
-export const console = log;
+const mainLog = createLogger("Main");
 dayjs.extend(customParseFormat);
 
 let mainWindow: BrowserWindow;
@@ -481,7 +482,7 @@ app.whenReady().then(async () => {
     // 안전한 데이터베이스 초기화 (재시도 포함)
     list = await dbManager.initialize();
   } catch (error) {
-    console.error("데이터베이스 초기화 최종 실패:", error);
+    mainLog.error("데이터베이스 초기화 최종 실패:", error);
     // 데이터베이스 초기화 실패 시에도 앱을 시작하도록 하지만 오류 로그 출력
     // 사용자에게 알림을 표시할 수도 있음
   }
@@ -502,12 +503,12 @@ app.whenReady().then(async () => {
       try {
         const result = await autoScanLibraries();
         if (result.addedCount > 0) {
-          console.log(`자동 스캔 완료: ${result.addedCount}개의 새 게임 추가`);
+          mainLog.info(`자동 스캔 완료: ${result.addedCount}개의 새 게임 추가`);
         }
         // Renderer에 자동 스캔 완료 알림
         mainWindow.webContents.send(IpcMainSend.AutoScanDone, result);
       } catch (error) {
-        console.error("자동 스캔 오류:", error);
+        mainLog.error("자동 스캔 오류:", error);
       }
     }, 1000); // 1초 후 실행
   }
@@ -519,7 +520,7 @@ app.whenReady().then(async () => {
       try {
         await autoUpdaterService.checkForUpdates();
       } catch (error) {
-        console.error("자동 업데이트 확인 오류:", error);
+        mainLog.error("자동 업데이트 확인 오류:", error);
       }
     }, 2000); // 2초 후 실행
   }
@@ -556,6 +557,6 @@ app.on("before-quit", async () => {
     // 데이터베이스 연결 종료
     await dbManager.destroy();
   } catch (error) {
-    console.error("종료 처리 실패:", error);
+    mainLog.error("종료 처리 실패:", error);
   }
 });

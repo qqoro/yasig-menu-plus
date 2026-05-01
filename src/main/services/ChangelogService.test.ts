@@ -2,6 +2,18 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ChangelogService } from "./ChangelogService.js";
 import type { ReleaseInfo } from "./ChangelogService.js";
 
+// logger 모듈 모킹 (vi.hoisted로 호이스팅 가능한 변수 생성)
+const mockLog = vi.hoisted(() => ({
+  error: vi.fn(),
+  warn: vi.fn(),
+  info: vi.fn(),
+  debug: vi.fn(),
+}));
+vi.mock("../utils/logger.js", () => ({
+  createLogger: () => mockLog,
+  logger: mockLog,
+}));
+
 // GitHub API 릴리즈 응답 헬퍼 함수
 function makeRelease(
   tagName: string,
@@ -45,8 +57,7 @@ describe("ChangelogService", () => {
   const service = ChangelogService.getInstance();
 
   beforeEach(() => {
-    // 각 테스트 전에 console.error 모킹 (에러 출력 억제)
-    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
@@ -118,7 +129,7 @@ describe("ChangelogService", () => {
       const result = await service.getReleasesAfterVersion("1.0.0");
 
       expect(result).toEqual([]);
-      expect(console.error).toHaveBeenCalled();
+      expect(mockLog.error).toHaveBeenCalled();
     });
 
     it("response.ok가 false이면 빈 배열을 반환한다", async () => {
@@ -127,7 +138,7 @@ describe("ChangelogService", () => {
       const result = await service.getReleasesAfterVersion("1.0.0");
 
       expect(result).toEqual([]);
-      expect(console.error).toHaveBeenCalled();
+      expect(mockLog.error).toHaveBeenCalled();
     });
 
     it("ReleaseInfo 형태로 올바르게 매핑한다", async () => {
@@ -258,7 +269,7 @@ describe("ChangelogService", () => {
       const result = await service.getRecentReleases();
 
       expect(result).toEqual([]);
-      expect(console.error).toHaveBeenCalled();
+      expect(mockLog.error).toHaveBeenCalled();
     });
 
     it("response.ok가 false이면 빈 배열을 반환한다", async () => {
@@ -267,7 +278,7 @@ describe("ChangelogService", () => {
       const result = await service.getRecentReleases();
 
       expect(result).toEqual([]);
-      expect(console.error).toHaveBeenCalled();
+      expect(mockLog.error).toHaveBeenCalled();
     });
 
     it("name이 null이면 tag_name을, body가 null이면 빈 문자열을 사용한다", async () => {

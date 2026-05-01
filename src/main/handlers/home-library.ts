@@ -35,6 +35,9 @@ import { toAbsolutePath } from "../utils/image-path.js";
 import { wrapIpcHandler } from "../utils/ipc-wrapper.js";
 import { normalizePath } from "../lib/normalize-path.js";
 import { scanFolder } from "./home-scan.js";
+import { createLogger } from "../utils/logger.js";
+
+const log = createLogger("Library");
 
 /**
  * 경로 존재 여부를 비동기로 확인 (타임아웃 포함)
@@ -243,7 +246,7 @@ export async function autoScanLibraries(): Promise<AutoScanResult> {
     for (const path of paths) {
       // 오프라인 경로는 자동 스캔에서 제외
       if (offlinePaths.includes(path)) {
-        console.log(`자동 스캔 스킵: 오프라인 경로 — ${path}`);
+        log.debug(`자동 스캔 스킵: 오프라인 경로 — ${path}`);
         continue;
       }
 
@@ -251,21 +254,21 @@ export async function autoScanLibraries(): Promise<AutoScanResult> {
       // 연결 해제된 네트워크 드라이브에서 블로킹 방지
       const exists = await pathExists(path);
       if (!exists) {
-        console.log(`자동 스캔 스킵: 경로 없음 (또는 응답 없음) — ${path}`);
+        log.debug(`자동 스캔 스킵: 경로 없음 (또는 응답 없음) — ${path}`);
         continue;
       }
 
       const checkStart = performance.now();
       const hasChanges = await hasLibraryChanges(path);
-      console.log(
-        `[자동 스캔] 변경 감지 (${path}): ${hasChanges ? "변경 있음" : "변경 없음"} — ${(performance.now() - checkStart).toFixed(1)}ms`,
+      log.info(
+        `변경 감지 (${path}): ${hasChanges ? "변경 있음" : "변경 없음"} — ${(performance.now() - checkStart).toFixed(1)}ms`,
       );
 
       if (hasChanges) {
         const scanStart = performance.now();
         const result = await scanFolder(path);
-        console.log(
-          `[자동 스캔] 스캔 완료 (${path}): +${result.addedCount} -${result.deletedCount} — ${(performance.now() - scanStart).toFixed(1)}ms`,
+        log.info(
+          `스캔 완료 (${path}): +${result.addedCount} -${result.deletedCount} — ${(performance.now() - scanStart).toFixed(1)}ms`,
         );
         totalAdded += result.addedCount;
         totalDeleted += result.deletedCount;
@@ -278,8 +281,8 @@ export async function autoScanLibraries(): Promise<AutoScanResult> {
     }
 
     const elapsed = performance.now() - startTime;
-    console.log(
-      `[자동 스캔] 전체 완료: +${totalAdded} -${totalDeleted} — ${elapsed.toFixed(1)}ms`,
+    log.info(
+      `전체 완료: +${totalAdded} -${totalDeleted} — ${elapsed.toFixed(1)}ms`,
     );
 
     return { addedCount: totalAdded, deletedCount: totalDeleted };

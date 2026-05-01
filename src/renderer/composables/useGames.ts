@@ -16,8 +16,11 @@ import { onMounted, onUnmounted } from "vue";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import type { Ref } from "vue";
 import type { GameItem, SearchQuery } from "../types";
+import { createLogger } from "../lib/logger";
 import { queryKeys } from "../queryKeys";
 import { toast } from "vue-sonner";
+
+const log = createLogger("Games");
 
 /**
  * 게임 목록 새로고침 Mutation (Vue Query 기반)
@@ -136,7 +139,7 @@ async function _getRandomGame(
     });
     return result as { game: GameItem | null };
   } catch (err) {
-    console.error("랜덤 게임 가져오기 오류:", err);
+    log.error("랜덤 게임 가져오기 오류:", err);
     return { game: null };
   }
 }

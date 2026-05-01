@@ -1,6 +1,7 @@
 import type { Knex } from "knex";
 import { app } from "electron";
 import { isAbsolute } from "node:path";
+import { logger } from "../../utils/logger.js";
 
 /**
  * 기존 절대 경로에서 파일명만 추출
@@ -61,12 +62,12 @@ export async function up(knex: Knex): Promise<void> {
     }
   }
 
-  console.log(
-    `[마이그레이션] 썸네일 경로 상대 경로 변환 완료: games ${games.length}개, images ${images.length}개`,
+  logger.info(
+    `썸네일 경로 상대 경로 변환 완료: games ${games.length}개, images ${images.length}개`,
   );
 }
 
 export async function down(knex: Knex): Promise<void> {
   // 롤백은 불가능 (원래 절대 경로를 알 수 없음)
-  console.log("[마이그레이션] down: 롤백 불가능");
+  logger.info("down: 롤백 불가능");
 }

@@ -25,6 +25,9 @@ import {
   validateDirectoryPath,
   validateSearchQuery,
 } from "../utils/validator.js";
+import { createLogger } from "../utils/logger.js";
+
+const log = createLogger("Search");
 import { access } from "fs/promises";
 
 async function pathExists(p: string): Promise<boolean> {
@@ -693,7 +696,7 @@ export async function getAutocompleteSuggestionsHandler(
   const { prefix, query } = payload;
 
   // 디버깅: 입력값 확인
-  console.log("[Autocomplete] prefix:", prefix, "query:", query);
+  log.debug("Autocomplete prefix:", prefix, "query:", query);
 
   // prefix가 지정되지 않은 경우 (부분 입력 매칭)
   const trimmedQuery = query.trim();

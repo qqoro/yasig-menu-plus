@@ -53,7 +53,10 @@ import {
   useToggleLibraryPathVisibility,
 } from "../composables/useSettings";
 import { useUIStore } from "../stores/uiStore";
+import { createLogger } from "../lib/logger";
 import type { SearchQuery } from "../types";
+
+const log = createLogger("HomeView");
 
 // 라이브러리 경로 관리 (electron-store)
 const { data: libraryPaths } = useLibraryPaths();
@@ -232,7 +235,7 @@ async function handleToggleLibraryPath(path: string): Promise<void> {
   try {
     await toggleLibraryPathMutation.mutateAsync(path);
   } catch (err) {
-    console.error("라이브러리 경로 토글 실패:", err);
+    log.error("라이브러리 경로 토글 실패:", err);
     toast.error("표시 설정 변경에 실패했습니다.");
   }
 }

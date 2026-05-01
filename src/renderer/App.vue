@@ -11,10 +11,13 @@ import HelpDialog from "./components/HelpDialog.vue";
 import { initializeTheme } from "./composables/useTheme";
 import { useViewedHelpCards } from "./composables/useHelpRedDot";
 import { ALL_CARD_IDS } from "./lib/helpCardRegistry";
+import { createLogger } from "./lib/logger";
 import { useWindow } from "./composables/useWindow";
 import { queryKeys } from "./queryKeys";
 import { useQueryClient } from "@tanstack/vue-query";
 import { useUIStore } from "./stores/uiStore";
+
+const log = createLogger("App");
 
 const {
   isMaximized,
@@ -78,7 +81,7 @@ onMounted(async () => {
     const colorTheme = result.settings.colorTheme ?? "default";
     initializeTheme(colorTheme, uiStore.isDark);
   } catch (error) {
-    console.error("테마 초기화 실패:", error);
+    log.error("테마 초기화 실패:", error);
   }
 
   // 기존 초기화 (다크 모드만 처리)

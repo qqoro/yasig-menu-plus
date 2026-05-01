@@ -4,6 +4,10 @@
  * GitHub Releases API를 통해 릴리즈 내역 조회
  */
 
+import { createLogger } from "../utils/logger.js";
+
+const log = createLogger("Changelog");
+
 const GITHUB_REPO = "qqoro/yasig-menu-plus";
 const API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases`;
 
@@ -83,7 +87,7 @@ export class ChangelogService {
         htmlUrl: release.html_url,
       }));
     } catch (error) {
-      console.error("체인지로그 조회 실패:", error);
+      log.error("체인지로그 조회 실패:", error);
       return [];
     }
   }
@@ -139,7 +143,7 @@ export class ChangelogService {
         htmlUrl: release.html_url,
       }));
     } catch (error) {
-      console.error("체인지로그 조회 실패:", error);
+      log.error("체인지로그 조회 실패:", error);
       return [];
     }
   }

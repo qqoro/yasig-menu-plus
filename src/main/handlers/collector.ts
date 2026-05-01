@@ -20,6 +20,9 @@ import {
   setGoogleCookie,
 } from "../store.js";
 import { downloadImage } from "../utils/downloader.js";
+import { createLogger } from "../utils/logger.js";
+
+const log = createLogger("Collector");
 
 /**
  * Puppeteer browser 인스턴스 (재사용을 위한 캐싱)
@@ -169,7 +172,7 @@ export async function resolveBotBlockHandler(
   if (payload.ignoreMinutes && payload.ignoreMinutes > 0) {
     const expireTime = new Date(Date.now() + payload.ignoreMinutes * 60 * 1000);
     setGoogleCollectorIgnoreUntil(expireTime.toISOString());
-    console.log(`[Collector] 봇 차단 ${payload.ignoreMinutes}분간 무시 설정됨`);
+    log.info(`봇 차단 ${payload.ignoreMinutes}분간 무시 설정됨`);
   }
 
   if (botBlockResolveCallback) {
@@ -227,10 +230,10 @@ async function persistGoogleCookiesFromPage(page: Page): Promise<void> {
     }
     if (abuseExemption?.value) {
       setGoogleAbuseExemption(abuseExemption.value);
-      console.log("[Collector] GOOGLE_ABUSE_EXEMPTION 쿠키 저장됨");
+      log.info("GOOGLE_ABUSE_EXEMPTION 쿠키 저장됨");
     }
   } catch (error) {
-    console.error("[Collector] Google 쿠키 추출 실패:", error);
+    log.error("Google 쿠키 추출 실패:", error);
   }
 }
 
@@ -291,7 +294,7 @@ export async function getNewCookie() {
     const cookies = await page.cookies();
     const targetCookie = cookies.find((cookie) => cookie.name === "NID");
     if (!targetCookie) {
-      console.error("[Collector] targetCookie not found!", targetCookie);
+      log.warn("targetCookie not found!", targetCookie);
       return;
     }
 
@@ -371,7 +374,7 @@ async function runPrimaryCollection(args: {
 
   if (collector.name === "Google") {
     if (isGoogleCollectorIgnored()) {
-      console.log("[Collector] 봇 차단 무시 중 - Google 컬렉터 스킵");
+      log.debug("봇 차단 무시 중 - Google 컬렉터 스킵");
       return {};
     }
 
@@ -396,7 +399,7 @@ async function runPrimaryCollection(args: {
           const botBlockResult = await detectBotBlock(page);
 
           if (botBlockResult.blocked) {
-            console.log(`[Collector] 봇 차단 감지: ${botBlockResult.reason}`);
+            log.warn(`봇 차단 감지: ${botBlockResult.reason}`);
 
             await page.close();
 
@@ -458,7 +461,7 @@ async function runPrimaryCollection(args: {
         }
         return undefined;
       } catch (chromeError) {
-        console.error(`[Collector] Chrome 에러:`, chromeError);
+        log.error("Chrome 에러:", chromeError);
         return { gamePath, success: false, error: String(chromeError) };
       }
     });
@@ -517,7 +520,7 @@ async function runGoogleFallback(gamePath: string): Promise<void> {
                 .where("path", gamePath)
                 .update({ thumbnail: thumbnailPath });
             } catch (error) {
-              console.error(`[Collector] Google 썸네일 다운로드 실패:`, error);
+              log.error("Google 썸네일 다운로드 실패:", error);
             }
           }
         } finally {
@@ -525,7 +528,7 @@ async function runGoogleFallback(gamePath: string): Promise<void> {
         }
       }
     } catch (error) {
-      console.error(`[Collector] Google fallback 실패:`, error);
+      log.error("Google fallback 실패:", error);
     }
   });
 }
@@ -586,7 +589,7 @@ export async function runCollectorHandler(
 
     return { gamePath, success: true };
   } catch (error) {
-    console.error(`[Collector] 에러: ${gamePath}`, error);
+    log.error(`에러: ${gamePath}`, error);
     return { gamePath, success: false, error: String(error) };
   }
 }
@@ -692,7 +695,7 @@ export async function runAllCollectorsHandler(
       success++;
       updateProgress(game.title);
     } catch (error) {
-      console.error(`[Collector] 에러: ${game.path}`, error);
+      log.error(`에러: ${game.path}`, error);
       failed++;
       updateProgress(game.title);
     }

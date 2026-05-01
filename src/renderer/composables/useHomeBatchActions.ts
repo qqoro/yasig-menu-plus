@@ -1,9 +1,12 @@
 import { ref } from "vue";
 import { toast } from "vue-sonner";
+import { createLogger } from "../lib/logger";
 import { useDeleteGames } from "./useDuplicates";
 import type { GameItem } from "../types";
 import type { SearchState } from "./useSearch";
 import type { UseMultiSelectReturn } from "./useMultiSelect";
+
+const log = createLogger("HomeBatchActions");
 
 interface UseHomeBatchActionsOptions {
   searchState: SearchState;
@@ -39,7 +42,7 @@ export function useHomeBatchActions({
       );
       multiSelect.clearSelection();
     } catch (err) {
-      console.error("배치 토글 실패:", err);
+      log.error("배치 토글 실패:", err);
       toast.error(
         err instanceof Error ? err.message : "일괄 작업에 실패했습니다.",
       );
@@ -65,7 +68,7 @@ export function useHomeBatchActions({
       await deleteGamesMutation.mutateAsync(paths);
       multiSelect.clearSelection();
     } catch (err) {
-      console.error("배치 삭제 실패:", err);
+      log.error("배치 삭제 실패:", err);
     }
   }
 

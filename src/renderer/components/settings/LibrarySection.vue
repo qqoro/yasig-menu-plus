@@ -39,7 +39,10 @@ import {
 } from "@/composables/useSettings";
 import { Switch } from "@/components/ui/switch";
 import { useRouter } from "vue-router";
+import { createLogger } from "@/lib/logger";
 import { formatLastScannedAt } from "@/utils/format";
+
+const log = createLogger("LibrarySection");
 
 const router = useRouter();
 
@@ -164,7 +167,7 @@ async function handleSelectFolder(): Promise<void> {
       });
     }
   } catch (err) {
-    console.error("폴더 선택 오류:", err);
+    log.error("폴더 선택 오류:", err);
   }
 }
 
@@ -188,7 +191,7 @@ async function handleRefreshSinglePath(path: string): Promise<void> {
     await refreshGamesMutation.mutateAsync([path]);
     toast.success(`"${path}" 경로를 스캔했습니다.`);
   } catch (err) {
-    console.error("경로 새로고침 오류:", err);
+    log.error("경로 새로고침 오류:", err);
     toast.error(
       err instanceof Error ? err.message : "새로고침에 실패했습니다.",
     );

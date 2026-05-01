@@ -27,6 +27,9 @@ import { deleteImage } from "../utils/downloader.js";
 import { toAbsolutePath } from "../utils/image-path.js";
 import { wrapIpcHandler } from "../utils/ipc-wrapper.js";
 import { validateDirectoryPath } from "../utils/validator.js";
+import { createLogger } from "../utils/logger.js";
+
+const log = createLogger("Scan");
 import { runScanWorker } from "../workers/run-scan-worker.js";
 import {
   buildGameItems,
@@ -268,7 +271,7 @@ export async function scanFolder(
 
     return { addedCount, deletedCount };
   } catch (error) {
-    console.error("폴더 스캔 오류:", error);
+    log.error("폴더 스캔 오류:", error);
     return { addedCount: 0, deletedCount: 0 };
   }
 }

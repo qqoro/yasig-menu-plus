@@ -1,5 +1,6 @@
 import { app } from "electron";
-import log from "electron-log";
+import { createLogger } from "../utils/logger.js";
+const log = createLogger("DB");
 import { existsSync } from "fs";
 import type { Knex } from "knex";
 import knex from "knex";

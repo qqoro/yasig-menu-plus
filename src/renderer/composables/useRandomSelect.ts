@@ -1,7 +1,10 @@
 import { type ComputedRef, type Ref } from "vue";
 import { toast } from "vue-sonner";
+import { createLogger } from "../lib/logger";
 import { useRandomGameMutation } from "./useGames";
 import type { SearchQuery } from "../types";
+
+const log = createLogger("RandomSelect");
 
 interface UseRandomSelectOptions {
   activeLibraryPaths: ComputedRef<string[]>;
@@ -84,7 +87,7 @@ export function useRandomSelect({
 
       toast.success(`${randomGame.title}을(를) 선택했습니다.`);
     } catch (err) {
-      console.error("랜덤 선택 오류:", err);
+      log.error("랜덤 선택 오류:", err);
       toast.error("랜덤 선택에 실패했습니다.");
     }
   }

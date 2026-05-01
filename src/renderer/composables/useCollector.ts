@@ -5,7 +5,10 @@
 
 import { useMutation, useQueryClient } from "@tanstack/vue-query";
 import { ref } from "vue";
+import { createLogger } from "../lib/logger";
 import { queryKeys } from "../queryKeys";
+
+const log = createLogger("Collector");
 
 // 컬렉터 실행 상태
 export interface CollectorProgress {
@@ -108,7 +111,7 @@ export async function runAllCollectorsWithProgress(
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "알 수 없는 오류";
     error.value = errorMessage;
-    console.error("전체 컬렉터 실행 오류:", err);
+    log.error("전체 컬렉터 실행 오류:", err);
     throw err;
   } finally {
     window.api.removeListener("collectorProgress", progressListener);

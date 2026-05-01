@@ -26,6 +26,18 @@ import {
 
 // ========== 모킹 ==========
 
+// logger 모듈 모킹 (vi.hoisted로 호이스팅 가능한 변수 생성)
+const mockLog = vi.hoisted(() => ({
+  error: vi.fn(),
+  warn: vi.fn(),
+  info: vi.fn(),
+  debug: vi.fn(),
+}));
+vi.mock("../utils/logger.js", () => ({
+  createLogger: () => mockLog,
+  logger: mockLog,
+}));
+
 vi.mock("electron", () => ({
   app: { getPath: () => "/mock/userData", isPackaged: false },
   ipcMain: { handle: vi.fn(), on: vi.fn() },
@@ -137,9 +149,6 @@ describe("startSession", () => {
     await truncateAll(db);
     monitor = new ProcessMonitor();
     vi.clearAllMocks();
-    // console.log/error 출력 억제
-    vi.spyOn(console, "log").mockImplementation(() => {});
-    vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -225,9 +234,6 @@ describe("endSession", () => {
     monitor = new ProcessMonitor();
     vi.clearAllMocks();
     vi.useFakeTimers();
-    // console.log/error 출력 억제
-    vi.spyOn(console, "log").mockImplementation(() => {});
-    vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -461,8 +467,6 @@ describe("hasActiveSession", () => {
     await truncateAll(db);
     monitor = new ProcessMonitor();
     vi.clearAllMocks();
-    vi.spyOn(console, "log").mockImplementation(() => {});
-    vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -516,8 +520,6 @@ describe("endAllSessions", () => {
     monitor = new ProcessMonitor();
     vi.clearAllMocks();
     vi.useFakeTimers();
-    vi.spyOn(console, "log").mockImplementation(() => {});
-    vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
   afterEach(() => {

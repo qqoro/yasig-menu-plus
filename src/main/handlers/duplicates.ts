@@ -19,6 +19,9 @@ import type {
 import { deleteImage } from "../utils/downloader.js";
 import { toAbsolutePath } from "../utils/image-path.js";
 import { leftJoinUserGameData } from "./home-utils.js";
+import { createLogger } from "../utils/logger.js";
+
+const log = createLogger("Duplicates");
 
 /**
  * 경로 존재 여부 확인 (fs/promises 기반)
@@ -91,7 +94,7 @@ async function getFileStats(filePath: string): Promise<{
       };
     }
   } catch (error) {
-    console.error(`파일 정보 조회 실패: ${filePath}`, error);
+    log.error(`파일 정보 조회 실패: ${filePath}`, error);
   }
   return { fileCreatedAt: null, fileModifiedAt: null };
 }
@@ -352,7 +355,7 @@ export async function deleteGamesHandler(
         shell.trashItem(game.path);
       }
     } catch (error) {
-      console.error(`게임 폴더 삭제 실패: ${game.path}`, error);
+      log.error(`게임 폴더 삭제 실패: ${game.path}`, error);
     }
   }
 

@@ -8,6 +8,9 @@
 import { app } from "electron";
 import ElectronStore from "electron-store";
 import { normalizePath } from "./lib/normalize-path.js";
+import { createLogger } from "./utils/logger.js";
+
+const log = createLogger("Store");
 
 /**
  * 라이브러리 스캔 정보
@@ -221,8 +224,8 @@ function migrateViewedHelpSections(store: StoreInstance): void {
   store.set("viewedHelpCards", cardIds);
   (store as any).delete("viewedHelpSections");
 
-  console.log(
-    `[설정] 도움말 조회 이력 마이그레이션: ${viewedSections.length}개 섹션 → ${cardIds.length}개 카드`,
+  log.info(
+    `도움말 조회 이력 마이그레이션: ${viewedSections.length}개 섹션 → ${cardIds.length}개 카드`,
   );
 }
 
@@ -798,8 +801,8 @@ export function runLibraryPathsNormalization(): void {
   // 실행 완료 표시
   (store as any).set(LIBRARY_PATHS_NORMALIZED_KEY, new Date().toISOString());
 
-  console.log(
-    `[설정] 라이브러리 경로 정규화 완료: libraryPaths ${paths.length}개, disabledPaths ${disabled.length}개, scanHistory ${Object.keys(history).length}개`,
+  log.info(
+    `라이브러리 경로 정규화 완료: libraryPaths ${paths.length}개, disabledPaths ${disabled.length}개, scanHistory ${Object.keys(history).length}개`,
   );
 }
 

@@ -8,6 +8,9 @@ import type { GameDetailItem } from "../events.js";
 import { IpcRendererSend } from "../events.js";
 import { toAbsolutePath } from "../utils/image-path.js";
 import { leftJoinUserGameData } from "./home-utils.js";
+import { createLogger } from "../utils/logger.js";
+
+const log = createLogger("GameDetail");
 
 /**
  * 게임 상세 정보 조회
@@ -117,7 +120,7 @@ export function registerHandlers(): void {
       const game = await getGameDetail(path);
       return { game };
     } catch (error) {
-      console.error("게임 상세 정보 조회 실패:", error);
+      log.error("게임 상세 정보 조회 실패:", error);
       return { game: null };
     }
   });

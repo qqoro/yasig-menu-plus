@@ -22,7 +22,8 @@ import {
 } from "node:fs/promises";
 import { join } from "node:path";
 import { app } from "electron";
-import log from "electron-log";
+import { createLogger } from "../utils/logger.js";
+const log = createLogger("CheatInjector");
 
 const BACKUP_SUFFIX = ".cheat-backup";
 const REGISTRY_FILE = "cheat-injections.json";

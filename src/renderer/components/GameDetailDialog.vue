@@ -14,6 +14,7 @@ import {
 } from "../composables/useGameDetail";
 import { usePlayGame } from "../composables/useGames";
 import { usePlayTime, usePlayTimeListener } from "../composables/usePlayTime";
+import { createLogger } from "../lib/logger";
 import GameDetailExecutable from "./game-detail/GameDetailExecutable.vue";
 import GameDetailMemo from "./game-detail/GameDetailMemo.vue";
 import GameDetailMetadata from "./game-detail/GameDetailMetadata.vue";
@@ -38,6 +39,8 @@ interface Emits {
   (e: "update:open", value: boolean): void;
   (e: "updated"): void;
 }
+
+const log = createLogger("GameDetail");
 
 const props = withDefaults(defineProps<Props>(), {
   open: false,
@@ -139,7 +142,7 @@ async function handlePlay() {
     // 다이얼로그 닫기
     closeDialog();
   } catch (err) {
-    console.error("게임 실행 실패:", err);
+    log.error("게임 실행 실패:", err);
     toast.error(
       err instanceof Error ? err.message : "게임 실행에 실패했습니다.",
     );

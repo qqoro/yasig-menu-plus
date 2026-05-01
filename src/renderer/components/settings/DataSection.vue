@@ -40,7 +40,10 @@ import {
   useTranslationSettings,
   type TitleDisplayMode,
 } from "@/composables/useTranslationSettings";
+import { createLogger } from "@/lib/logger";
 import { formatBytes } from "@/utils/format";
+
+const log = createLogger("DataSection");
 
 // 컬렉터 관련
 const { progress } = useCollector();
@@ -154,7 +157,7 @@ async function handleCollect(force: boolean): Promise<void> {
         : "미수집 게임 정보 수집이 완료되었습니다.",
     );
   } catch (err) {
-    console.error("정보 수집 실행 실패:", err);
+    log.error("정보 수집 실행 실패:", err);
     toast.error(
       err instanceof Error ? err.message : "정보 수집에 실패했습니다.",
     );
@@ -211,7 +214,7 @@ async function handleMigrateThumbnails(): Promise<void> {
       `마이그레이션 완료: 성공 ${result.successCount}개, 스킵 ${result.skipCount}개, 실패 ${result.failCount}개`,
     );
   } catch (err) {
-    console.error("썸네일 마이그레이션 실패:", err);
+    log.error("썸네일 마이그레이션 실패:", err);
     toast.error(
       err instanceof Error ? err.message : "마이그레이션에 실패했습니다.",
     );

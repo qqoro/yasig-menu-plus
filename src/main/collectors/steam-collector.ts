@@ -1,5 +1,8 @@
 import SteamUser from "steam-user";
+import { createLogger } from "../utils/logger.js";
 import { Collector, type CollectorResult } from "./registry.js";
+
+const log = createLogger("SteamCollector");
 
 /**
  * SteamUser 클라이언트 (재사용을 위한 싱글톤)
@@ -31,14 +34,14 @@ async function getSteamClient(): Promise<SteamUser> {
     });
 
     client.on("loggedOn", () => {
-      console.log("[SteamCollector] 익명 로그인 성공");
+      log.info("익명 로그인 성공");
       steamClient = client;
       isLoggingIn = false;
       resolve();
     });
 
     client.on("error", (err) => {
-      console.error("[SteamCollector] 로그인 에러:", err);
+      log.error("로그인 에러:", err);
       steamClient = null;
       isLoggingIn = false;
       reject(err);
@@ -132,7 +135,7 @@ export const SteamCollector: Collector = {
         }
       }
     } catch (error) {
-      console.error("[SteamCollector] steam-user 에러:", error);
+      log.error("steam-user 에러:", error);
     }
 
     // 이미지와 장르는 기존 Steam API 사용 (국가 차단될 수 있음)
@@ -157,7 +160,7 @@ export const SteamCollector: Collector = {
         }
       }
     } catch (error) {
-      console.error("[SteamCollector] 이미지 API 에러:", error);
+      log.error("이미지 API 에러:", error);
     }
 
     // 데이터가 하나도 없으면 undefined 반환

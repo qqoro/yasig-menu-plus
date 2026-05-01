@@ -12,6 +12,9 @@ import {
 } from "../utils/downloader.js";
 import { toAbsolutePath, toRelativePath } from "../utils/image-path.js";
 import { validatePath } from "../utils/validator.js";
+import { createLogger } from "../utils/logger.js";
+
+const log = createLogger("Thumbnail");
 
 /**
  * 썸네일 다운로드 핸들러
@@ -130,7 +133,7 @@ export async function migrateThumbnailsHandler(
       throw new Error("선택한 경로가 폴더가 아닙니다.");
     }
   } catch (error) {
-    console.error("[마이그레이션] 폴더 접근 실패:", sourceFolder, error);
+    log.error("폴더 접근 실패:", sourceFolder, error);
     throw new Error("폴더에 접근할 수 없습니다.");
   }
 
@@ -200,14 +203,14 @@ export async function migrateThumbnailsHandler(
     }
   }
 
-  console.log(`[마이그레이션] DB에서 ${gameMap.size}개 게임 로드됨`);
+  log.info(`DB에서 ${gameMap.size}개 게임 로드됨`);
 
   // 마이그레이션 수행
   for (const [nameWithoutExt, sourcePath] of selectedFiles) {
     const game = gameMap.get(nameWithoutExt.toLowerCase());
 
     if (!game) {
-      console.log(`[마이그레이션] 매칭 실패: ${nameWithoutExt}`);
+      log.debug(`매칭 실패: ${nameWithoutExt}`);
       failCount++;
       continue;
     }
@@ -223,13 +226,13 @@ export async function migrateThumbnailsHandler(
 
       successCount++;
     } catch (error) {
-      console.error(`[마이그레이션] 복사 실패: ${nameWithoutExt}`, error);
+      log.error(`복사 실패: ${nameWithoutExt}`, error);
       failCount++;
     }
   }
 
-  console.log(
-    `[마이그레이션] 완료: 성공 ${successCount}, 건너뜀 ${skipCount}, 실패 ${failCount}`,
+  log.info(
+    `완료: 성공 ${successCount}, 건너뜀 ${skipCount}, 실패 ${failCount}`,
   );
 
   return { successCount, skipCount, failCount };
@@ -285,13 +288,13 @@ export async function convertImagesToWebpHandler(
       freedBytes += beforeStat.size - afterStat.size;
       converted++;
     } catch (error) {
-      console.error(`[WebP 변환] 실패: ${file}`, error);
+      log.error(`WebP 변환 실패: ${file}`, error);
       failed++;
     }
   }
 
-  console.log(
-    `[WebP 변환] 완료: 변환 ${converted}, 실패 ${failed}, 절약 ${freedBytes} bytes`,
+  log.info(
+    `WebP 변환 완료: 변환 ${converted}, 실패 ${failed}, 절약 ${freedBytes} bytes`,
   );
 
   return { total: targetFiles.length, converted, failed, freedBytes };

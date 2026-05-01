@@ -8,7 +8,10 @@
 import { ChildProcess, spawn } from "child_process";
 import type { BrowserWindow } from "electron";
 import { db } from "../db/db-manager.js";
+import { createLogger } from "../utils/logger.js";
 import { getOrCreateUserGameData } from "./user-game-data.js";
+
+const log = createLogger("ProcessMonitor");
 
 interface ActiveSession {
   gamePath: string;
@@ -56,7 +59,7 @@ export class ProcessMonitor {
 
     // 이미 실행 중인 세션이 있으면 무시
     if (this.activeSessions.has(gamePath)) {
-      console.log(`이미 실행 중인 세션: ${gamePath}`);
+      log.debug(`이미 실행 중인 세션: ${gamePath}`);
       return false;
     }
 
@@ -92,16 +95,16 @@ export class ProcessMonitor {
 
     // 종료 이벤트 리스너
     gameProcess.on("close", async (code) => {
-      console.log(`게임 프로세스 종료: ${executablePath}, 코드: ${code}`);
+      log.info(`게임 프로세스 종료: ${executablePath}, 코드: ${code}`);
       await this.endSession(gamePath);
     });
 
     gameProcess.on("error", async (err) => {
-      console.error(`게임 프로세스 에러: ${executablePath}`, err);
+      log.error(`게임 프로세스 에러: ${executablePath}`, err);
       await this.endSession(gamePath);
     });
 
-    console.log(`게임 세션 시작: ${gamePath}`);
+    log.info(`게임 세션 시작: ${gamePath}`);
     return true;
   }
 
@@ -150,7 +153,7 @@ export class ProcessMonitor {
           .select("totalPlayTime")
           .first();
 
-        console.log(
+        log.info(
           `플레이 타임 기록: ${gamePath}, ${durationSeconds}초, 총 ${updatedData?.totalPlayTime ?? 0}초`,
         );
 
@@ -162,7 +165,7 @@ export class ProcessMonitor {
           wasCheatMode: session.isCheatMode ?? false,
         });
       } catch (error) {
-        console.error("플레이 타임 기록 실패:", error);
+        log.error("플레이 타임 기록 실패:", error);
       }
     } else {
       // 최소 시간 미달 시 세션 시작 기록만 제거
@@ -170,7 +173,7 @@ export class ProcessMonitor {
         sessionStartAt: null,
         updatedAt: endedAt,
       });
-      console.log(
+      log.debug(
         `플레이 타임 미달 (${durationSeconds}초): ${gamePath}, 기록하지 않음`,
       );
     }
@@ -185,7 +188,7 @@ export class ProcessMonitor {
           success,
         });
       } catch (error) {
-        console.error("치트 복원 실패:", error);
+        log.error("치트 복원 실패:", error);
         this.sendEvent("cheatInjectionRestored", {
           path: session.gamePath,
           success: false,
@@ -199,7 +202,7 @@ export class ProcessMonitor {
    */
   async endAllSessions(): Promise<void> {
     const gamePaths = [...this.activeSessions.keys()];
-    console.log(`모든 세션 종료: ${gamePaths.length}개`);
+    log.info(`모든 세션 종료: ${gamePaths.length}개`);
 
     for (const gamePath of gamePaths) {
       await this.endSession(gamePath);

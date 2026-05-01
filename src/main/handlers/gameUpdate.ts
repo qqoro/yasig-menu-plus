@@ -12,6 +12,9 @@ import { getOrCreateUserGameData } from "../services/user-game-data.js";
 import { downloadImage } from "../utils/downloader.js";
 import { toAbsolutePath, toRelativePath } from "../utils/image-path.js";
 import { validatePath, validateUrl } from "../utils/validator.js";
+import { createLogger } from "../utils/logger.js";
+
+const log = createLogger("GameUpdate");
 
 /**
  * 썸네일 저장 디렉토리 경로
@@ -362,7 +365,7 @@ export function registerHandlers(): void {
         await updateGameMetadata(path, metadata);
         return { path };
       } catch (error) {
-        console.error("메타데이터 수정 실패:", error);
+        log.error("메타데이터 수정 실패:", error);
         throw error;
       }
     },
@@ -376,7 +379,7 @@ export function registerHandlers(): void {
         await updateRating(path, rating);
         return { path, rating };
       } catch (error) {
-        console.error("별점 수정 실패:", error);
+        log.error("별점 수정 실패:", error);
         throw error;
       }
     },
@@ -388,7 +391,7 @@ export function registerHandlers(): void {
       await addMaker(path, name);
       return { path, name };
     } catch (error) {
-      console.error("제작사 추가 실패:", error);
+      log.error("제작사 추가 실패:", error);
       throw error;
     }
   });
@@ -400,7 +403,7 @@ export function registerHandlers(): void {
         await removeMaker(path, name);
         return { path, name };
       } catch (error) {
-        console.error("제작사 제거 실패:", error);
+        log.error("제작사 제거 실패:", error);
         throw error;
       }
     },
@@ -414,7 +417,7 @@ export function registerHandlers(): void {
         await addCategory(path, name);
         return { path, name };
       } catch (error) {
-        console.error("카테고리 추가 실패:", error);
+        log.error("카테고리 추가 실패:", error);
         throw error;
       }
     },
@@ -427,7 +430,7 @@ export function registerHandlers(): void {
         await removeCategory(path, name);
         return { path, name };
       } catch (error) {
-        console.error("카테고리 제거 실패:", error);
+        log.error("카테고리 제거 실패:", error);
         throw error;
       }
     },
@@ -439,7 +442,7 @@ export function registerHandlers(): void {
       await addTag(path, name);
       return { path, name };
     } catch (error) {
-      console.error("태그 추가 실패:", error);
+      log.error("태그 추가 실패:", error);
       throw error;
     }
   });
@@ -449,7 +452,7 @@ export function registerHandlers(): void {
       await removeTag(path, name);
       return { path, name };
     } catch (error) {
-      console.error("태그 제거 실패:", error);
+      log.error("태그 제거 실패:", error);
       throw error;
     }
   });
@@ -462,7 +465,7 @@ export function registerHandlers(): void {
         const thumbnailPath = await setThumbnailFromUrl(path, url);
         return { path, thumbnailPath };
       } catch (error) {
-        console.error("썸네일 설정 실패 (URL):", error);
+        log.error("썸네일 설정 실패 (URL):", error);
         throw error;
       }
     },
@@ -475,7 +478,7 @@ export function registerHandlers(): void {
         const thumbnailPath = await setThumbnailFromFile(path, filePath);
         return { path, thumbnailPath };
       } catch (error) {
-        console.error("썸네일 설정 실패 (파일):", error);
+        log.error("썸네일 설정 실패 (파일):", error);
         throw error;
       }
     },
@@ -486,7 +489,7 @@ export function registerHandlers(): void {
       await hideThumbnail(path);
       return { path };
     } catch (error) {
-      console.error("썸네일 숨김 실패:", error);
+      log.error("썸네일 숨김 실패:", error);
       throw error;
     }
   });

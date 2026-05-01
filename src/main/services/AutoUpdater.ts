@@ -8,8 +8,10 @@
 import { app, BrowserWindow, shell } from "electron";
 import pkg from "electron-updater";
 import { IpcMainSend } from "../events.js";
+import { createLogger } from "../utils/logger.js";
 
 const { autoUpdater } = pkg;
+const log = createLogger("AutoUpdater");
 
 export class AutoUpdater {
   private mainWindow: BrowserWindow | null = null;
@@ -42,12 +44,12 @@ export class AutoUpdater {
    */
   private setupEvents(): void {
     autoUpdater.on("checking-for-update", () => {
-      console.log("업데이트 확인 중...");
+      log.info("업데이트 확인 중...");
       this.send(IpcMainSend.UpdateChecking);
     });
 
     autoUpdater.on("update-available", (info) => {
-      console.log(`업데이트 있음: v${info.version}`);
+      log.info(`업데이트 있음: v${info.version}`);
       this.send(IpcMainSend.UpdateAvailable, {
         version: info.version,
         releaseDate: info.releaseDate,
@@ -56,12 +58,12 @@ export class AutoUpdater {
     });
 
     autoUpdater.on("update-not-available", () => {
-      console.log("업데이트 없음: 최신 버전입니다.");
+      log.info("업데이트 없음: 최신 버전입니다.");
       this.send(IpcMainSend.UpdateNotAvailable);
     });
 
     autoUpdater.on("download-progress", (progress) => {
-      console.log(
+      log.info(
         `다운로드 중: ${progress.percent.toFixed(1)}% (${progress.transferred}/${progress.total} bytes)`,
       );
       this.send(IpcMainSend.UpdateDownloadProgress, {
@@ -72,14 +74,14 @@ export class AutoUpdater {
     });
 
     autoUpdater.on("update-downloaded", (info) => {
-      console.log(`업데이트 다운로드 완료: v${info.version}`);
+      log.info(`업데이트 다운로드 완료: v${info.version}`);
       this.send(IpcMainSend.UpdateDownloaded, {
         version: info.version,
       });
     });
 
     autoUpdater.on("error", (error) => {
-      console.error("업데이트 오류:", error);
+      log.error("업데이트 오류:", error);
       this.send(IpcMainSend.UpdateError, {
         error: error.message,
       });
@@ -92,7 +94,7 @@ export class AutoUpdater {
   async checkForUpdates(): Promise<void> {
     // 개발 환경에서는 업데이트 확인 안함
     if (!app.isPackaged) {
-      console.log("개발 환경: 업데이트 확인 건너뜀");
+      log.debug("개발 환경: 업데이트 확인 건너뜀");
       this.send(IpcMainSend.UpdateNotAvailable);
       return;
     }
@@ -100,7 +102,7 @@ export class AutoUpdater {
     try {
       await autoUpdater.checkForUpdates();
     } catch (error) {
-      console.error("업데이트 확인 실패:", error);
+      log.error("업데이트 확인 실패:", error);
       this.send(IpcMainSend.UpdateError, {
         error: error instanceof Error ? error.message : "알 수 없는 오류",
       });
@@ -114,7 +116,7 @@ export class AutoUpdater {
   async downloadUpdate(): Promise<void> {
     if (this.isPortable) {
       // 포터블: GitHub Releases 페이지 열기
-      console.log("포터블 버전: GitHub Releases 페이지 열기");
+      log.debug("포터블 버전: GitHub Releases 페이지 열기");
       await shell.openExternal(
         "https://github.com/qqoro/yasig-menu-plus/releases",
       );
@@ -124,7 +126,7 @@ export class AutoUpdater {
     try {
       await autoUpdater.downloadUpdate();
     } catch (error) {
-      console.error("업데이트 다운로드 실패:", error);
+      log.error("업데이트 다운로드 실패:", error);
       this.send(IpcMainSend.UpdateError, {
         error: error instanceof Error ? error.message : "다운로드 실패",
       });
@@ -136,11 +138,11 @@ export class AutoUpdater {
    */
   quitAndInstall(): void {
     if (this.isPortable) {
-      console.log("포터블 버전은 자동 설치 불가");
+      log.debug("포터블 버전은 자동 설치 불가");
       return;
     }
 
-    console.log("업데이트 설치를 위해 앱 재시작...");
+    log.info("업데이트 설치를 위해 앱 재시작...");
     autoUpdater.quitAndInstall();
   }
 

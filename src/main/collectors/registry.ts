@@ -1,5 +1,6 @@
 import { Page } from "puppeteer-core";
 import { db } from "../db/db-manager.js";
+import { createLogger } from "../utils/logger.js";
 import { getEnableGoogleCollector } from "../store.js";
 import { updateUserGameDataExternalKey } from "../services/user-game-data.js";
 import { deleteImage, downloadImage } from "../utils/downloader.js";
@@ -9,6 +10,8 @@ import { DLSiteCollector } from "./dlsite-collector.js";
 import { GetchuCollector } from "./getchu-collector.js";
 import { GoogleCollector } from "./google-collector.js";
 import { SteamCollector } from "./steam-collector.js";
+
+const log = createLogger("Registry");
 
 /**
  * 컬렉터가 수집한 정보의 결과 타입
@@ -123,7 +126,7 @@ export async function saveInfo(path: string, info: CollectorResult) {
     try {
       await deleteImage(toAbsolutePath(image.path) ?? image.path);
     } catch (error) {
-      console.error("[saveInfo] 기존 이미지 파일 삭제 실패:", error);
+      log.error("기존 이미지 파일 삭제 실패:", error);
     }
   }
 
@@ -137,7 +140,7 @@ export async function saveInfo(path: string, info: CollectorResult) {
       thumbnailPath = await downloadImage(thumbnailUrl, path, 0);
       downloadedPaths.push(thumbnailPath);
     } catch (error) {
-      console.error(`[saveInfo] 썸네일 다운로드 실패: ${thumbnailUrl}`, error);
+      log.error(`썸네일 다운로드 실패: ${thumbnailUrl}`, error);
     }
   }
 
@@ -152,7 +155,7 @@ export async function saveInfo(path: string, info: CollectorResult) {
       const filePath = await downloadImage(image, path, downloadedPaths.length);
       downloadedPaths.push(filePath);
     } catch (error) {
-      console.error(`[saveInfo] 이미지 다운로드 실패, 스킵: ${image}`, error);
+      log.error(`이미지 다운로드 실패, 스킵: ${image}`, error);
     }
   }
 
@@ -247,7 +250,7 @@ export async function saveInfo(path: string, info: CollectorResult) {
       await updateUserGameDataExternalKey(path, provider, externalId);
     }
   } catch (error) {
-    console.error("saveInfo error:", error);
+    log.error("saveInfo error:", error);
     await tx.rollback();
     throw error;
   }

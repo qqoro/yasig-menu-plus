@@ -1,6 +1,9 @@
 import { basename } from "path";
 import type { Page } from "puppeteer-core";
+import { createLogger } from "../utils/logger.js";
 import { Collector, type CollectorResult } from "./registry.js";
+
+const log = createLogger("GoogleCollector");
 
 // 봇 차단 감지 결과 타입
 export interface BotBlockResult {
@@ -22,7 +25,7 @@ export async function detectBotBlock(page: Page): Promise<BotBlockResult> {
     const blockedUrls = ["/sorry/", "/recaptcha/"];
     const matchedUrl = blockedUrls.find((blocked) => url.includes(blocked));
     if (matchedUrl) {
-      console.log(`[BotBlock] URL 매칭: pattern="${matchedUrl}", url="${url}"`);
+      log.debug(`BotBlock URL 매칭: pattern="${matchedUrl}", url="${url}"`);
       return { blocked: true, reason: "차단 페이지로 리다이렉트됨" };
     }
 
@@ -40,8 +43,8 @@ export async function detectBotBlock(page: Page): Promise<BotBlockResult> {
         const outerHtml = await page
           .evaluate((el) => el.outerHTML.slice(0, 300), element)
           .catch(() => "(outerHTML 추출 실패)");
-        console.log(
-          `[BotBlock] DOM 셀렉터 매칭: selector="${selector}", url="${url}", outerHTML(앞 300자)="${outerHtml}"`,
+        log.debug(
+          `BotBlock DOM 셀렉터 매칭: selector="${selector}", url="${url}", outerHTML(앞 300자)="${outerHtml}"`,
         );
         return { blocked: true, reason: "CAPTCHA 요소 감지됨" };
       }
@@ -49,7 +52,7 @@ export async function detectBotBlock(page: Page): Promise<BotBlockResult> {
 
     return { blocked: false };
   } catch (error) {
-    console.error("[GoogleCollector] 봇 차단 감지 중 오류:", error);
+    log.error("봇 차단 감지 중 오류:", error);
     return { blocked: false };
   }
 }
