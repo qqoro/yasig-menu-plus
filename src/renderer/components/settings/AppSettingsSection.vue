@@ -55,7 +55,8 @@ watch(
 );
 
 function handleScanDepthChange() {
-  const depth = Math.max(0, Math.min(10, Number(scanDepthInput.value) || 5));
+  const numVal = Number(scanDepthInput.value);
+  const depth = Math.max(0, Math.min(10, Number.isNaN(numVal) ? 5 : numVal));
   scanDepthInput.value = depth;
   updateSettingsMutation.mutate({ scanDepth: depth });
 }
