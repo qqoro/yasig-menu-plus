@@ -9,6 +9,7 @@ import {
   Info,
   Loader2,
   RefreshCw,
+  Scale,
   Star,
 } from "lucide-vue-next";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "vue-sonner";
 import ChangelogDialog from "@/components/ChangelogDialog.vue";
+import OpenSourceLicensesDialog from "@/components/OpenSourceLicensesDialog.vue";
 import {
   useAllSettings,
   useUpdateSettings,
@@ -77,6 +79,9 @@ const isDownloading = computed(() => updateStatus.value === "downloading");
 
 // 체인지로그 다이얼로그 상태
 const changelogOpen = ref(false);
+
+// 오픈소스 라이선스 다이얼로그 상태
+const licensesOpen = ref(false);
 
 // 디버그 데이터 내보내기
 const showExportDialog = ref(false);
@@ -314,6 +319,22 @@ async function handleOpenGitHubIssue() {
           </Button>
         </CardContent>
       </Card>
+
+      <!-- 오픈소스 라이선스 -->
+      <Card>
+        <CardHeader class="pb-4">
+          <CardTitle class="text-lg">오픈소스 라이선스</CardTitle>
+          <CardDescription class="text-sm">
+            이 앱에 사용된 오픈소스 소프트웨어와 라이선스 정보를 확인합니다.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button @click="licensesOpen = true" variant="outline" class="w-full">
+            <Scale :size="16" />
+            라이선스 정보 보기
+          </Button>
+        </CardContent>
+      </Card>
     </div>
 
     <!-- 내보내기 확인 다이얼로그 -->
@@ -351,5 +372,8 @@ async function handleOpenGitHubIssue() {
       v-model:open="changelogOpen"
       :current-version="APP_VERSION"
     />
+
+    <!-- 오픈소스 라이선스 다이얼로그 -->
+    <OpenSourceLicensesDialog v-model:open="licensesOpen" />
   </div>
 </template>

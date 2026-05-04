@@ -20,7 +20,7 @@
     "build:win": "tsc --noEmit && node scripts/build.js && electron-builder --win --publish=never",
     "build:port:win": "tsc --noEmit && node scripts/build.js && electron-builder --win portable --publish=never",
     "prepare": "husky",
-    "postinstall": "node scripts/rebuild-native.js",
+    "postinstall": "node scripts/rebuild-native.js && node scripts/license.js",
     "lint": "oxlint",
     "format": "prettier src/ --write",
     "type-check": "tsc --noEmit -p src/main/tsconfig.json && tsc --noEmit -p src/main/tsconfig.test.json && vue-tsc -p src/renderer/tsconfig.json --noEmit",
@@ -91,7 +91,7 @@
     "fast-glob": "^3.3.3",
     "iconv-lite": "^0.7.1",
     "knex": "^3.1.0",
-    "license-checker-rseidelsohn": "^4.4.2",
+
     "lucide-vue-next": "^0.563.0",
     "marked": "^17.0.4",
     "node-html-parser": "^7.0.2",
