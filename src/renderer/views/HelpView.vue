@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import HelpSidebar, {
   type HelpSection,
 } from "@/components/help/HelpSidebar.vue";
+import HelpSearch from "@/components/help/HelpSearch.vue";
 import HelpGettingStarted from "@/components/help/sections/HelpGettingStarted.vue";
 import HelpGameManagement from "@/components/help/sections/HelpGameManagement.vue";
 import HelpCollectorSection from "@/components/help/sections/HelpCollectorSection.vue";
@@ -149,11 +150,14 @@ function scrollToSection(id: string) {
   <div class="flex h-full flex-col overflow-hidden">
     <div class="flex items-center justify-between border-b px-4 py-2">
       <h1 class="text-base font-semibold">도움말</h1>
-      <RouterLink to="/">
-        <Button variant="ghost" size="icon" class="shrink-0" title="홈">
-          <Home :size="18" />
-        </Button>
-      </RouterLink>
+      <div class="flex items-center gap-2">
+        <HelpSearch />
+        <RouterLink to="/">
+          <Button variant="ghost" size="icon" class="shrink-0" title="홈">
+            <Home :size="18" />
+          </Button>
+        </RouterLink>
+      </div>
     </div>
 
     <div class="flex min-h-0 flex-1">
