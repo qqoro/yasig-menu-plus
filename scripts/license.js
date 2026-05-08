@@ -1,7 +1,7 @@
 import chalk from "chalk";
-import { createHash } from "crypto";
 import { exec } from "child_process";
-import { mkdir, readFile, readdir, writeFile } from "fs/promises";
+import { createHash } from "crypto";
+import { mkdir, readFile, writeFile } from "fs/promises";
 import { join } from "path";
 import { promisify } from "util";
 const { blueBright, greenBright, yellowBright, redBright } = chalk;
@@ -82,7 +82,7 @@ export async function buildLicenseInfo() {
         if (text) licenseTexts[type] = text;
       }
       // paths는 번들에 불필요하므로 제거
-      licensesByType[type] = packages.map(({ paths, ...rest }) => rest);
+      licensesByType[type] = packages.map(({ paths: _, ...rest }) => rest);
     }
 
     const data = {

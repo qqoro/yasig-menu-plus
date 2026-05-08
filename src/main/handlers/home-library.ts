@@ -8,16 +8,10 @@
  */
 
 import type { IpcMainInvokeEvent } from "electron";
-import { access, readdir, stat } from "fs/promises";
-import { join } from "path";
-import { COMPRESS_FILE_TYPE } from "../constants.js";
+import { access, stat } from "fs/promises";
 import { db } from "../db/db-manager.js";
 import type { IpcMainEventMap, IpcRendererEventMap } from "../events.js";
-import {
-  EXCLUDED_FOLDER_NAMES,
-  EXECUTABLE_EXTENSIONS,
-  hasExecutableFile,
-} from "../lib/scan-logic.js";
+import { normalizePath } from "../lib/normalize-path.js";
 import {
   addLibraryPath as addLibraryPathToStore,
   getAllLibraryScanHistory,
@@ -25,7 +19,6 @@ import {
   getLibraryPaths,
   getLibraryScanHistory,
   getOfflineLibraryPaths,
-  getScanDepth,
   removeLibraryPath as removeLibraryPathFromStore,
   removeLibraryScanHistory,
   setLastRefreshedAt,
@@ -33,9 +26,8 @@ import {
 import { deleteImage } from "../utils/downloader.js";
 import { toAbsolutePath } from "../utils/image-path.js";
 import { wrapIpcHandler } from "../utils/ipc-wrapper.js";
-import { normalizePath } from "../lib/normalize-path.js";
-import { scanFolder } from "./home-scan.js";
 import { createLogger } from "../utils/logger.js";
+import { scanFolder } from "./home-scan.js";
 
 const log = createLogger("Library");
 

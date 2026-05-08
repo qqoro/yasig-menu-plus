@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { copyFileSync, cpSync, existsSync, mkdirSync, rmSync } from "fs";
+import { cpSync, existsSync, rmSync } from "fs";
 import { join } from "path";
 import { build } from "vite";
 import { buildLicenseInfo } from "./license.js";
