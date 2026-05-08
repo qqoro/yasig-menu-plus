@@ -1,2 +1,2 @@
-# 마이그레이션 파일은 해시값 검사 때문에 수정할 수 없으므로 린트 대상에서 제외
-src/main/db/migrations/20260309000100_migrate_thumbnail_to_relative.ts
+# 서드파티 치트 플러그인 (RPG Maker MV/MZ)
+src/main/cheat/
