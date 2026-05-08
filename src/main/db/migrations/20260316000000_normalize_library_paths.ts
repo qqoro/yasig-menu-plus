@@ -1,7 +1,6 @@
-import type { Knex } from "knex";
 import fs from "fs";
+import type { Knex } from "knex";
 import path from "path";
-import { logger } from "../../utils/logger.js";
 
 /**
  * 경로 정규화 (인라인 — 프로덕션 마이그레이션에서 상대 import 불가)
@@ -38,12 +37,12 @@ export async function up(knex: Knex): Promise<void> {
     }
   }
 
-  logger.info(
+  console.log(
     `games.source 경로 정규화 완료: ${dbUpdatedCount}/${games.length}개 업데이트`,
   );
 }
 
 export async function down(_knex: Knex): Promise<void> {
   // 비가역적 — 원래 대소문자를 복원할 수 없음
-  logger.info("down: 경로 정규화는 롤백 불가능");
+  console.log("down: 경로 정규화는 롤백 불가능");
 }
