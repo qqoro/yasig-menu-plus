@@ -8,6 +8,22 @@ import { computed, ref } from "vue";
 
 // ========== 모킹 ==========
 
+// electron-log/renderer 모킹 (Node.js 환경에서 로딩 불가)
+vi.mock("electron-log/renderer", () => ({
+  default: {
+    scope: () => ({
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
+    }),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
+
 // toast 모킹
 vi.mock("vue-sonner", () => ({
   toast: {
