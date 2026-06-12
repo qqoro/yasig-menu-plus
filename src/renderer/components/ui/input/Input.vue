@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from "vue"
+import { ref } from "vue"
 import { useVModel } from "@vueuse/core"
 import { cn } from "@/lib/utils"
 
@@ -17,10 +18,19 @@ const modelValue = useVModel(props, "modelValue", emits, {
   passive: true,
   defaultValue: props.defaultValue,
 })
+
+// 네이티브 input 엘리먼트와 focus 메서드 노출 (부모에서 ref.focus()로 사용)
+const inputEl = ref<HTMLInputElement | null>(null)
+
+defineExpose({
+  inputEl,
+  focus: () => inputEl.value?.focus(),
+})
 </script>
 
 <template>
   <input
+    ref="inputEl"
     v-model="modelValue"
     data-slot="input"
     :class="cn(

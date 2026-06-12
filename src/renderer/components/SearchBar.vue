@@ -2,6 +2,7 @@
 import { Search, X } from "lucide-vue-next";
 import { nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useAutocomplete } from "../composables/useAutocomplete";
+import { Input } from "./ui/input";
 
 interface Props {
   modelValue: string;
@@ -35,7 +36,7 @@ const {
   showAutocompleteAtCursor,
 } = useAutocomplete();
 
-const inputRef = ref<HTMLInputElement | null>(null);
+const inputRef = ref<InstanceType<typeof Input> | null>(null);
 const autocompleteRef = ref<HTMLDivElement | null>(null);
 
 // modelValue 변경 시 자동완성 상태 업데이트
@@ -54,9 +55,8 @@ function updateInput(value: string): void {
 }
 
 // 입력 처리
-function handleInputChange(event: Event): void {
-  const value = (event.target as HTMLInputElement).value;
-  updateInput(value);
+function handleInputChange(value: string | number): void {
+  updateInput(String(value));
 }
 
 // 지우기 버튼
@@ -156,7 +156,7 @@ function handleKeydown(event: KeyboardEvent): void {
 // 외부 클릭 시 자동완성 닫기
 function handleClickOutside(event: MouseEvent): void {
   const autocompleteEl = autocompleteRef.value;
-  const inputEl = inputRef.value;
+  const inputEl = inputRef.value?.inputEl;
 
   if (autocompleteEl && inputEl) {
     const target = event.target as HTMLElement;
@@ -203,13 +203,13 @@ defineExpose({
         :size="18"
         class="text-muted-foreground pointer-events-none absolute left-3"
       />
-      <input
+      <Input
         ref="inputRef"
         type="text"
-        :value="modelValue"
+        :model-value="modelValue"
         :placeholder="placeholder"
-        class="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-10 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-        @input="handleInputChange"
+        class="h-10 px-10"
+        @update:model-value="handleInputChange"
         @keydown="handleKeydown"
         @focusout="handleFocusOut"
         @focus="handleFocus"
