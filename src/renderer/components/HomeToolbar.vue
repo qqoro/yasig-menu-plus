@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import {
   BarChart3,
+  Image,
+  LayoutGrid,
   Minus,
   Plus,
   RefreshCw,
   Settings,
   Shuffle,
 } from "lucide-vue-next";
+import type { ViewMode } from "../stores/uiStore";
 import { Button } from "./ui/button";
 
 interface Props {
   zoomLevel: number;
+  viewMode: ViewMode;
   isSyncing: boolean;
   isSearching: boolean;
   specialOnlyTotalCount: number;
@@ -19,6 +23,7 @@ interface Props {
 interface Emits {
   (e: "zoomIn"): void;
   (e: "zoomOut"): void;
+  (e: "toggleViewMode"): void;
   (e: "sync"): void;
   (e: "randomSelect"): void;
 }
@@ -55,6 +60,22 @@ defineEmits<Emits>();
           title="확대"
         >
           <Plus :size="14" />
+        </Button>
+      </div>
+
+      <!-- 보기 모드 토글 -->
+      <div class="mr-2 flex items-center border-r pr-2">
+        <Button
+          @click="$emit('toggleViewMode')"
+          variant="ghost"
+          size="icon"
+          class="h-7 w-7"
+          :title="
+            viewMode === 'card' ? '이미지 모드로 전환' : '카드 모드로 전환'
+          "
+        >
+          <Image v-if="viewMode === 'card'" :size="14" />
+          <LayoutGrid v-else :size="14" />
         </Button>
       </div>
 

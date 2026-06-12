@@ -2,6 +2,7 @@
 import { useIntersectionObserver } from "@vueuse/core";
 import { Loader2 } from "lucide-vue-next";
 import { onUnmounted, ref } from "vue";
+import type { ViewMode } from "../stores/uiStore";
 import type { GameItem } from "../types";
 import GameCard from "./GameCard.vue";
 import GameContextMenu from "./GameContextMenu.vue";
@@ -12,6 +13,7 @@ interface Props {
   isSearching: boolean;
   searchError: Error | null;
   gridColsClass: string;
+  viewMode: ViewMode;
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   isSelectionMode: boolean;
@@ -141,6 +143,7 @@ onUnmounted(() => {
         >
           <GameCard
             :game="game"
+            :view-mode="viewMode"
             :is-playing="playingGamePath === game.path"
             :is-playing-cheat="isPlayingCheat"
             :is-selected="isSelected(game.path)"

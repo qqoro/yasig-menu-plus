@@ -3,12 +3,16 @@ import { defineStore } from "pinia";
 const THEME_STORAGE_KEY = "theme-preference";
 const SIDEBAR_STORAGE_KEY = "sidebar-collapsed";
 const ZOOM_LEVEL_STORAGE_KEY = "zoom-level";
+const VIEW_MODE_STORAGE_KEY = "view-mode";
+
+export type ViewMode = "card" | "image";
 
 interface UIState {
   gameCount: number;
   isDark: boolean;
   sidebarCollapsed: boolean;
   zoomLevel: number;
+  viewMode: ViewMode;
 }
 
 function getInitialTheme(): boolean {
@@ -37,12 +41,21 @@ function getInitialZoomLevel(): number {
   return 3;
 }
 
+function getInitialViewMode(): ViewMode {
+  const stored = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+  if (stored === "card" || stored === "image") {
+    return stored;
+  }
+  return "card";
+}
+
 export const useUIStore = defineStore("ui", {
   state: (): UIState => ({
     gameCount: 0,
     isDark: getInitialTheme(),
     sidebarCollapsed: getInitialSidebarCollapsed(),
     zoomLevel: getInitialZoomLevel(),
+    viewMode: getInitialViewMode(),
   }),
   actions: {
     setGameCount(count: number) {
@@ -84,6 +97,10 @@ export const useUIStore = defineStore("ui", {
         this.zoomLevel--;
         localStorage.setItem(ZOOM_LEVEL_STORAGE_KEY, this.zoomLevel.toString());
       }
+    },
+    toggleViewMode() {
+      this.viewMode = this.viewMode === "card" ? "image" : "card";
+      localStorage.setItem(VIEW_MODE_STORAGE_KEY, this.viewMode);
     },
   },
 });

@@ -20,6 +20,7 @@ import { useAllSettings } from "../composables/useAllSettings";
 import { useDetectRpgMaker } from "../composables/useCheat";
 import { formatPlayTime } from "../composables/usePlayTime";
 import { useTranslationSettings } from "../composables/useTranslationSettings";
+import type { ViewMode } from "../stores/uiStore";
 import type { GameItem } from "../types";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
@@ -44,6 +45,7 @@ interface Props {
   isToggling?: boolean;
   isSelected?: boolean;
   isSelectionMode?: boolean;
+  viewMode?: ViewMode;
 }
 
 interface Emits {
@@ -70,6 +72,7 @@ const props = withDefaults(defineProps<Props>(), {
   isToggling: false,
   isSelected: false,
   isSelectionMode: false,
+  viewMode: "card",
 });
 
 const emit = defineEmits<Emits>();
@@ -172,8 +175,17 @@ const pathMatchRelativePath = computed(() => {
     .replaceAll("\\", "/");
 });
 
+// 이미지 전용 모드 여부
+const isImageMode = computed(() => props.viewMode === "image");
+
 // 플레이 핸들러
 function handlePlay(): void {
+  emit("play", props.game);
+}
+
+// 오버레이 실행 버튼 핸들러 (이미지 모드 전용)
+function handleOverlayPlay(event: MouseEvent): void {
+  event.stopPropagation();
   emit("play", props.game);
 }
 
@@ -413,6 +425,19 @@ function handleMouseDown(event: MouseEvent): void {
         v-if="!isSelectionMode"
         class="bg-popover/60 absolute inset-0 flex flex-wrap content-center justify-center gap-1.5 p-2 opacity-0 transition-opacity group-hover/thumb:opacity-100"
       >
+        <!-- 실행 버튼 (이미지 모드에서만 표시 — 하단 실행 버튼이 숨겨지므로) -->
+        <Button
+          v-if="isImageMode"
+          size="icon"
+          variant="default"
+          :disabled="isPlaying || isPlayingCheat || game.isOffline"
+          class="shrink-0"
+          @click="handleOverlayPlay"
+          :title="game.hasExecutable === false ? '미디어 재생' : '게임 실행'"
+        >
+          <Loader2 v-if="isPlaying" :size="14" class="animate-spin" />
+          <Play v-else :size="14" />
+        </Button>
         <Button
           size="icon"
           variant="secondary"
@@ -465,11 +490,23 @@ function handleMouseDown(event: MouseEvent): void {
         >
           <Info :size="14" />
         </Button>
+        <!-- 제목 오버레이 (이미지 모드에서만 표시) -->
+        <div v-if="isImageMode" class="absolute inset-x-0 bottom-0 px-2 py-1.5">
+          <p
+            class="text-popover-foreground truncate text-center text-xs font-medium"
+            :title="titleTooltip"
+          >
+            {{ displayTitle }}
+          </p>
+        </div>
       </div>
     </div>
 
     <!-- 정보 영역 -->
-    <CardContent class="flex flex-1 flex-col gap-2 p-3 pt-0">
+    <CardContent
+      v-if="!isImageMode"
+      class="flex flex-1 flex-col gap-2 p-3 pt-0"
+    >
       <!-- 게임 제목 (경로 매칭 시 폴더 아이콘 표시) -->
       <h3 class="flex items-center gap-1 text-sm font-medium">
         <TooltipProvider v-if="game.pathMatched" :delay-duration="200">

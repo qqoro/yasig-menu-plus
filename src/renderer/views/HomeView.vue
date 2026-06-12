@@ -351,11 +351,13 @@ onMounted(() => {
       <!-- 상단 도구 모음 -->
       <HomeToolbar
         :zoom-level="uiStore.zoomLevel"
+        :view-mode="uiStore.viewMode"
         :is-syncing="allInOneRefreshMutation.isPending.value"
         :is-searching="isSearching"
         :special-only-total-count="specialOnlyTotalCount"
         @zoom-in="handleIncreaseZoom"
         @zoom-out="handleDecreaseZoom"
+        @toggle-view-mode="uiStore.toggleViewMode"
         @sync="handleAllInOneRefresh"
         @random-select="handleRandomSelect"
       />
@@ -463,6 +465,7 @@ onMounted(() => {
             :is-searching="isSearching"
             :search-error="searchError"
             :grid-cols-class="gridColsClass"
+            :view-mode="uiStore.viewMode"
             :has-next-page="searchState.hasNextPage.value"
             :is-fetching-next-page="searchState.isFetchingNextPage.value"
             :is-selection-mode="multiSelect.isSelectionMode.value"
