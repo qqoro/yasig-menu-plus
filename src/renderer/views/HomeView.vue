@@ -13,8 +13,8 @@ import FilterPanelComponent from "../components/FilterPanel.vue";
 import HelpDialog from "../components/HelpDialog.vue";
 import GameDetailDialog from "../components/GameDetailDialog.vue";
 import GameGridSection from "../components/GameGridSection.vue";
+import GameOverviewDialog from "../components/GameOverviewDialog.vue";
 import HomeToolbar from "../components/HomeToolbar.vue";
-import ImageCarouselDialog from "../components/ImageCarouselDialog.vue";
 import SearchBar from "../components/SearchBar.vue";
 import {
   AlertDialog,
@@ -146,9 +146,8 @@ const activeFilterCount = computed(() => searchState.activeFilterCount.value);
 const {
   showGameDetail,
   selectedGamePath,
-  carouselOpen,
-  carouselGamePath,
-  gameImages,
+  overviewOpen,
+  overviewGamePath,
   deleteTargetGame,
   showDeleteConfirm,
   isPlayingCheat,
@@ -525,11 +524,14 @@ onMounted(() => {
       :game-path="selectedGamePath"
     />
 
-    <!-- 이미지 캐러셀 다이얼로그 -->
-    <ImageCarouselDialog
-      :open="carouselOpen"
-      :images="(gameImages ?? []).map((i) => i.path)"
-      @update:open="carouselOpen = $event"
+    <!-- 게임 오버뷰 다이얼로그 -->
+    <GameOverviewDialog
+      :open="overviewOpen"
+      :game-path="overviewGamePath"
+      @update:open="overviewOpen = $event"
+      @play="handlePlayGame"
+      @play-cheat="handlePlayGameWithCheat"
+      @open-folder="handleOpenFolder"
     />
 
     <!-- 게임 삭제 확인 다이얼로그 -->

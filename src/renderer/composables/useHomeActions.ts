@@ -3,7 +3,6 @@ import { toast } from "vue-sonner";
 import { createLogger } from "../lib/logger";
 import { useAddExcludedExecutable } from "./useExcludedExecutables";
 import { useOpenOriginalSite } from "./useGameDetail";
-import { useGameImages } from "./useGameImages";
 import { useOpenFolder, usePlayGame } from "./useGames";
 import { useDeleteGames } from "./useDuplicates";
 import { usePlayGameWithCheat } from "./useCheat";
@@ -31,10 +30,9 @@ export function useHomeActions({ searchState }: UseHomeActionsOptions) {
   const showGameDetail = ref(false);
   const selectedGamePath = ref<string | null>(null);
 
-  // 이미지 캐러셀 상태
-  const carouselOpen = ref(false);
-  const carouselGamePath = ref<string>("");
-  const { data: gameImages } = useGameImages(carouselGamePath);
+  // 게임 오버뷰 다이얼로그 상태
+  const overviewOpen = ref(false);
+  const overviewGamePath = ref<string>("");
 
   // 게임 삭제 상태
   const deleteTargetGame = ref<GameItem | null>(null);
@@ -215,20 +213,19 @@ export function useHomeActions({ searchState }: UseHomeActionsOptions) {
   }
 
   /**
-   * 게임 더블클릭 핸들러 (이미지 캐러셀)
+   * 게임 더블클릭 핸들러 (게임 오버뷰 다이얼로그)
    */
   function handleGameDoubleClick(game: GameItem): void {
-    carouselGamePath.value = game.path;
-    carouselOpen.value = true;
+    overviewGamePath.value = game.path;
+    overviewOpen.value = true;
   }
 
   return {
     // 상태
     showGameDetail,
     selectedGamePath,
-    carouselOpen,
-    carouselGamePath,
-    gameImages,
+    overviewOpen,
+    overviewGamePath,
     deleteTargetGame,
     showDeleteConfirm,
     isPlayingCheat,

@@ -22,7 +22,7 @@ const keyboardShortcuts = [
 const mouseInteractions = [
   {
     action: "게임 카드 더블클릭",
-    description: "이미지 캐러셀 다이얼로그 열기",
+    description: "게임 오버뷰 다이얼로그 열기",
   },
   { action: "게임 카드 휠 클릭", description: "게임 상세 정보 모달 열기" },
   { action: "Ctrl+클릭", description: "다중 선택 모드 진입 / 개별 선택·해제" },

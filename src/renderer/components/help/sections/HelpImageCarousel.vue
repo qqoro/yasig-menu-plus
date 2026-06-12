@@ -30,8 +30,8 @@ const isNewCard = useIsNewCard();
       <CardContent>
         <p class="text-muted-foreground text-sm">
           게임 카드를 <strong class="text-foreground">더블클릭</strong>하면
-          이미지 캐러셀 다이얼로그가 열립니다. 썸네일과 추가 이미지를 크게 볼 수
-          있습니다.
+          이미지 캐러셀과 게임 정보를 함께 보여주는 오버뷰 다이얼로그가
+          열립니다. 이미지를 클릭하면 전체화면으로 크게 볼 수 있습니다.
         </p>
       </CardContent>
     </Card>

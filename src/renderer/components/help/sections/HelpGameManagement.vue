@@ -38,7 +38,7 @@ const isNewCard = useIsNewCard();
         <ul class="text-muted-foreground flex flex-col gap-1.5 text-sm">
           <li>
             <strong class="text-foreground">더블클릭</strong>: 게임 카드를
-            더블클릭하면 이미지 캐러셀이 열립니다.
+            더블클릭하면 이미지와 게임 정보를 한눈에 보는 오버뷰가 열립니다.
           </li>
           <li>
             <strong class="text-foreground">우클릭 → 실행</strong>: 컨텍스트
