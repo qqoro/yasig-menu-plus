@@ -56,6 +56,7 @@ import {
 import * as ThumbnailHandlers from "./handlers/thumbnail.js";
 import * as TranslationHandlers from "./handlers/translation.js";
 import * as DuplicatesHandlers from "./handlers/duplicates.js";
+import * as RenameHandlers from "./handlers/rename.js";
 import {
   getDashboardStatsHandler,
   getLibraryStorageSizeHandler,
@@ -441,6 +442,16 @@ function registerIpcHandlers() {
   ipcMain.handle(
     IpcRendererSend.DeleteGames,
     DuplicatesHandlers.deleteGamesHandler,
+  );
+
+  // ========== 파일명 관리 ==========
+  ipcMain.handle(
+    IpcRendererSend.PreviewRename,
+    RenameHandlers.previewRenameHandler,
+  );
+  ipcMain.handle(
+    IpcRendererSend.ExecuteRename,
+    RenameHandlers.executeRenameHandler,
   );
 
   // ========== 대시보드 통계 ==========

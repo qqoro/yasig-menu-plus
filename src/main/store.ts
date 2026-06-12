@@ -78,6 +78,7 @@ export interface StoreSchema {
     videoPlayerPath: string | null; // 비디오 플레이어 경로
   };
   viewedHelpCards?: string[]; // 사용자가 본 도움말 카드 ID 목록
+  lastRenameTemplate?: string;
 }
 
 /**
@@ -124,6 +125,7 @@ const DEFAULTS: StoreSchema = {
     videoPlayerPath: null,
   },
   viewedHelpCards: [],
+  lastRenameTemplate: "[{externalId}] {title}",
 };
 
 /**
@@ -448,6 +450,7 @@ export function getAllSettings(): StoreSchema {
     enableGoogleCollector: store.get("enableGoogleCollector"),
     mediaPlayerSettings: store.get("mediaPlayerSettings"),
     viewedHelpCards: store.get("viewedHelpCards"),
+    lastRenameTemplate: store.get("lastRenameTemplate"),
   };
 }
 

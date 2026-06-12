@@ -537,6 +537,28 @@ async function handleRemoveExcludedExecutable(
           </Button>
         </CardContent>
       </Card>
+
+      <!-- 파일명 관리 -->
+      <Card>
+        <CardHeader class="pb-4">
+          <CardTitle class="flex items-center gap-2 text-lg">
+            파일명 관리
+            <span
+              class="rounded bg-blue-500/15 px-1.5 py-0.5 text-xs font-medium text-blue-500"
+            >
+              Beta
+            </span>
+          </CardTitle>
+          <CardDescription class="text-sm">
+            메타데이터 기반으로 게임 파일명을 일괄 변경합니다
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" @click="router.push('/rename')">
+            파일명 변경
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   </div>
 </template>

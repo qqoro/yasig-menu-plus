@@ -238,15 +238,13 @@ async function persistGoogleCookiesFromPage(page: Page): Promise<void> {
 }
 
 /**
- * 요소가 나타날 때까지 대기 후 클릭
- */
-async function waitAndClick(page: Page, selector: string, timeout = 5000) {
-  await page.waitForSelector(selector, { timeout });
-  await page.click(selector);
-}
-
-/**
  * Google 세이프서치 해제를 위한 새 쿠키 획득
+ *
+ * Google 페이지는 표준 HTML이 아닌 커스텀 엘리먼트 사용:
+ * - 트리거: div.lnnMGf (검색결과 지역 버튼)
+ * - 옵션: g-menu-item[role="option"]
+ * - 확인: span.GmiStb[role="button"]
+ * - 라디오: [role="radio"]
  */
 export async function getNewCookie() {
   const browser = await initBrowser();
@@ -254,47 +252,93 @@ export async function getNewCookie() {
 
   const page = await browser.newPage();
   try {
-    await page.goto("https://www.google.com/preferences?hl=ko&fg=1");
-
-    // 국가 설정 (한국)
-    await waitAndClick(
-      page,
-      "body > div:nth-child(2) > div.iORcjf > div.LFAdvb > g-menu > g-menu-item:nth-child(2)",
-    );
-    await waitAndClick(
-      page,
-      "body > div:nth-child(2) > div.iORcjf > div:nth-child(2) > div:nth-child(2) > div.HrFxGf > div > div > div",
-    );
-    await waitAndClick(
-      page,
-      "body > div.iORcjf > div:nth-child(2) > div > div:nth-child(2) > div > div:nth-child(2) > div > div:nth-child(2) > div.HrqWPb",
-    );
-    await waitAndClick(
-      page,
-      "#lb > div > div.mcPPZ.nP0TDe.xg7rAe.ivkdbf > span > div > g-menu > g-menu-item:nth-child(2)",
-    );
-    await waitAndClick(
-      page,
-      "#lb > div > div.mcPPZ.nP0TDe.xg7rAe.ivkdbf > span > div > div.JhVSze > span:nth-child(2)",
+    // ── 1단계: 검색결과 지역을 가나로 설정 (연령 인증 우회) ──
+    await page.goto(
+      "https://www.google.com/preferences?hl=ko&lang=1&prev=https://www.google.com/preferences?hl%3Dko",
+      { waitUntil: "networkidle2" },
     );
 
-    // 세이프서치 설정 (해제)
-    await page.goto("https://www.google.com/preferences?hl=ko&fg=1");
-    await waitAndClick(
-      page,
-      "body > div:nth-child(2) > div.iORcjf > div:nth-child(2) > div:nth-child(1) > div:nth-child(2) > div > div > div",
-    );
-    await waitAndClick(
-      page,
-      "body > div.GSpaEb > div:nth-child(2) > g-radio-button-group > div:nth-child(6)",
-    );
-    // 새로운 쿠키가 적용될 때까지 대기
+    // 이미 가나로 설정되어 있는지 확인
+    const regionAlreadySet = await page.evaluate(() => {
+      // 지역 버튼의 현재 값이 "가나"인지 확인
+      const buttons = document.querySelectorAll('div[role="button"]');
+      for (const btn of buttons) {
+        if (!btn.textContent?.includes("검색결과 지역")) continue;
+        const divs = btn.querySelectorAll("div");
+        for (const div of divs) {
+          if (div.children.length === 0 && div.textContent?.trim() === "가나") {
+            return true;
+          }
+        }
+      }
+      return false;
+    });
+
+    if (regionAlreadySet) {
+      log.info("지역이 이미 가나로 설정됨 — 건너뜀");
+    } else {
+      // 다이얼로그 열기 → 가나 선택 → 확인
+      await page.evaluate(async () => {
+        const xPath = (xpath: string) =>
+          document.evaluate(
+            xpath,
+            document,
+            null,
+            XPathResult.FIRST_ORDERED_NODE_TYPE,
+            null,
+          ).singleNodeValue as HTMLElement | null;
+
+        // 검색결과 지역 버튼
+        const trigger = xPath(
+          "/html/body/div[2]/div[1]/div[2]/div/div[3]/div/div[2]/div[1]/div",
+        );
+        if (!trigger) throw new Error("지역 설정 버튼을 찾을 수 없음");
+        trigger.click();
+        await new Promise((r) => setTimeout(r, 1500));
+
+        // 가나
+        const ghana = xPath(
+          "/html/body/div[6]/div/div[2]/span/div/g-menu/g-menu-item[2]/div",
+        );
+        if (!ghana) throw new Error("가나 옵션을 찾을 수 없음");
+        ghana.click();
+        await new Promise((r) => setTimeout(r, 1000));
+
+        // 확인
+        const confirm = xPath(
+          "/html/body/div[6]/div/div[2]/span/div/div[2]/span[2]",
+        );
+        if (!confirm) throw new Error("확인 버튼을 찾을 수 없음");
+        confirm.click();
+      });
+      log.info("지역 가나로 설정 완료");
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+
+    // ── 2단계: 세이프서치 해제 ──
+    await page.goto("https://www.google.com/safesearch?hl=ko", {
+      waitUntil: "networkidle2",
+    });
+
+    await page.evaluate(() => {
+      const radios = document.querySelectorAll('[role="radio"]');
+      for (const radio of radios) {
+        if (radio.textContent?.includes("사용 안함")) {
+          (radio as HTMLElement).click();
+          return;
+        }
+      }
+      throw new Error("사용 안함 라디오를 찾을 수 없음");
+    });
+    log.info("세이프서치 해제 완료");
+
+    // 쿠키 적용 대기
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     const cookies = await page.cookies();
     const targetCookie = cookies.find((cookie) => cookie.name === "NID");
     if (!targetCookie) {
-      log.warn("targetCookie not found!", targetCookie);
+      log.warn("NID 쿠키를 찾을 수 없음");
       return;
     }
 

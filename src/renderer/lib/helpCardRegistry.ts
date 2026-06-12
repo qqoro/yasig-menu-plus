@@ -46,6 +46,7 @@ export const HELP_CARDS = {
     "special-features--random-select",
     "special-features--zoom-level",
     "special-features--play-time",
+    "special-features--batch-rename",
   ],
   dashboard: ["dashboard--overview", "dashboard--duplicates"],
   settings: [

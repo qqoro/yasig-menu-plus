@@ -124,6 +124,10 @@ type IpcInvokeReturn = {
   // 도움말 조회 이력 관련
   getViewedHelpCards: IpcMainEventMap["viewedHelpCards"];
   markHelpCardsViewed: IpcMainEventMap["helpCardsViewed"];
+
+  // 파일명 관리
+  previewRename: IpcMainEventMap["renamePreviewed"];
+  executeRename: IpcMainEventMap["renameExecuted"];
 };
 
 /**

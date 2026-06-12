@@ -6,11 +6,28 @@ import {
   Clock,
   HardDrive,
   Zap,
+  PenLine,
 } from "lucide-vue-next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useIsNewCard } from "@/composables/useHelpRedDot";
 
 const isNewCard = useIsNewCard();
+
+const renameVariables = [
+  "{externalId}",
+  "{title}",
+  "{originalTitle}",
+  "{translatedTitle}",
+  "{maker}",
+  "{makers}",
+  "{category}",
+  "{categories}",
+  "{publishDate}",
+  "{publishYear}",
+  "{tag}",
+  "{tags}",
+  "{provider}",
+];
 </script>
 
 <template>
@@ -243,6 +260,105 @@ const isNewCard = useIsNewCard();
               요일별 플레이 패턴을 분석할 수 있습니다.
             </li>
           </ul>
+        </div>
+      </CardContent>
+    </Card>
+
+    <!-- 파일명 일괄 변경 -->
+    <Card id="special-features--batch-rename" class="gap-2">
+      <CardHeader class="pb-2">
+        <CardTitle class="flex items-center gap-2 text-sm">
+          <PenLine :size="16" />
+          파일명 일괄 변경
+          <span
+            v-if="isNewCard('special-features--batch-rename')"
+            class="bg-destructive/15 text-destructive rounded px-1 text-[10px] font-semibold"
+          >
+            NEW
+          </span>
+          <span
+            class="bg-primary/15 text-primary rounded px-1 text-[10px] font-semibold"
+          >
+            Beta
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div class="text-muted-foreground flex flex-col gap-2 text-sm">
+          <p>
+            수집된 메타데이터를 활용해 게임 폴더명을 템플릿 기반으로 일괄 변경할
+            수 있습니다.
+          </p>
+          <div class="bg-muted/50 rounded-md p-3">
+            <p class="font-medium">진입 경로</p>
+            <p class="mt-1">
+              설정 → 라이브러리 →
+              <strong class="text-foreground">파일명 관리</strong>
+            </p>
+          </div>
+          <div class="bg-muted/50 rounded-md p-3">
+            <p class="font-medium">사용 방법</p>
+            <ul class="mt-1 flex flex-col gap-1">
+              <li>
+                템플릿 입력창에 원하는 형식을 입력합니다. (예:
+                <code
+                  class="bg-muted text-muted-foreground rounded px-1 text-xs"
+                  >[{externalId}] {title}</code
+                >)
+              </li>
+              <li>
+                <strong class="text-foreground">미리보기</strong> 버튼으로 변경
+                결과를 확인합니다.
+              </li>
+              <li>개별 항목의 새 파일명을 직접 수정할 수도 있습니다.</li>
+              <li>
+                원하는 항목만 선택 후
+                <strong class="text-foreground">리네임 실행</strong> 버튼으로
+                일괄 변경합니다.
+              </li>
+            </ul>
+          </div>
+          <div class="bg-muted/50 rounded-md p-3">
+            <p class="font-medium">사용 가능한 변수</p>
+            <div class="mt-1 flex flex-wrap gap-1.5">
+              <code
+                v-for="v in renameVariables"
+                :key="v"
+                class="bg-muted text-muted-foreground rounded px-1.5 text-xs"
+                >{{ v }}</code
+              >
+            </div>
+          </div>
+          <div class="bg-muted/50 rounded-md p-3">
+            <p class="font-medium">상태 표시</p>
+            <ul class="mt-1 flex flex-col gap-1">
+              <li>
+                <strong class="text-foreground"
+                  ><span class="text-green-500">●</span> 변경 가능</strong
+                >: 정상적으로 변경 가능한 항목
+              </li>
+              <li>
+                <strong class="text-foreground"
+                  ><span class="text-yellow-500">▲</span> 충돌</strong
+                >: 동일 경로에 이미 폴더가 존재함
+              </li>
+              <li>
+                <strong class="text-foreground"
+                  ><span class="text-red-500">●</span> 무효</strong
+                >: 변경 후 경로가 유효하지 않음
+              </li>
+              <li>
+                <strong class="text-foreground"
+                  ><span class="text-muted-foreground">●</span> 변경
+                  없음</strong
+                >: 현재와 동일한 파일명
+              </li>
+            </ul>
+          </div>
+          <p>
+            파일명 변경은 복구할 수 없습니다. 소수의 항목으로 먼저 테스트 후
+            전체 적용을 권장합니다.
+          </p>
         </div>
       </CardContent>
     </Card>

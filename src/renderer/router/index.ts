@@ -8,6 +8,7 @@ import SettingsView from "../views/SettingsView.vue";
 import DuplicatesView from "../views/DuplicatesView.vue";
 import DashboardView from "../views/DashboardView.vue";
 import HelpView from "../views/HelpView.vue";
+import RenameView from "../views/RenameView.vue";
 
 const routes: RouteRecordRaw[] = [
   {
@@ -34,6 +35,11 @@ const routes: RouteRecordRaw[] = [
     path: "/help",
     name: "help",
     component: HelpView,
+  },
+  {
+    path: "/rename",
+    name: "rename",
+    component: RenameView,
   },
 ];
 

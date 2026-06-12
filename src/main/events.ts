@@ -158,6 +158,10 @@ export const enum IpcRendererSend {
   // 도움말 조회 이력 관련
   GetViewedHelpCards = "getViewedHelpCards",
   MarkHelpCardsViewed = "markHelpCardsViewed",
+
+  // 파일명 관리
+  PreviewRename = "previewRename",
+  ExecuteRename = "executeRename",
 }
 
 // ========== Main → Renderer 이벤트 ==========
@@ -255,6 +259,10 @@ export const enum IpcMainSend {
 
   // 이미지 일괄 변환
   ImagesConvertedToWebp = "imagesConvertedToWebp", // 기존 이미지 WebP 변환 완료
+
+  // 파일명 관리
+  RenamePreviewed = "renamePreviewed",
+  RenameExecuted = "renameExecuted",
 }
 
 /**
@@ -322,7 +330,9 @@ export type IpcMainSendChannel =
   | "thumbnailsMigrated"
   | "imagesConvertedToWebp"
   | "viewedHelpCards"
-  | "helpCardsViewed";
+  | "helpCardsViewed"
+  | "renamePreviewed"
+  | "renameExecuted";
 
 // ========== 이벤트 페이로드 타입 ==========
 
@@ -375,6 +385,23 @@ export interface DuplicateGroup {
   type: "externalId" | "fingerprint" | "originalTitle"; // 중복 기준
   provider?: string | null; // externalId 타입인 경우 제공자
   games: GameItem[]; // 그룹 내 게임 목록
+}
+
+// 리네임 미리보기 아이템
+export interface RenamePreviewItem {
+  path: string;
+  currentName: string;
+  newName: string;
+  thumbnail: string | null;
+  source: string;
+  isCompressFile: boolean;
+  status: "ok" | "conflict" | "noChange" | "invalid";
+}
+
+// 리네임 실행 아이템
+export interface RenameExecuteItem {
+  path: string;
+  newName: string;
 }
 
 // 플레이 세션
@@ -587,6 +614,10 @@ export interface IpcRendererEventMap {
   // 도움말 조회 이력 관련
   getViewedHelpCards: undefined;
   markHelpCardsViewed: { cardIds: string[] };
+
+  // 파일명 관리
+  previewRename: { template: string };
+  executeRename: { items: RenameExecuteItem[] };
 }
 
 // Main → Renderer 페이로드
@@ -788,6 +819,15 @@ export interface IpcMainEventMap {
   // 도움말 조회 이력 관련
   viewedHelpCards: { cardIds: string[] };
   helpCardsViewed: { cardIds: string[] };
+
+  // 파일명 관리
+  renamePreviewed: { items: RenamePreviewItem[] };
+  renameExecuted: {
+    successCount: number;
+    failCount: number;
+    failedPaths: string[];
+    errors: string[];
+  };
 }
 
 // 대시보드 통계

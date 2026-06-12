@@ -176,4 +176,12 @@ export const queryKeys = {
     detection: (path: string | Ref<string>) =>
       ["cheat", "detection", path] as const,
   },
+
+  /**
+   * 파일명 관리 쿼리 키
+   */
+  rename: {
+    all: ["rename"] as const,
+    preview: ["rename", "preview"] as const,
+  },
 } as const;
