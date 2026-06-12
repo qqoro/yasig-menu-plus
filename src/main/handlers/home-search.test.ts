@@ -107,6 +107,7 @@ import {
   parseSearchQuery,
   getAutocompleteSuggestionsHandler,
   getRandomGameHandler,
+  searchGamesHandler,
 } from "./home-search.js";
 
 let db: Knex;
@@ -854,5 +855,165 @@ describe("getRandomGameHandler", () => {
     expect(result.game).not.toBeNull();
     expect(result.game!.title).toBe("Only Game");
     expect(result.game!.path).toBe("/games/only-game");
+  });
+});
+
+// ============================================
+// searchGamesHandler — 경로 기반 텍스트 검색
+// ============================================
+describe("searchGamesHandler — 경로 검색", () => {
+  it("중간 경로 폴더명으로 게임을 검색할 수 있어야 한다", async () => {
+    await seedGame(db, {
+      path: "/library/path/심야 서클 모음/착한 심붕이/RJ000001 良いシーズン",
+      title: "良いシーズン",
+      originalTitle: "RJ000001 良いシーズン",
+      source: "/library/path",
+    });
+    await seedGame(db, {
+      path: "/library/path/다른 폴더/RJ000002 別のゲーム",
+      title: "別のゲーム",
+      originalTitle: "RJ000002 別のゲーム",
+      source: "/library/path",
+    });
+
+    const result = await searchGamesHandler(
+      {} as any,
+      makeSearchPayload({ searchQuery: { query: "착한 심붕이" } }),
+    );
+
+    expect(result.totalCount).toBe(1);
+    expect(result.games[0].title).toBe("良いシーズン");
+  });
+
+  it("라이브러리 루트 폴더명으로는 매칭되지 않아야 한다", async () => {
+    await seedGame(db, {
+      path: "/library/방주/서브폴더/게임폴더",
+      title: "게임폴더",
+      originalTitle: "게임폴더",
+      source: "/library/방주",
+    });
+
+    const result = await searchGamesHandler(
+      {} as any,
+      makeSearchPayload({
+        sourcePaths: ["/library/방주"],
+        searchQuery: { query: "방주" },
+      }),
+    );
+
+    expect(result.totalCount).toBe(0);
+  });
+
+  it("제목 매칭 게임이 경로로만 매칭된 게임보다 앞에 정렬되어야 한다", async () => {
+    // 경로로만 매칭 (title asc 기준으로는 가장 앞이어야 할 이름)
+    await seedGame(db, {
+      path: "/library/path/bar/aaa game",
+      title: "aaa game",
+      originalTitle: "aaa game",
+      source: "/library/path",
+    });
+    // 제목 매칭 (title asc 기준으로는 뒤)
+    await seedGame(db, {
+      path: "/library/path/foo/zzz bar game",
+      title: "zzz bar game",
+      originalTitle: "zzz bar game",
+      source: "/library/path",
+    });
+    // 제목 매칭 (그룹 내 정렬 확인용)
+    await seedGame(db, {
+      path: "/library/path/foo/bar alpha",
+      title: "bar alpha",
+      originalTitle: "bar alpha",
+      source: "/library/path",
+    });
+
+    const result = await searchGamesHandler(
+      {} as any,
+      makeSearchPayload({ searchQuery: { query: "bar" } }),
+    );
+
+    expect(result.totalCount).toBe(3);
+    // 제목 매칭 그룹 먼저 (그룹 내에서는 title asc), 경로 매칭은 뒤로
+    expect(result.games.map((g) => g.title)).toEqual([
+      "bar alpha",
+      "zzz bar game",
+      "aaa game",
+    ]);
+  });
+
+  it("기존 제목 검색이 그대로 동작해야 한다 (translatedTitle 매칭)", async () => {
+    await seedGame(db, {
+      path: "/library/path/RJ000003",
+      title: "原題タイトル",
+      originalTitle: "RJ000003",
+      translatedTitle: "번역된 제목",
+      source: "/library/path",
+    });
+
+    const result = await searchGamesHandler(
+      {} as any,
+      makeSearchPayload({ searchQuery: { query: "번역된" } }),
+    );
+
+    expect(result.totalCount).toBe(1);
+    expect(result.games[0].translatedTitle).toBe("번역된 제목");
+  });
+
+  it("검색어가 없으면 전체 게임을 기존 정렬대로 반환해야 한다", async () => {
+    await seedGame(db, {
+      path: "/library/path/b-game",
+      title: "B Game",
+      source: "/library/path",
+    });
+    await seedGame(db, {
+      path: "/library/path/a-game",
+      title: "A Game",
+      source: "/library/path",
+    });
+
+    const result = await searchGamesHandler({} as any, makeSearchPayload());
+
+    expect(result.totalCount).toBe(2);
+    expect(result.games.map((g) => g.title)).toEqual(["A Game", "B Game"]);
+  });
+
+  it("경로로만 매칭된 게임에는 pathMatched=true, 제목 매칭 게임에는 false가 설정되어야 한다", async () => {
+    // 경로로만 매칭
+    await seedGame(db, {
+      path: "/library/path/bar/aaa game",
+      title: "aaa game",
+      originalTitle: "aaa game",
+      source: "/library/path",
+    });
+    // 제목 매칭
+    await seedGame(db, {
+      path: "/library/path/foo/bar game",
+      title: "bar game",
+      originalTitle: "bar game",
+      source: "/library/path",
+    });
+
+    const result = await searchGamesHandler(
+      {} as any,
+      makeSearchPayload({ searchQuery: { query: "bar" } }),
+    );
+
+    const flagByTitle = Object.fromEntries(
+      result.games.map((g) => [g.title, g.pathMatched]),
+    );
+    expect(flagByTitle["bar game"]).toBe(false);
+    expect(flagByTitle["aaa game"]).toBe(true);
+  });
+
+  it("검색어가 없으면 pathMatched가 설정되지 않아야 한다", async () => {
+    await seedGame(db, {
+      path: "/library/path/g1",
+      title: "G1",
+      source: "/library/path",
+    });
+
+    const result = await searchGamesHandler({} as any, makeSearchPayload());
+
+    expect(result.games[0].pathMatched).toBeUndefined();
   });
 });

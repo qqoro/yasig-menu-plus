@@ -248,18 +248,32 @@ export async function searchGamesHandler(
     );
   }
 
+  // 텍스트 검색어 (정렬 우선순위 계산에도 사용)
+  let textSearchTerm: string | undefined;
+
   // 검색어 파싱 및 적용
   if (searchQuery.query) {
     const parsed = parseSearchQuery(searchQuery.query);
 
-    // 텍스트 검색 (번역제목 > 제목 > 원본이름 순서)
+    // 텍스트 검색 (번역제목/제목/원본이름 + 라이브러리 루트 제외 상대 경로)
     if (parsed.textQuery) {
       const searchTerm = `%${parsed.textQuery}%`;
+      textSearchTerm = searchTerm;
       query = query.where((qb) => {
         qb.where("translatedTitle", "LIKE", searchTerm)
           .orWhere("title", "LIKE", searchTerm)
-          .orWhere("originalTitle", "LIKE", searchTerm);
+          .orWhere("originalTitle", "LIKE", searchTerm)
+          .orWhereRaw("substr(games.path, length(games.source) + 1) LIKE ?", [
+            searchTerm,
+          ]);
       });
+      // 경로로만 매칭된 게임 표시용 플래그 (UI에서 매칭 이유 안내)
+      query = query.select(
+        db.raw(
+          "CASE WHEN translated_title LIKE ? OR title LIKE ? OR original_title LIKE ? THEN 0 ELSE 1 END as path_matched",
+          [searchTerm, searchTerm, searchTerm],
+        ),
+      );
     }
 
     // 제공자 필터
@@ -352,6 +366,15 @@ export async function searchGamesHandler(
 
   // 정렬 적용
   const order = sortOrder === "asc" ? "asc" : "desc";
+
+  // 제목 매칭 게임을 경로로만 매칭된 게임보다 앞에 정렬 (그룹 내에서는 기존 정렬 유지)
+  if (textSearchTerm) {
+    query = query.orderByRaw(
+      "CASE WHEN translated_title LIKE ? OR title LIKE ? OR original_title LIKE ? THEN 0 ELSE 1 END",
+      [textSearchTerm, textSearchTerm, textSearchTerm],
+    );
+  }
+
   switch (sortBy) {
     case "title": {
       const priority =

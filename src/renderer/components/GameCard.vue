@@ -6,6 +6,7 @@ import {
   Flag,
   FlagOff,
   FolderOpen,
+  FolderSearch,
   Globe,
   Info,
   Loader2,
@@ -22,6 +23,12 @@ import { useTranslationSettings } from "../composables/useTranslationSettings";
 import type { GameItem } from "../types";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "./ui/tooltip";
 import CheatPlayButton from "./CheatPlayButton.vue";
 
 interface Props {
@@ -155,6 +162,14 @@ const titleTooltip = computed(() => {
   }
 
   return lines.join("\n");
+});
+
+// 경로 매칭 안내 (라이브러리 루트를 제외한 상대 경로)
+const pathMatchRelativePath = computed(() => {
+  return props.game.path
+    .slice(props.game.source.length)
+    .replace(/^[\\/]+/, "")
+    .replaceAll("\\", "/");
 });
 
 // 플레이 핸들러
@@ -455,9 +470,24 @@ function handleMouseDown(event: MouseEvent): void {
 
     <!-- 정보 영역 -->
     <CardContent class="flex flex-1 flex-col gap-2 p-3 pt-0">
-      <!-- 게임 제목 -->
-      <h3 class="truncate text-sm font-medium" :title="titleTooltip">
-        {{ displayTitle }}
+      <!-- 게임 제목 (경로 매칭 시 폴더 아이콘 표시) -->
+      <h3 class="flex items-center gap-1 text-sm font-medium">
+        <TooltipProvider v-if="game.pathMatched" :delay-duration="200">
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <span
+                class="text-muted-foreground hover:text-foreground shrink-0 cursor-help transition-colors"
+              >
+                <FolderSearch :size="14" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" class="max-w-72">
+              <p>폴더 경로가 검색어와 일치합니다</p>
+              <p class="break-all">{{ pathMatchRelativePath }}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <span class="truncate" :title="titleTooltip">{{ displayTitle }}</span>
       </h3>
 
       <!-- 메타데이터 -->

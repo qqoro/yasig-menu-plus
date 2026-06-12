@@ -38,6 +38,7 @@ export interface GameItem {
   fileCreatedAt?: Date | null; // 파일 생성일 (파일 시스템)
   fileModifiedAt?: Date | null; // 파일 수정일 (파일 시스템)
   isOffline?: boolean; // 오프라인 경로의 게임 여부 (드라이브 연결 안 됨)
+  pathMatched?: boolean; // 검색어가 제목이 아닌 폴더 경로로만 매칭됨 (텍스트 검색 시에만 설정)
 }
 
 /**

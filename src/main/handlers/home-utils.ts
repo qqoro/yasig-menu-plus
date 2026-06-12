@@ -119,6 +119,7 @@ export function buildGameItems(
     lastPlayedAt?: Date | null;
     createdAt?: Date | null;
     updatedAt?: Date | null;
+    pathMatched?: SqliteBoolean;
   }>,
   relations: {
     makers: Map<string, string[]>;
@@ -149,6 +150,10 @@ export function buildGameItems(
     lastPlayedAt: g.lastPlayedAt ? new Date(g.lastPlayedAt) : null,
     createdAt: g.createdAt ? new Date(g.createdAt) : null,
     updatedAt: g.updatedAt ? new Date(g.updatedAt) : null,
+    pathMatched:
+      g.pathMatched !== undefined && g.pathMatched !== null
+        ? Boolean(g.pathMatched)
+        : undefined,
     makers: relations.makers.get(g.path) || [],
     categories: relations.categories.get(g.path) || [],
     tags: relations.tags.get(g.path) || [],
