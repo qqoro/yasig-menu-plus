@@ -402,6 +402,12 @@ export async function searchGamesHandler(
         "user_game_data.rating IS NULL, user_game_data.rating " + order,
       );
       break;
+    case "externalRating":
+      // 사이트 평점 순으로 정렬 (평점 없는 게임은 뒤로)
+      query = query.orderByRaw(
+        "external_rating IS NULL, external_rating " + order,
+      );
+      break;
     case "playTime":
       // 플레이 시간 순으로 정렬 (플레이 시간 없는 게임은 뒤로)
       query = query.orderByRaw(

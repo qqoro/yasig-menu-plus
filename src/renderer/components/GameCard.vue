@@ -21,7 +21,7 @@ import { useDetectRpgMaker } from "../composables/useCheat";
 import { formatPlayTime } from "../composables/usePlayTime";
 import { useTranslationSettings } from "../composables/useTranslationSettings";
 import type { ViewMode } from "../stores/uiStore";
-import type { GameItem } from "../types";
+import type { GameItem, SearchQuery } from "../types";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import {
@@ -46,6 +46,7 @@ interface Props {
   isSelected?: boolean;
   isSelectionMode?: boolean;
   viewMode?: ViewMode;
+  sortBy?: SearchQuery["sortBy"];
 }
 
 interface Emits {
@@ -75,15 +76,22 @@ const props = withDefaults(defineProps<Props>(), {
   viewMode: "card",
 });
 
-// 카드 배지: 내 별점 우선, 없으면 사이트 평점. 색으로 구분.
+// 카드 배지: 정렬 기준에 맞춰 표시. 사이트 별점 정렬 시 사이트 평점 우선,
+// 그 외엔 내 별점 우선. 우선값이 없으면 다른 쪽으로 폴백. 색으로 구분.
 const ratingBadge = computed(() => {
-  if (props.game.rating != null) {
-    return { value: String(props.game.rating), isUser: true };
+  const userRating =
+    props.game.rating != null
+      ? { value: String(props.game.rating), isUser: true }
+      : null;
+  const siteRating =
+    props.game.externalRating != null
+      ? { value: props.game.externalRating.toFixed(2), isUser: false }
+      : null;
+
+  if (props.sortBy === "externalRating") {
+    return siteRating ?? userRating;
   }
-  if (props.game.externalRating != null) {
-    return { value: props.game.externalRating.toFixed(2), isUser: false };
-  }
-  return null;
+  return userRating ?? siteRating;
 });
 
 const emit = defineEmits<Emits>();

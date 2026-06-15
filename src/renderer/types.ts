@@ -90,6 +90,7 @@ export interface SearchQuery {
     | "lastPlayedAt"
     | "createdAt"
     | "rating"
+    | "externalRating"
     | "playTime"
     | "maker";
   sortOrder?: "asc" | "desc";

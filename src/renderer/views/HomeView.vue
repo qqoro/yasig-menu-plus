@@ -465,6 +465,7 @@ onMounted(() => {
             :search-error="searchError"
             :grid-cols-class="gridColsClass"
             :view-mode="uiStore.viewMode"
+            :sort-by="sortBy"
             :has-next-page="searchState.hasNextPage.value"
             :is-fetching-next-page="searchState.isFetchingNextPage.value"
             :is-selection-mode="multiSelect.isSelectionMode.value"

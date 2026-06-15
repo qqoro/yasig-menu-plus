@@ -3,7 +3,7 @@ import { useIntersectionObserver } from "@vueuse/core";
 import { Loader2 } from "lucide-vue-next";
 import { onUnmounted, ref } from "vue";
 import type { ViewMode } from "../stores/uiStore";
-import type { GameItem } from "../types";
+import type { GameItem, SearchQuery } from "../types";
 import GameCard from "./GameCard.vue";
 import GameContextMenu from "./GameContextMenu.vue";
 import { Card, CardContent } from "./ui/card";
@@ -27,6 +27,7 @@ interface Props {
   isExcludedTag: (tag: string) => boolean;
   isExcludedCircle: (circle: string) => boolean;
   isExcludedCategory: (category: string) => boolean;
+  sortBy?: SearchQuery["sortBy"];
 }
 
 interface Emits {
@@ -144,6 +145,7 @@ onUnmounted(() => {
           <GameCard
             :game="game"
             :view-mode="viewMode"
+            :sort-by="sortBy"
             :is-playing="playingGamePath === game.path"
             :is-playing-cheat="isPlayingCheat"
             :is-selected="isSelected(game.path)"
