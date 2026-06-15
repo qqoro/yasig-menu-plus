@@ -203,6 +203,23 @@ describe("getGameDetail — 관계 데이터", () => {
 });
 
 // ============================================
+// externalRating — 외부 평점 반환 확인
+// ============================================
+describe("getGameDetail — externalRating", () => {
+  it("externalRating이 올바르게 반환되어야 한다", async () => {
+    await seedGame(db, {
+      path: "/games/with-rating",
+      externalRating: 4.5,
+    });
+
+    const result = await getGameDetail("/games/with-rating");
+
+    expect(result).not.toBeNull();
+    expect(result!.externalRating).toBe(4.5);
+  });
+});
+
+// ============================================
 // 존재하지 않는 게임 — null 반환
 // ============================================
 describe("getGameDetail — 존재하지 않는 게임", () => {

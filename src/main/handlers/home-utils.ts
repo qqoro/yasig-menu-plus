@@ -110,6 +110,7 @@ export function buildGameItems(
     translatedTitle: string | null;
     translationSource: string | null;
     rating: number | null;
+    externalRating?: number | null;
     totalPlayTime?: number | null;
     isFavorite?: SqliteBoolean;
     isHidden?: SqliteBoolean;
@@ -141,6 +142,7 @@ export function buildGameItems(
     translatedTitle: g.translatedTitle || null,
     translationSource: g.translationSource || null,
     rating: g.rating,
+    externalRating: g.externalRating ?? null,
     totalPlayTime: g.totalPlayTime ?? undefined,
     isFavorite: g.isFavorite !== undefined ? Boolean(g.isFavorite) : undefined,
     isHidden: g.isHidden !== undefined ? Boolean(g.isHidden) : undefined,

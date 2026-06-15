@@ -319,6 +319,7 @@ export const refreshListHandler = wrapIpcHandler(
         "games.isCompressFile",
         "games.hasExecutable",
         "games.publishDate",
+        "games.externalRating",
         "games.translatedTitle",
         "games.translationSource",
         "userGameData.rating",

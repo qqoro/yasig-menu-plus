@@ -331,8 +331,19 @@ async function handleToggleFavorite() {
             </div>
 
             <div v-if="game?.rating" class="flex items-center gap-3">
-              <span class="w-16 shrink-0 text-white/50">별점</span>
+              <span class="w-16 shrink-0 text-white/50">내 별점</span>
               <StarRating :model-value="game.rating" readonly size="sm" />
+            </div>
+
+            <div
+              v-if="game?.externalRating != null"
+              class="flex items-center gap-3"
+            >
+              <span class="w-16 shrink-0 text-white/50">평점</span>
+              <span class="flex items-center gap-1">
+                <Star class="size-4 fill-sky-400 text-sky-400" />
+                <span>{{ game.externalRating.toFixed(2) }}</span>
+              </span>
             </div>
 
             <div v-if="playTimeText || lastPlayedText" class="flex gap-3">

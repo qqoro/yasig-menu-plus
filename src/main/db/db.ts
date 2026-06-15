@@ -34,6 +34,7 @@ export interface Game extends Omit<TableBaseColumn, "createdAt" | "updatedAt"> {
   externalId: string | null; // 외부 ID (RJ123456, Steam AppID 등)
   memo: string | null; // 메모
   publishDate: Date | null; // 발매일
+  externalRating: number | null; // 사이트 외부 평균 평점 (0-5)
   isLoadedInfo: SqliteBoolean; // 컬렉터 정보 수집 완료
   fingerprint: string | null; // SHA-256 해시 (게임 식별용)
   isHidden: SqliteBoolean;

@@ -3,6 +3,22 @@ import { parse } from "node-html-parser";
 import { Collector, type CollectorResult } from "./registry.js";
 import { extractRjCode } from "../lib/rj-code.js";
 
+/**
+ * info/ajax 응답에서 평균 평점(0-5)을 파싱한다.
+ * 평가가 없거나 형식이 잘못되면 null.
+ */
+export function parseDlsiteRating(json: unknown, id: string): number | null {
+  if (!json || typeof json !== "object") return null;
+  const entry = (json as Record<string, unknown>)[id] as
+    | Record<string, unknown>
+    | undefined;
+  if (!entry) return null;
+  const count = Number(entry.rate_count ?? 0);
+  if (!count) return null;
+  const avg = Number(entry.rate_average_2dp);
+  return Number.isFinite(avg) && avg > 0 ? avg : null;
+}
+
 export const DLSiteCollector: Collector = {
   name: "DLSite",
   getId: async (path) => {
@@ -10,14 +26,19 @@ export const DLSiteCollector: Collector = {
     return rjCode;
   },
   fetchInfo: async ({ id }) => {
-    const html = await fetch(
-      `https://www.dlsite.com/maniax/work/=/product_id/${id}.html`,
-      {
-        headers: {
-          cookie: "locale=ko-kr",
-        },
-      },
-    ).then((res) => res.text());
+    const [html, rating] = await Promise.all([
+      fetch(`https://www.dlsite.com/maniax/work/=/product_id/${id}.html`, {
+        headers: { cookie: "locale=ko-kr" },
+      }).then((res) => res.text()),
+      // 평점은 별도 ajax 엔드포인트에만 존재. 실패해도 치명적이지 않음.
+      fetch(
+        `https://www.dlsite.com/maniax/product/info/ajax?product_id=${id}`,
+        { headers: { cookie: "locale=ko-kr" } },
+      )
+        .then((res) => res.json())
+        .then((json) => parseDlsiteRating(json, id))
+        .catch(() => null),
+    ]);
 
     const body = parse(html, {
       blockTextElements: {
@@ -99,6 +120,7 @@ export const DLSiteCollector: Collector = {
       thumbnailUrl,
       images,
       publishDate,
+      rating,
       makers,
       categories,
       tags,

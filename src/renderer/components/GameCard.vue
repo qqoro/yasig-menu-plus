@@ -75,6 +75,17 @@ const props = withDefaults(defineProps<Props>(), {
   viewMode: "card",
 });
 
+// 카드 배지: 내 별점 우선, 없으면 사이트 평점. 색으로 구분.
+const ratingBadge = computed(() => {
+  if (props.game.rating != null) {
+    return { value: String(props.game.rating), isUser: true };
+  }
+  if (props.game.externalRating != null) {
+    return { value: props.game.externalRating.toFixed(2), isUser: false };
+  }
+  return null;
+});
+
 const emit = defineEmits<Emits>();
 
 // RPG Maker 감지
@@ -402,14 +413,22 @@ function handleMouseDown(event: MouseEvent): void {
           formattedPlayTime
         }}</span>
       </div>
-      <!-- 별점 배지 -->
+      <!-- 별점 배지: 내 별점(노랑) 우선, 없으면 사이트 평점(파랑) -->
       <div
-        v-if="game.rating"
+        v-if="ratingBadge"
         class="bg-popover/80 absolute right-2 bottom-2 flex items-center gap-1 rounded-md px-2 py-1 backdrop-blur-sm"
       >
-        <Star :size="12" class="shrink-0 fill-yellow-400 text-yellow-400" />
+        <Star
+          :size="12"
+          :class="[
+            'shrink-0',
+            ratingBadge.isUser
+              ? 'fill-yellow-400 text-yellow-400'
+              : 'fill-sky-400 text-sky-400',
+          ]"
+        />
         <span class="text-popover-foreground text-xs font-medium">{{
-          game.rating
+          ratingBadge.value
         }}</span>
       </div>
       <!-- 오프라인 표시 -->

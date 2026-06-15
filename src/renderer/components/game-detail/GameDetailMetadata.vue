@@ -6,6 +6,7 @@ import {
   Languages,
   Loader2,
   RotateCcw,
+  Star,
   XCircle,
 } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
@@ -341,7 +342,7 @@ defineExpose({ resetState });
   <!-- 별점 -->
   <div>
     <div class="flex items-center gap-2">
-      <label class="text-muted-foreground text-sm font-medium">별점</label>
+      <label class="text-muted-foreground text-sm font-medium">내 별점</label>
     </div>
     <div class="mt-1 flex items-center gap-1">
       <StarRating
@@ -358,6 +359,15 @@ defineExpose({ resetState });
       >
         <RotateCcw :size="14" />
       </Button>
+    </div>
+  </div>
+
+  <!-- 사이트 평점 -->
+  <div v-if="game?.externalRating != null">
+    <label class="text-muted-foreground text-sm font-medium">평점</label>
+    <div class="mt-1 flex items-center gap-1">
+      <Star :size="18" class="fill-sky-400 text-sky-400" />
+      <span class="text-sm">{{ game.externalRating.toFixed(2) }}</span>
     </div>
   </div>
 </template>

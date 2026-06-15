@@ -63,6 +63,7 @@ export const CienCollector: Collector = {
       thumbnailUrl,
       images: allImages,
       publishDate,
+      rating: null,
       makers,
       categories: [],
       tags: [],

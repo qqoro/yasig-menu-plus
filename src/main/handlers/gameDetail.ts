@@ -34,6 +34,7 @@ export async function getGameDetail(
       "games.isCompressFile",
       "games.hasExecutable",
       "games.publishDate",
+      "games.externalRating",
       "games.isHidden",
       "games.provider",
       "games.externalId",
@@ -94,6 +95,7 @@ export async function getGameDetail(
     hasExecutable:
       game.hasExecutable !== undefined ? Boolean(game.hasExecutable) : true,
     publishDate: toDate(game.publishDate),
+    externalRating: game.externalRating ?? null,
     isFavorite: Boolean(game.isFavorite),
     isHidden: Boolean(game.isHidden),
     isClear: Boolean(game.isClear),

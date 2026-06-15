@@ -1,8 +1,42 @@
 import SteamUser from "steam-user";
 import { createLogger } from "../utils/logger.js";
+import { getSteamTagMap } from "./steam-tag-map.js";
 import { Collector, type CollectorResult } from "./registry.js";
 
 const log = createLogger("SteamCollector");
+
+/** appreviews 요약에서 0-5 평점 계산(긍정 비율 × 5, 2자리 반올림). 리뷰 0개면 null */
+export function computeSteamRating(
+  summary:
+    | { total_positive?: number; total_reviews?: number }
+    | null
+    | undefined,
+): number | null {
+  if (!summary) return null;
+  const total = Number(summary.total_reviews ?? 0);
+  const positive = Number(summary.total_positive ?? 0);
+  if (total <= 0) return null;
+  return Math.round((positive / total) * 5 * 100) / 100;
+}
+
+/** store_tags(ID 객체/배열)를 인기순 유지하며 태그명 배열로 변환 */
+export function resolveStoreTags(
+  storeTags: Record<string, unknown> | number[] | null | undefined,
+  tagMap: Map<number, string>,
+  limit = 20,
+): string[] {
+  if (!storeTags) return [];
+  const ids = Array.isArray(storeTags) ? storeTags : Object.values(storeTags);
+  const names: string[] = [];
+  for (const raw of ids) {
+    const id = Number(raw);
+    if (!Number.isFinite(id)) continue;
+    const name = tagMap.get(id);
+    if (name && !names.includes(name)) names.push(name);
+    if (names.length >= limit) break;
+  }
+  return names;
+}
 
 /**
  * SteamUser 클라이언트 (재사용을 위한 싱글톤)
@@ -133,6 +167,12 @@ export const SteamCollector: Collector = {
             publishDate = new Date(timestamp * 1000);
           }
         }
+
+        // 사용자 인기 태그 (store_tags ID → 이름 변환)
+        if (info.common?.store_tags) {
+          const tagMap = await getSteamTagMap();
+          tags = resolveStoreTags(info.common.store_tags, tagMap);
+        }
       }
     } catch (error) {
       log.error("steam-user 에러:", error);
@@ -163,6 +203,20 @@ export const SteamCollector: Collector = {
       log.error("이미지 API 에러:", error);
     }
 
+    // 평점: appreviews API의 긍정 비율을 0-5로 환산
+    let rating: number | null = null;
+    try {
+      const reviewRes = await fetch(
+        `https://store.steampowered.com/appreviews/${id}?json=1&language=all&purchase_type=all&num_per_page=0`,
+      );
+      const reviewJson = (await reviewRes.json()) as {
+        query_summary?: { total_positive?: number; total_reviews?: number };
+      } | null;
+      rating = computeSteamRating(reviewJson?.query_summary);
+    } catch (error) {
+      log.error("appreviews 에러:", error);
+    }
+
     // 데이터가 하나도 없으면 undefined 반환
     if (!title && makers.length === 0 && categories.length === 0) {
       return undefined;
@@ -173,6 +227,7 @@ export const SteamCollector: Collector = {
       thumbnailUrl,
       images,
       publishDate,
+      rating,
       makers,
       categories,
       tags,

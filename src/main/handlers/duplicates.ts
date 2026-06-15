@@ -123,6 +123,7 @@ async function buildGameItems(
     translatedTitle?: string | null;
     translationSource?: string | null;
     rating?: number | null;
+    externalRating?: number | null;
     totalPlayTime?: number;
   }>,
   relations: {
@@ -148,6 +149,7 @@ async function buildGameItems(
         translatedTitle: g.translatedTitle || null,
         translationSource: g.translationSource || null,
         rating: g.rating,
+        externalRating: g.externalRating ?? null,
         isFavorite:
           g.isFavorite !== undefined ? Boolean(g.isFavorite) : undefined,
         isHidden: g.isHidden !== undefined ? Boolean(g.isHidden) : undefined,
@@ -192,6 +194,7 @@ export async function findDuplicatesHandler(
       "games.isCompressFile",
       "games.hasExecutable",
       "games.publishDate",
+      "games.externalRating",
       "games.isHidden",
       "games.provider",
       "games.externalId",
