@@ -13,6 +13,7 @@ interface Props {
   isSearching: boolean;
   searchError: Error | null;
   gridColsClass: string;
+  gridGapClass: string;
   viewMode: ViewMode;
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
@@ -86,7 +87,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex-1 overflow-y-auto p-4">
+  <div class="@container flex-1 overflow-y-auto p-4">
     <!-- 로딩 상태 -->
     <div
       v-if="isSearching && games.length === 0"
@@ -120,7 +121,7 @@ onUnmounted(() => {
 
     <!-- 게임 그리드 -->
     <div v-else>
-      <div :class="['grid gap-4', gridColsClass]">
+      <div :class="['grid', gridGapClass, gridColsClass]">
         <GameContextMenu
           v-for="game in games"
           :key="game.path"

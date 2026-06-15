@@ -341,7 +341,9 @@ function handleMouseDown(event: MouseEvent): void {
     @mousedown="handleMouseDown"
   >
     <!-- 썸네일 영역 -->
-    <div class="group/thumb bg-muted relative aspect-4/3 overflow-hidden">
+    <div
+      class="group/thumb bg-muted @container relative aspect-4/3 overflow-hidden"
+    >
       <!-- 선택 체크박스 (선택 모드 시 표시) -->
       <div v-if="isSelectionMode" class="absolute top-2 left-2 z-10">
         <div
@@ -367,24 +369,30 @@ function handleMouseDown(event: MouseEvent): void {
           </svg>
         </div>
       </div>
-      <!-- 즐겨찾기/클리어 배지 (선택 모드가 아닐 때) -->
+      <!-- 즐겨찾기/클리어 배지 (선택 모드가 아닐 때, 카드가 너무 작으면 숨김) -->
       <div
         v-if="!isSelectionMode && (game.isFavorite || game.isClear)"
-        class="absolute top-2 left-2 z-10 flex gap-1"
+        class="absolute top-2 left-2 z-10 flex gap-1 @max-[110px]:hidden"
       >
         <div
           v-if="game.isFavorite"
           class="bg-popover/80 flex items-center rounded-md p-1 backdrop-blur-sm"
           title="즐겨찾기"
         >
-          <Star :size="12" class="shrink-0 fill-yellow-400 text-yellow-400" />
+          <Star
+            :size="12"
+            class="shrink-0 fill-yellow-400 text-yellow-400 @max-[170px]:size-[11px] @max-[140px]:size-[10px]"
+          />
         </div>
         <div
           v-if="game.isClear"
           class="bg-popover/80 flex items-center rounded-md p-1 backdrop-blur-sm"
           title="클리어"
         >
-          <Flag :size="12" class="shrink-0 fill-green-400 text-green-400" />
+          <Flag
+            :size="12"
+            class="shrink-0 fill-green-400 text-green-400 @max-[170px]:size-[11px] @max-[140px]:size-[10px]"
+          />
         </div>
       </div>
       <!-- 썸네일 이미지 -->
@@ -404,53 +412,59 @@ function handleMouseDown(event: MouseEvent): void {
         <Play :size="48" class="opacity-20" />
       </div>
       <!-- 압축 파일 배지 -->
-      <div v-if="game.isCompressFile" class="absolute top-2 right-2">
-        <span
-          class="bg-popover/80 text-popover-foreground rounded px-2 py-0.5 text-xs"
-        >
-          압축
-        </span>
+      <div
+        v-if="game.isCompressFile"
+        class="bg-popover/80 text-popover-foreground absolute top-2 right-2 flex items-center rounded-md px-2 py-1 text-xs backdrop-blur-sm @max-[170px]:text-[11px]! @max-[140px]:text-[10px]! @max-[110px]:hidden"
+      >
+        압축
       </div>
       <!-- 플레이 시간 배지 -->
       <div
         v-if="formattedPlayTime"
-        class="bg-popover/80 absolute bottom-2 left-2 flex items-center gap-1 rounded-md px-2 py-1 backdrop-blur-sm"
+        class="bg-popover/80 absolute bottom-2 left-2 flex items-center gap-1 rounded-md px-2 py-1 backdrop-blur-sm @max-[110px]:hidden"
       >
-        <Clock :size="12" class="text-popover-foreground shrink-0" />
-        <span class="text-popover-foreground text-xs font-medium">{{
-          formattedPlayTime
-        }}</span>
+        <Clock
+          :size="12"
+          class="text-popover-foreground shrink-0 @max-[170px]:size-[11px] @max-[140px]:size-[10px]"
+        />
+        <span
+          class="text-popover-foreground text-xs font-medium @max-[170px]:text-[11px]! @max-[140px]:text-[10px]!"
+          >{{ formattedPlayTime }}</span
+        >
       </div>
       <!-- 별점 배지: 내 별점(노랑) 우선, 없으면 사이트 평점(파랑) -->
       <div
         v-if="ratingBadge"
-        class="bg-popover/80 absolute right-2 bottom-2 flex items-center gap-1 rounded-md px-2 py-1 backdrop-blur-sm"
+        class="bg-popover/80 absolute right-2 bottom-2 flex items-center gap-1 rounded-md px-2 py-1 backdrop-blur-sm @max-[110px]:hidden"
       >
         <Star
           :size="12"
           :class="[
-            'shrink-0',
+            'shrink-0 @max-[170px]:size-[11px] @max-[140px]:size-[10px]',
             ratingBadge.isUser
               ? 'fill-yellow-400 text-yellow-400'
               : 'fill-sky-400 text-sky-400',
           ]"
         />
-        <span class="text-popover-foreground text-xs font-medium">{{
-          ratingBadge.value
-        }}</span>
+        <span
+          class="text-popover-foreground text-xs font-medium @max-[170px]:text-[11px]! @max-[140px]:text-[10px]!"
+          >{{ ratingBadge.value }}</span
+        >
       </div>
       <!-- 오프라인 표시 -->
       <div
         v-if="game.isOffline"
-        class="absolute inset-x-0 bottom-0 flex items-center gap-1 bg-black/60 px-2 py-1 text-xs text-white"
+        class="absolute inset-x-0 bottom-0 flex items-center gap-1 bg-black/60 px-2 py-1 text-xs text-white @max-[170px]:text-[11px]! @max-[140px]:text-[10px]! @max-[110px]:hidden"
       >
-        <Unplug class="h-3 w-3" />
+        <Unplug
+          class="h-3 w-3 @max-[170px]:size-[11px]! @max-[140px]:size-[10px]!"
+        />
         <span>연결 안 됨</span>
       </div>
       <!-- 오버레이 버튼들 (hover 시 표시, 선택 모드에서 비활성화) -->
       <div
         v-if="!isSelectionMode"
-        class="bg-popover/60 absolute inset-0 flex flex-wrap content-center justify-center gap-1.5 p-2 opacity-0 transition-opacity group-hover/thumb:opacity-100"
+        class="bg-popover/60 absolute inset-0 flex flex-wrap content-center justify-center gap-1.5 p-2 opacity-0 transition-opacity group-hover/thumb:opacity-100 @max-[170px]:gap-1 @max-[170px]:p-1 @max-[170px]:[&_button]:size-7 @max-[110px]:[&_button]:size-6 @max-[170px]:[&_button_svg]:size-3.5! @max-[110px]:[&_button_svg]:size-3!"
       >
         <!-- 실행 버튼 (이미지 모드에서만 표시 — 하단 실행 버튼이 숨겨지므로) -->
         <Button
@@ -517,8 +531,11 @@ function handleMouseDown(event: MouseEvent): void {
         >
           <Info :size="14" />
         </Button>
-        <!-- 제목 오버레이 (이미지 모드에서만 표시) -->
-        <div v-if="isImageMode" class="absolute inset-x-0 bottom-0 px-2 py-1.5">
+        <!-- 제목 오버레이 (이미지 모드 + 카드가 너무 작지 않을 때만 표시) -->
+        <div
+          v-if="isImageMode"
+          class="absolute inset-x-0 bottom-0 px-2 py-1.5 @max-[140px]:hidden"
+        >
           <p
             class="text-popover-foreground truncate text-center text-xs font-medium"
             :title="titleTooltip"

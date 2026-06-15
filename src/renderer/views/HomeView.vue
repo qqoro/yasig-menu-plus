@@ -175,7 +175,7 @@ const {
 } = useHomeBatchActions({ searchState, multiSelect });
 
 // 그리드 레이아웃 composable
-const { gridColsClass, handleIncreaseZoom, handleDecreaseZoom } =
+const { gridColsClass, gridGapClass, handleIncreaseZoom, handleDecreaseZoom } =
   useGridLayout();
 
 // 랜덤 선택 composable
@@ -464,6 +464,7 @@ onMounted(() => {
             :is-searching="isSearching"
             :search-error="searchError"
             :grid-cols-class="gridColsClass"
+            :grid-gap-class="gridGapClass"
             :view-mode="uiStore.viewMode"
             :sort-by="sortBy"
             :has-next-page="searchState.hasNextPage.value"
