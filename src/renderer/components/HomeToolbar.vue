@@ -36,7 +36,7 @@ defineEmits<Emits>();
   <div class="flex items-center justify-between border-b px-4 py-2">
     <h1 class="text-base font-semibold">게임 라이브러리</h1>
     <div class="flex items-center gap-2">
-      <!-- 줌 컨트롤 -->
+      <!-- 줌 컨트롤 + 보기 모드 토글 -->
       <div class="mr-2 flex items-center gap-1 border-r pr-2">
         <Button
           @click="$emit('zoomOut')"
@@ -61,10 +61,6 @@ defineEmits<Emits>();
         >
           <Plus :size="14" />
         </Button>
-      </div>
-
-      <!-- 보기 모드 토글 -->
-      <div class="mr-2 flex items-center border-r pr-2">
         <Button
           @click="$emit('toggleViewMode')"
           variant="ghost"
