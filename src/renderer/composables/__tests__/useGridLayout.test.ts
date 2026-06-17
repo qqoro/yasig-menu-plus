@@ -42,17 +42,18 @@ describe("useGridLayout", () => {
   });
 
   describe("gridColsClass", () => {
+    // 컨테이너 쿼리(@3xl/@6xl) 기반 — useGridLayout.ts 구현과 동일
     const expectedClasses: Record<number, string> = {
-      1: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-3",
-      2: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4",
-      3: "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5",
-      4: "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5",
-      5: "grid-cols-4 sm:grid-cols-5 lg:grid-cols-6",
-      6: "grid-cols-5 sm:grid-cols-6 lg:grid-cols-7",
-      7: "grid-cols-6 sm:grid-cols-7 lg:grid-cols-8",
-      8: "grid-cols-7 sm:grid-cols-8 lg:grid-cols-9",
-      9: "grid-cols-8 sm:grid-cols-9 lg:grid-cols-10",
-      10: "grid-cols-9 sm:grid-cols-10 lg:grid-cols-11",
+      1: "grid-cols-2 @3xl:grid-cols-3",
+      2: "grid-cols-2 @3xl:grid-cols-3 @6xl:grid-cols-4",
+      3: "grid-cols-3 @3xl:grid-cols-4 @6xl:grid-cols-5",
+      4: "grid-cols-3 @3xl:grid-cols-4 @6xl:grid-cols-5",
+      5: "grid-cols-4 @3xl:grid-cols-5 @6xl:grid-cols-6",
+      6: "grid-cols-5 @3xl:grid-cols-6 @6xl:grid-cols-7",
+      7: "grid-cols-6 @3xl:grid-cols-7 @6xl:grid-cols-8",
+      8: "grid-cols-7 @3xl:grid-cols-8 @6xl:grid-cols-9",
+      9: "grid-cols-8 @3xl:grid-cols-9 @6xl:grid-cols-10",
+      10: "grid-cols-9 @3xl:grid-cols-10 @6xl:grid-cols-11",
     };
 
     // 각 줌 레벨별 gridColsClass 검증
@@ -72,7 +73,7 @@ describe("useGridLayout", () => {
 
       const { gridColsClass } = useGridLayout();
       expect(gridColsClass.value).toBe(
-        "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5",
+        "grid-cols-3 @3xl:grid-cols-4 @6xl:grid-cols-5",
       );
     });
   });
