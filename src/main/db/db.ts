@@ -35,6 +35,7 @@ export interface Game extends Omit<TableBaseColumn, "createdAt" | "updatedAt"> {
   memo: string | null; // 메모
   publishDate: Date | null; // 발매일
   externalRating: number | null; // 사이트 외부 평균 평점 (0-5)
+  externalReviewCount: number | null; // 사이트 외부 리뷰 수
   isLoadedInfo: SqliteBoolean; // 컬렉터 정보 수집 완료
   fingerprint: string | null; // SHA-256 해시 (게임 식별용)
   isHidden: SqliteBoolean;

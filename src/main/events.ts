@@ -359,6 +359,7 @@ export interface GameItem {
   translationSource?: string | null; // 번역 출처 (ollama, google)
   rating?: number | null; // 별점 (1-5)
   externalRating?: number | null; // 사이트 외부 평균 평점 (0-5)
+  externalReviewCount?: number | null; // 사이트 외부 리뷰 수
   totalPlayTime?: number; // 총 플레이 시간 (초)
   sessionStartAt?: Date | null; // 현재 세션 시작 시간
   fileCreatedAt?: Date | null; // 파일 생성일 (파일 시스템)

@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { computeSteamRating, resolveStoreTags } from "./steam-collector.js";
+import {
+  computeSteamRating,
+  parseSteamReviewCount,
+  resolveStoreTags,
+} from "./steam-collector.js";
 
 // logger 모킹 (Electron app 의존성 제거)
 const mockLog = vi.hoisted(() => ({
@@ -29,6 +33,21 @@ describe("computeSteamRating", () => {
   it("undefined/null이면 null", () => {
     expect(computeSteamRating(undefined)).toBeNull();
     expect(computeSteamRating(null)).toBeNull();
+  });
+});
+
+describe("parseSteamReviewCount", () => {
+  it("total_reviews를 반환", () => {
+    expect(parseSteamReviewCount({ total_reviews: 273809 })).toBe(273809);
+  });
+
+  it("리뷰가 0개면 null", () => {
+    expect(parseSteamReviewCount({ total_reviews: 0 })).toBeNull();
+  });
+
+  it("undefined/null이면 null", () => {
+    expect(parseSteamReviewCount(undefined)).toBeNull();
+    expect(parseSteamReviewCount(null)).toBeNull();
   });
 });
 

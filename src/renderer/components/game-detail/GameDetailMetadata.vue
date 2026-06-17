@@ -368,6 +368,12 @@ defineExpose({ resetState });
     <div class="mt-1 flex items-center gap-1">
       <Star :size="18" class="fill-sky-400 text-sky-400" />
       <span class="text-sm">{{ game.externalRating.toFixed(2) }}</span>
+      <span
+        v-if="game.externalReviewCount != null"
+        class="text-muted-foreground text-sm"
+      >
+        · 리뷰 {{ game.externalReviewCount.toLocaleString() }}건
+      </span>
     </div>
   </div>
 </template>

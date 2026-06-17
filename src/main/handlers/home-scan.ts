@@ -320,6 +320,7 @@ export const refreshListHandler = wrapIpcHandler(
         "games.hasExecutable",
         "games.publishDate",
         "games.externalRating",
+        "games.externalReviewCount",
         "games.translatedTitle",
         "games.translationSource",
         "userGameData.rating",

@@ -19,6 +19,15 @@ export function computeSteamRating(
   return Math.round((positive / total) * 5 * 100) / 100;
 }
 
+/** appreviews 요약에서 리뷰 수를 반환. 리뷰가 없거나 값이 없으면 null */
+export function parseSteamReviewCount(
+  summary: { total_reviews?: number } | null | undefined,
+): number | null {
+  if (!summary) return null;
+  const total = Number(summary.total_reviews ?? 0);
+  return total > 0 ? total : null;
+}
+
 /** store_tags(ID 객체/배열)를 인기순 유지하며 태그명 배열로 변환 */
 export function resolveStoreTags(
   storeTags: Record<string, unknown> | number[] | null | undefined,
@@ -203,8 +212,9 @@ export const SteamCollector: Collector = {
       log.error("이미지 API 에러:", error);
     }
 
-    // 평점: appreviews API의 긍정 비율을 0-5로 환산
+    // 평점·리뷰 수: appreviews API의 긍정 비율을 0-5로 환산
     let rating: number | null = null;
+    let reviewCount: number | null = null;
     try {
       const reviewRes = await fetch(
         `https://store.steampowered.com/appreviews/${id}?json=1&language=all&purchase_type=all&num_per_page=0`,
@@ -212,7 +222,9 @@ export const SteamCollector: Collector = {
       const reviewJson = (await reviewRes.json()) as {
         query_summary?: { total_positive?: number; total_reviews?: number };
       } | null;
-      rating = computeSteamRating(reviewJson?.query_summary);
+      const summary = reviewJson?.query_summary;
+      rating = computeSteamRating(summary);
+      reviewCount = parseSteamReviewCount(summary);
     } catch (error) {
       log.error("appreviews 에러:", error);
     }
@@ -228,6 +240,7 @@ export const SteamCollector: Collector = {
       images,
       publishDate,
       rating,
+      reviewCount,
       makers,
       categories,
       tags,

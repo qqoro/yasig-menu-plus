@@ -343,6 +343,12 @@ async function handleToggleFavorite() {
               <span class="flex items-center gap-1">
                 <Star class="size-4 fill-sky-400 text-sky-400" />
                 <span>{{ game.externalRating.toFixed(2) }}</span>
+                <span
+                  v-if="game.externalReviewCount != null"
+                  class="text-white/50"
+                >
+                  · 리뷰 {{ game.externalReviewCount.toLocaleString() }}건
+                </span>
               </span>
             </div>
 

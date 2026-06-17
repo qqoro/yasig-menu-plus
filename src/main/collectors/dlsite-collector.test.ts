@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { parseDlsiteRating } from "./dlsite-collector.js";
+import {
+  parseDlsiteRating,
+  parseDlsiteReviewCount,
+} from "./dlsite-collector.js";
 
 /**
  * DLSiteCollector.getId 테스트
@@ -166,5 +169,33 @@ describe("parseDlsiteRating", () => {
   it("잘못된 입력이면 null", () => {
     expect(parseDlsiteRating(null, id)).toBeNull();
     expect(parseDlsiteRating("oops", id)).toBeNull();
+  });
+});
+
+describe("parseDlsiteReviewCount", () => {
+  const id = "RJ01017217";
+
+  it("rate_count를 숫자로 반환", () => {
+    const json = { [id]: { rate_count: 4727, rate_average_2dp: 4.92 } };
+    expect(parseDlsiteReviewCount(json, id)).toBe(4727);
+  });
+
+  it("문자열로 와도 숫자로 파싱", () => {
+    const json = { [id]: { rate_count: "10", rate_average_2dp: 3.5 } };
+    expect(parseDlsiteReviewCount(json, id)).toBe(10);
+  });
+
+  it("평가 수가 0이면 null", () => {
+    const json = { [id]: { rate_count: 0, rate_average_2dp: 0 } };
+    expect(parseDlsiteReviewCount(json, id)).toBeNull();
+  });
+
+  it("해당 id 항목이 없으면 null", () => {
+    expect(parseDlsiteReviewCount({}, id)).toBeNull();
+  });
+
+  it("잘못된 입력이면 null", () => {
+    expect(parseDlsiteReviewCount(null, id)).toBeNull();
+    expect(parseDlsiteReviewCount("oops", id)).toBeNull();
   });
 });

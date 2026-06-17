@@ -122,6 +122,7 @@ export const GetchuCollector: Collector = {
       images: allImages,
       publishDate,
       rating: null,
+      reviewCount: null,
       makers,
       categories,
       tags,

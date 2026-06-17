@@ -19,6 +19,23 @@ export function parseDlsiteRating(json: unknown, id: string): number | null {
   return Number.isFinite(avg) && avg > 0 ? avg : null;
 }
 
+/**
+ * info/ajax 응답에서 리뷰 수(rate_count)를 파싱한다.
+ * 평가가 없거나 형식이 잘못되면 null.
+ */
+export function parseDlsiteReviewCount(
+  json: unknown,
+  id: string,
+): number | null {
+  if (!json || typeof json !== "object") return null;
+  const entry = (json as Record<string, unknown>)[id] as
+    | Record<string, unknown>
+    | undefined;
+  if (!entry) return null;
+  const count = Number(entry.rate_count ?? 0);
+  return count > 0 ? count : null;
+}
+
 export const DLSiteCollector: Collector = {
   name: "DLSite",
   getId: async (path) => {
@@ -26,7 +43,7 @@ export const DLSiteCollector: Collector = {
     return rjCode;
   },
   fetchInfo: async ({ id }) => {
-    const [html, rating] = await Promise.all([
+    const [html, ratingInfo] = await Promise.all([
       fetch(`https://www.dlsite.com/maniax/work/=/product_id/${id}.html`, {
         headers: { cookie: "locale=ko-kr" },
       }).then((res) => res.text()),
@@ -36,8 +53,11 @@ export const DLSiteCollector: Collector = {
         { headers: { cookie: "locale=ko-kr" } },
       )
         .then((res) => res.json())
-        .then((json) => parseDlsiteRating(json, id))
-        .catch(() => null),
+        .then((json) => ({
+          rating: parseDlsiteRating(json, id),
+          reviewCount: parseDlsiteReviewCount(json, id),
+        }))
+        .catch(() => ({ rating: null, reviewCount: null })),
     ]);
 
     const body = parse(html, {
@@ -120,7 +140,8 @@ export const DLSiteCollector: Collector = {
       thumbnailUrl,
       images,
       publishDate,
-      rating,
+      rating: ratingInfo.rating,
+      reviewCount: ratingInfo.reviewCount,
       makers,
       categories,
       tags,

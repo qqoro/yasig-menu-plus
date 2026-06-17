@@ -220,6 +220,24 @@ describe("getGameDetail — externalRating", () => {
 });
 
 // ============================================
+// externalReviewCount — 외부 리뷰 수 반환 확인
+// ============================================
+describe("getGameDetail — externalReviewCount", () => {
+  it("externalReviewCount가 올바르게 반환되어야 한다", async () => {
+    await seedGame(db, {
+      path: "/games/with-review-count",
+      externalRating: 4.5,
+      externalReviewCount: 1234,
+    });
+
+    const result = await getGameDetail("/games/with-review-count");
+
+    expect(result).not.toBeNull();
+    expect(result!.externalReviewCount).toBe(1234);
+  });
+});
+
+// ============================================
 // 존재하지 않는 게임 — null 반환
 // ============================================
 describe("getGameDetail — 존재하지 않는 게임", () => {

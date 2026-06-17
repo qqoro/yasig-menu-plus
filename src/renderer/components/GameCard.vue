@@ -78,6 +78,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 // 카드 배지: 정렬 기준에 맞춰 표시. 사이트 별점 정렬 시 사이트 평점 우선,
 // 그 외엔 내 별점 우선. 우선값이 없으면 다른 쪽으로 폴백. 색으로 구분.
+// 사이트 평점 배지엔 리뷰 수를 같이 표시(예: 4.52 · 1,234).
 const ratingBadge = computed(() => {
   const userRating =
     props.game.rating != null
@@ -85,7 +86,13 @@ const ratingBadge = computed(() => {
       : null;
   const siteRating =
     props.game.externalRating != null
-      ? { value: props.game.externalRating.toFixed(2), isUser: false }
+      ? {
+          value:
+            props.game.externalReviewCount != null
+              ? `${props.game.externalRating.toFixed(2)} · ${props.game.externalReviewCount.toLocaleString()}`
+              : props.game.externalRating.toFixed(2),
+          isUser: false,
+        }
       : null;
 
   if (props.sortBy === "externalRating") {
