@@ -363,13 +363,23 @@ export function addLibraryPath(normalizedPath: string): void {
 /**
  * 라이브러리 경로 제거
  * 호출부에서 이미 정규화된 경로를 전달해야 함
+ *
+ * 비활성화/오프라인 목록에 남은 고아 엔트리도 함께 정리한다.
+ * 경로를 삭제해도 disabledLibraryPaths/offlineLibraryPaths에서 제거하지 않으면,
+ * 남은 경로가 모두 비활성화된 상태에서 복구할 수 없는 교착 상태가 발생할 수 있다.
  */
 export function removeLibraryPath(normalizedPath: string): void {
-  const current = getLibraryPaths();
-  const filtered = current.filter(
-    (p) => p.toLowerCase() !== normalizedPath.toLowerCase(),
-  );
-  setLibraryPaths(filtered);
+  const target = normalizedPath.toLowerCase();
+
+  // 라이브러리 경로 목록에서 제거
+  setLibraryPaths(getLibraryPaths().filter((p) => p.toLowerCase() !== target));
+
+  // 고아 엔트리 정리: 비활성화/오프라인 목록에서도 동일 경로 제거
+  const removeTarget = (paths: string[]) =>
+    paths.filter((p) => normalizePath(p).toLowerCase() !== target);
+
+  setDisabledLibraryPaths(removeTarget(getDisabledLibraryPaths()));
+  setOfflineLibraryPaths(removeTarget(getOfflineLibraryPaths()));
 }
 
 /**

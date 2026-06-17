@@ -224,9 +224,13 @@ function getSortButtonStyle(sortBy: SearchQuery["sortBy"]) {
 
 <template>
   <div class="flex flex-col gap-3">
-    <!-- 라이브러리 카드 (경로가 2개 이상일 때만 표시) -->
+    <!-- 라이브러리 카드 (경로 2개 이상이거나, 비활성화된 경로가 있을 때 표시) -->
+    <!-- 비활성화된 경로가 있으면 항상 표시: 남은 경로를 다시 on할 수 있도록 보장 -->
     <div
-      v-if="libraryPaths && libraryPaths.length > 1"
+      v-if="
+        (libraryPaths && libraryPaths.length > 1) ||
+        (disabledLibraryPaths && disabledLibraryPaths.length > 0)
+      "
       class="bg-card flex flex-col gap-2 rounded-lg border p-3"
     >
       <h3 class="text-muted-foreground text-xs font-medium">라이브러리</h3>
