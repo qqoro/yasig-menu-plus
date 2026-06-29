@@ -118,3 +118,48 @@ describe("removeLibraryPath — 고아 엔트리 정리", () => {
     expect(store.getDisabledLibraryPaths()).not.toContain("/games/b");
   });
 });
+
+// ============================================
+// setAllLibraryPathsDisabled — 일괄 활성화/비활성화
+// ============================================
+describe("setAllLibraryPathsDisabled — 일괄 활성화/비활성화", () => {
+  it("enabled=true면 disabledLibraryPaths를 비운다", () => {
+    store.addLibraryPath("/games/a");
+    store.addLibraryPath("/games/b");
+    store.setDisabledLibraryPaths(["/games/a"]);
+
+    const result = store.setAllLibraryPathsDisabled(true);
+
+    expect(store.getDisabledLibraryPaths()).toEqual([]);
+    expect(result).toEqual([]);
+  });
+
+  it("enabled=false면 모든 libraryPaths를 disabledLibraryPaths로 설정한다", () => {
+    store.addLibraryPath("/games/a");
+    store.addLibraryPath("/games/b");
+    store.setDisabledLibraryPaths(["/games/a"]);
+
+    const result = store.setAllLibraryPathsDisabled(false);
+
+    expect(store.getDisabledLibraryPaths()).toEqual(["/games/a", "/games/b"]);
+    expect(result).toEqual(["/games/a", "/games/b"]);
+  });
+
+  it("enabled=false일 때 libraryPaths가 비어 있으면 빈 배열을 반환한다", () => {
+    const result = store.setAllLibraryPathsDisabled(false);
+
+    expect(store.getDisabledLibraryPaths()).toEqual([]);
+    expect(result).toEqual([]);
+  });
+
+  it("enabled=false로 전환 후 다시 true로 전환하면 모두 활성화된다", () => {
+    store.addLibraryPath("/games/a");
+    store.addLibraryPath("/games/b");
+
+    store.setAllLibraryPathsDisabled(false);
+    expect(store.getDisabledLibraryPaths()).toHaveLength(2);
+
+    store.setAllLibraryPathsDisabled(true);
+    expect(store.getDisabledLibraryPaths()).toEqual([]);
+  });
+});

@@ -753,6 +753,26 @@ export function toggleLibraryPathDisabled(inputPath: string): boolean {
 }
 
 /**
+ * 모든 라이브러리 경로를 일괄 활성화/비활성화
+ *
+ * - enabled === true  → disabledLibraryPaths 비움 (모든 라이브러리 활성화)
+ * - enabled === false → 현재 libraryPaths 전체를 disabledLibraryPaths로 설정 (모든 라이브러리 비활성화)
+ *
+ * @returns 변경 후 비활성화된 경로 목록
+ */
+export function setAllLibraryPathsDisabled(enabled: boolean): string[] {
+  if (enabled) {
+    setDisabledLibraryPaths([]);
+    return [];
+  }
+
+  // 모든 라이브러리 경로를 정규화하여 비활성화 목록으로 설정
+  const allDisabled = deduplicateNormalized(getLibraryPaths());
+  setDisabledLibraryPaths(allDisabled);
+  return allDisabled;
+}
+
+/**
  * 정규화 + 중복 제거 헬퍼
  */
 function deduplicateNormalized(paths: string[]): string[] {

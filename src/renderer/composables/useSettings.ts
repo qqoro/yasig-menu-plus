@@ -82,6 +82,26 @@ export function useToggleLibraryPathVisibility() {
 }
 
 /**
+ * 모든 라이브러리 경로 일괄 활성화/비활성화
+ * @param enabled true=모두 활성화, false=모두 비활성화
+ */
+export function useSetAllLibraryPathsVisibility() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (enabled: boolean) => {
+      return await window.api.invoke("setAllLibraryPathsDisabled", { enabled });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.disabledLibraryPaths.all,
+      });
+      // 게임 목록도 무효화 (sourcePaths 변경)
+      queryClient.invalidateQueries({ queryKey: queryKeys.games.all });
+    },
+  });
+}
+
+/**
  * 오프라인 라이브러리 경로 목록 조회
  */
 export function useOfflineLibraryPaths() {

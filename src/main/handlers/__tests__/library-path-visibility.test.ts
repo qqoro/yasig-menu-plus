@@ -24,12 +24,14 @@ vi.mock("../../lib/normalize-path.js", () => ({
 vi.mock("../../store.js", () => ({
   getDisabledLibraryPaths: vi.fn(() => []),
   toggleLibraryPathDisabled: vi.fn(() => false),
+  setAllLibraryPathsDisabled: vi.fn(() => []),
 }));
 
 // 모킹 후 import (vi.mock 호이스팅)
 import * as store from "../../store.js";
 import {
   getDisabledLibraryPathsHandler,
+  setAllLibraryPathsDisabledHandler,
   toggleLibraryPathVisibilityHandler,
 } from "../libraryPathVisibility.js";
 
@@ -96,5 +98,38 @@ describe("toggleLibraryPathVisibilityHandler", () => {
     // normalizePath가 identity 모킹이므로 입력 경로와 동일
     expect(result.path).toBe(inputPath);
     expect(result.isDisabled).toBe(false);
+  });
+});
+
+// ============================================
+// setAllLibraryPathsDisabledHandler
+// ============================================
+describe("setAllLibraryPathsDisabledHandler", () => {
+  it("enabled=true를 store에 전달해야 한다", async () => {
+    vi.mocked(store.setAllLibraryPathsDisabled).mockReturnValue([]);
+
+    await setAllLibraryPathsDisabledHandler({} as any, { enabled: true });
+
+    expect(store.setAllLibraryPathsDisabled).toHaveBeenCalledWith(true);
+  });
+
+  it("enabled=false를 store에 전달해야 한다", async () => {
+    vi.mocked(store.setAllLibraryPathsDisabled).mockReturnValue([]);
+
+    await setAllLibraryPathsDisabledHandler({} as any, { enabled: false });
+
+    expect(store.setAllLibraryPathsDisabled).toHaveBeenCalledWith(false);
+  });
+
+  it("store 반환값과 enabled를 결과에 포함해야 한다", async () => {
+    const disabled = ["/games/a", "/games/b"];
+    vi.mocked(store.setAllLibraryPathsDisabled).mockReturnValue(disabled);
+
+    const result = await setAllLibraryPathsDisabledHandler({} as any, {
+      enabled: false,
+    });
+
+    expect(result.enabled).toBe(false);
+    expect(result.disabledPaths).toEqual(disabled);
   });
 });

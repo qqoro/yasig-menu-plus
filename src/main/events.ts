@@ -92,6 +92,7 @@ export const enum IpcRendererSend {
   // 라이브러리 경로 표시 토글
   ToggleLibraryPathVisibility = "toggleLibraryPathVisibility",
   GetDisabledLibraryPaths = "getDisabledLibraryPaths",
+  SetAllLibraryPathsDisabled = "setAllLibraryPathsDisabled", // 라이브러리 경로 일괄 활성화/비활성화
 
   // 라이브러리 경로 오프라인 토글
   ToggleLibraryPathOffline = "toggleLibraryPathOffline",
@@ -325,6 +326,7 @@ export type IpcMainSendChannel =
   | "changelogResult"
   | "libraryPathVisibilityToggled"
   | "disabledLibraryPaths"
+  | "allLibraryPathsDisabledSet"
   | "libraryPathOfflineToggled"
   | "offlineLibraryPaths"
   | "thumbnailsMigrated"
@@ -539,6 +541,7 @@ export interface IpcRendererEventMap {
   // 라이브러리 경로 표시 토글
   toggleLibraryPathVisibility: { path: string };
   getDisabledLibraryPaths: undefined;
+  setAllLibraryPathsDisabled: { enabled: boolean }; // true=모두 활성화, false=모두 비활성화
 
   // 라이브러리 경로 오프라인 토글
   toggleLibraryPathOffline: { path: string };
@@ -714,6 +717,7 @@ export interface IpcMainEventMap {
   // 라이브러리 경로 표시 토글
   libraryPathVisibilityToggled: { path: string; isDisabled: boolean };
   disabledLibraryPaths: { paths: string[] };
+  allLibraryPathsDisabledSet: { enabled: boolean; disabledPaths: string[] };
 
   // 라이브러리 경로 오프라인 토글
   libraryPathOfflineToggled: { path: string; isOffline: boolean };

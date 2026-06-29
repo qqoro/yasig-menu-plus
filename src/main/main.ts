@@ -74,6 +74,7 @@ import {
 } from "./handlers/windows.js";
 import {
   getDisabledLibraryPathsHandler,
+  setAllLibraryPathsDisabledHandler,
   toggleLibraryPathVisibilityHandler,
 } from "./handlers/libraryPathVisibility.js";
 import {
@@ -354,6 +355,10 @@ function registerIpcHandlers() {
   ipcMain.handle(
     IpcRendererSend.GetDisabledLibraryPaths,
     getDisabledLibraryPathsHandler,
+  );
+  ipcMain.handle(
+    IpcRendererSend.SetAllLibraryPathsDisabled,
+    setAllLibraryPathsDisabledHandler,
   );
   ipcMain.handle(
     IpcRendererSend.ToggleLibraryPathOffline,

@@ -51,6 +51,7 @@ import {
   useLibraryPaths,
   useDisabledLibraryPaths,
   useToggleLibraryPathVisibility,
+  useSetAllLibraryPathsVisibility,
 } from "../composables/useSettings";
 import { useUIStore } from "../stores/uiStore";
 import { createLogger } from "../lib/logger";
@@ -62,6 +63,7 @@ const log = createLogger("HomeView");
 const { data: libraryPaths } = useLibraryPaths();
 const { data: disabledLibraryPaths } = useDisabledLibraryPaths();
 const toggleLibraryPathMutation = useToggleLibraryPathVisibility();
+const setAllLibraryPathsMutation = useSetAllLibraryPathsVisibility();
 
 // 활성화된 라이브러리 경로만 필터링
 const activeLibraryPaths = computed(() => {
@@ -240,6 +242,18 @@ async function handleToggleLibraryPath(path: string): Promise<void> {
 }
 
 /**
+ * 모든 라이브러리 경로 일괄 활성화/비활성화
+ */
+async function handleToggleAllLibraryPaths(enabled: boolean): Promise<void> {
+  try {
+    await setAllLibraryPathsMutation.mutateAsync(enabled);
+  } catch (err) {
+    log.error("라이브러리 일괄 토글 실패:", err);
+    toast.error("표시 설정 변경에 실패했습니다.");
+  }
+}
+
+/**
  * 날짜 포맷 함수 (상대적 시간 표시)
  */
 function formatLastRefreshed(date: Date): string {
@@ -379,6 +393,7 @@ onMounted(() => {
             @update:sort-order="updateSortOrder"
             @reset="handleResetFilters"
             @toggle-library-path="handleToggleLibraryPath"
+            @toggle-all-library-paths="handleToggleAllLibraryPaths"
           />
         </div>
 

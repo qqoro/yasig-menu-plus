@@ -33,6 +33,7 @@ interface Emits {
   (e: "update:sortOrder", value: SearchQuery["sortOrder"]): void;
   (e: "reset"): void;
   (e: "toggleLibraryPath", path: string): void;
+  (e: "toggleAllLibraryPaths", enabled: boolean): void;
 }
 
 const props = defineProps<Props>();
@@ -193,6 +194,17 @@ function toggleLibraryPath(path: string): void {
   emit("toggleLibraryPath", path);
 }
 
+// 모든 라이브러리 경로가 활성화되었는지 여부 (마스터 Switch 상태)
+// 비활성화된 경로가 하나라도 있으면 OFF (일부/모두 비활성화)
+const allLibraryPathsEnabled = computed(() => {
+  return (props.disabledLibraryPaths?.length ?? 0) === 0;
+});
+
+// 마스터 Switch 토글 — 현재 켜져 있으면 모두 비활성화, 꺼져 있으면 모두 활성화
+function toggleAllLibraryPaths(enabled: boolean): void {
+  emit("toggleAllLibraryPaths", enabled);
+}
+
 // 활성 필터 개수 계산
 const activeFilterCount = computed(() => {
   let count = 0;
@@ -233,7 +245,20 @@ function getSortButtonStyle(sortBy: SearchQuery["sortBy"]) {
       "
       class="bg-card flex flex-col gap-2 rounded-lg border p-3"
     >
-      <h3 class="text-muted-foreground text-xs font-medium">라이브러리</h3>
+      <div class="flex items-center justify-between">
+        <h3 class="text-muted-foreground text-xs font-medium">라이브러리</h3>
+        <label
+          class="text-muted-foreground flex cursor-pointer items-center gap-1.5"
+          title="모든 라이브러리 경로를 한 번에 활성화/비활성화"
+        >
+          <span class="text-xs">전체</span>
+          <Switch
+            :model-value="allLibraryPathsEnabled"
+            @update:model-value="toggleAllLibraryPaths"
+            class="scale-75"
+          />
+        </label>
+      </div>
       <div class="max-h-40 space-y-1 overflow-y-auto">
         <label
           v-for="path in libraryPaths"
