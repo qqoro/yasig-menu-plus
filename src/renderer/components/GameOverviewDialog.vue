@@ -349,6 +349,9 @@ async function handleToggleFavorite() {
                 >
                   · 리뷰 {{ game.externalReviewCount.toLocaleString() }}건
                 </span>
+                <span v-if="game.downloadCount != null" class="text-white/50">
+                  · 다운로드 {{ game.downloadCount.toLocaleString() }}건
+                </span>
               </span>
             </div>
 

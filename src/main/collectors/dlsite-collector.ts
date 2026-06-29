@@ -36,6 +36,23 @@ export function parseDlsiteReviewCount(
   return count > 0 ? count : null;
 }
 
+/**
+ * info/ajax 응답에서 다운로드 수(dl_count, 판매 수)를 파싱한다.
+ * 수치가 없거나 0이면 null.
+ */
+export function parseDlsiteDownloadCount(
+  json: unknown,
+  id: string,
+): number | null {
+  if (!json || typeof json !== "object") return null;
+  const entry = (json as Record<string, unknown>)[id] as
+    | Record<string, unknown>
+    | undefined;
+  if (!entry) return null;
+  const count = Number(entry.dl_count ?? 0);
+  return count > 0 ? count : null;
+}
+
 export const DLSiteCollector: Collector = {
   name: "DLSite",
   getId: async (path) => {
@@ -56,8 +73,13 @@ export const DLSiteCollector: Collector = {
         .then((json) => ({
           rating: parseDlsiteRating(json, id),
           reviewCount: parseDlsiteReviewCount(json, id),
+          downloadCount: parseDlsiteDownloadCount(json, id),
         }))
-        .catch(() => ({ rating: null, reviewCount: null })),
+        .catch(() => ({
+          rating: null,
+          reviewCount: null,
+          downloadCount: null,
+        })),
     ]);
 
     const body = parse(html, {
@@ -142,6 +164,7 @@ export const DLSiteCollector: Collector = {
       publishDate,
       rating: ratingInfo.rating,
       reviewCount: ratingInfo.reviewCount,
+      downloadCount: ratingInfo.downloadCount,
       makers,
       categories,
       tags,

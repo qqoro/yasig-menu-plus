@@ -241,6 +241,7 @@ export const SteamCollector: Collector = {
       publishDate,
       rating,
       reviewCount,
+      downloadCount: null,
       makers,
       categories,
       tags,

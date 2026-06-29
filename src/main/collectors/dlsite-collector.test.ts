@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  parseDlsiteDownloadCount,
   parseDlsiteRating,
   parseDlsiteReviewCount,
 } from "./dlsite-collector.js";
@@ -197,5 +198,30 @@ describe("parseDlsiteReviewCount", () => {
   it("잘못된 입력이면 null", () => {
     expect(parseDlsiteReviewCount(null, id)).toBeNull();
     expect(parseDlsiteReviewCount("oops", id)).toBeNull();
+  });
+});
+
+describe("parseDlsiteDownloadCount", () => {
+  const id = "RJ294126";
+
+  it("dl_count가 있으면 숫자로 반환", () => {
+    const json = { [id]: { dl_count: 83612 } };
+    expect(parseDlsiteDownloadCount(json, id)).toBe(83612);
+  });
+
+  it("dl_count가 0이면 null", () => {
+    const json = { [id]: { dl_count: 0 } };
+    expect(parseDlsiteDownloadCount(json, id)).toBeNull();
+  });
+
+  it("해당 id 항목이 없으면 null", () => {
+    expect(
+      parseDlsiteDownloadCount({ other: { dl_count: 10 } }, id),
+    ).toBeNull();
+  });
+
+  it("잘못된 입력이면 null", () => {
+    expect(parseDlsiteDownloadCount(null, id)).toBeNull();
+    expect(parseDlsiteDownloadCount("nope", id)).toBeNull();
   });
 });

@@ -87,15 +87,21 @@ const ratingBadge = computed(() => {
   const siteRating =
     props.game.externalRating != null
       ? {
-          value:
-            props.game.externalReviewCount != null
-              ? `${props.game.externalRating.toFixed(2)} · ${props.game.externalReviewCount.toLocaleString()}`
-              : props.game.externalRating.toFixed(2),
+          value: [
+            props.game.externalRating.toFixed(2),
+            ...(props.game.externalReviewCount != null
+              ? [props.game.externalReviewCount.toLocaleString()]
+              : []),
+            ...(props.game.downloadCount != null
+              ? [props.game.downloadCount.toLocaleString()]
+              : []),
+          ].join(" · "),
           isUser: false,
         }
       : null;
 
-  if (props.sortBy === "externalRating") {
+  // 사이트 평점 또는 다운로드 수로 정렬 중일 땐 사이트 배지 우선
+  if (props.sortBy === "externalRating" || props.sortBy === "downloadCount") {
     return siteRating ?? userRating;
   }
   return userRating ?? siteRating;

@@ -463,6 +463,15 @@ function getSortButtonStyle(sortBy: SearchQuery["sortBy"]) {
           <ArrowUpDown v-if="sortBy === 'externalRating'" :size="14" />
         </Button>
         <Button
+          :class="getSortButtonStyle('downloadCount')"
+          size="sm"
+          variant="secondary"
+          @click="setSortBy('downloadCount')"
+        >
+          다운로드
+          <ArrowUpDown v-if="sortBy === 'downloadCount'" :size="14" />
+        </Button>
+        <Button
           :class="getSortButtonStyle('playTime')"
           size="sm"
           variant="secondary"

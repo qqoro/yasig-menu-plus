@@ -188,6 +188,7 @@ export async function searchGamesHandler(
       "games.publishDate",
       "games.externalRating",
       "games.externalReviewCount",
+      "games.downloadCount",
       "games.isHidden",
       "games.provider",
       "games.externalId",
@@ -409,6 +410,12 @@ export async function searchGamesHandler(
         "external_rating IS NULL, external_rating " + order,
       );
       break;
+    case "downloadCount":
+      // 다운로드 수 순으로 정렬 (수치 없는 게임은 뒤로)
+      query = query.orderByRaw(
+        "download_count IS NULL, download_count " + order,
+      );
+      break;
     case "playTime":
       // 플레이 시간 순으로 정렬 (플레이 시간 없는 게임은 뒤로)
       query = query.orderByRaw(
@@ -508,6 +515,7 @@ export async function getRandomGameHandler(
       "games.publishDate",
       "games.externalRating",
       "games.externalReviewCount",
+      "games.downloadCount",
       "games.isHidden",
       "games.provider",
       "games.externalId",

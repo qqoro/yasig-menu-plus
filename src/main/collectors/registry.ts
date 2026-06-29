@@ -30,6 +30,8 @@ export interface CollectorResult {
   rating: number | null;
   /** 사이트 외부 리뷰 수 (games.externalReviewCount). 없으면 null */
   reviewCount: number | null;
+  /** 사이트 다운로드/판매 수 (games.downloadCount). DLSite만 제공, 없으면 null */
+  downloadCount: number | null;
   /** 제작사 목록 (makers 테이블 → gameMakers) */
   makers: string[];
   /** 카테고리 목록 (categories 테이블 → gameCategories) */
@@ -115,6 +117,7 @@ export async function saveInfo(path: string, info: CollectorResult) {
     publishDate,
     rating,
     reviewCount,
+    downloadCount,
     makers,
     categories,
     tags,
@@ -175,6 +178,7 @@ export async function saveInfo(path: string, info: CollectorResult) {
         publishDate: publishDate ?? undefined,
         externalRating: rating ?? undefined,
         externalReviewCount: reviewCount ?? undefined,
+        downloadCount: downloadCount ?? undefined,
         externalId: externalId ?? undefined,
         provider: provider ?? undefined,
         thumbnail: thumbnailPath, // 썸네일 경로 업데이트

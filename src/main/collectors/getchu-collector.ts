@@ -123,6 +123,7 @@ export const GetchuCollector: Collector = {
       publishDate,
       rating: null,
       reviewCount: null,
+      downloadCount: null,
       makers,
       categories,
       tags,

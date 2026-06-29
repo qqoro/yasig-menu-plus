@@ -374,6 +374,12 @@ defineExpose({ resetState });
       >
         · 리뷰 {{ game.externalReviewCount.toLocaleString() }}건
       </span>
+      <span
+        v-if="game.downloadCount != null"
+        class="text-muted-foreground text-sm"
+      >
+        · 다운로드 {{ game.downloadCount.toLocaleString() }}건
+      </span>
     </div>
   </div>
 </template>

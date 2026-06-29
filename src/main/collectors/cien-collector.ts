@@ -65,6 +65,7 @@ export const CienCollector: Collector = {
       publishDate,
       rating: null,
       reviewCount: null,
+      downloadCount: null,
       makers,
       categories: [],
       tags: [],

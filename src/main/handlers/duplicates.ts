@@ -125,6 +125,7 @@ async function buildGameItems(
     rating?: number | null;
     externalRating?: number | null;
     externalReviewCount?: number | null;
+    downloadCount?: number | null;
     totalPlayTime?: number;
   }>,
   relations: {
@@ -152,6 +153,7 @@ async function buildGameItems(
         rating: g.rating,
         externalRating: g.externalRating ?? null,
         externalReviewCount: g.externalReviewCount ?? null,
+        downloadCount: g.downloadCount ?? null,
         isFavorite:
           g.isFavorite !== undefined ? Boolean(g.isFavorite) : undefined,
         isHidden: g.isHidden !== undefined ? Boolean(g.isHidden) : undefined,
@@ -198,6 +200,7 @@ export async function findDuplicatesHandler(
       "games.publishDate",
       "games.externalRating",
       "games.externalReviewCount",
+      "games.downloadCount",
       "games.isHidden",
       "games.provider",
       "games.externalId",
