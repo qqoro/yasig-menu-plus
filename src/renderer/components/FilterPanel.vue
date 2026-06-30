@@ -1,3 +1,11 @@
+<script lang="ts">
+import type { SearchQuery } from "../types";
+
+// 데이터 소스 한계 안내를 이미 띄운 정렬 키 (앱 실행 단위 1회, 모듈 스코프)
+// <script setup> 안이 아닌 일반 <script> 블록에 두어야 컴포넌트 마운트마다 초기화되지 않음
+const shownSortHints = new Set<SearchQuery["sortBy"]>();
+</script>
+
 <script setup lang="ts">
 import {
   ArrowUpDown,
@@ -15,7 +23,7 @@ import {
   X,
 } from "lucide-vue-next";
 import { computed } from "vue";
-import type { SearchQuery } from "../types";
+import { toast } from "vue-sonner";
 import { Button } from "./ui/button";
 import { Switch } from "./ui/switch";
 
@@ -73,9 +81,27 @@ function setSortBy(sortBy: SearchQuery["sortBy"]): void {
   if (props.sortBy === sortBy) {
     toggleSortOrder();
   } else {
+    maybeShowSortHint(sortBy);
     emit("update:sortBy", sortBy);
     emit("update:sortOrder", "desc");
   }
+}
+
+// 데이터 소스 한계 안내 토스트 — 앱 실행 중 해당 정렬 최초 선택 시 1회만 노출
+function maybeShowSortHint(sortBy: SearchQuery["sortBy"]): void {
+  if (shownSortHints.has(sortBy)) return;
+  if (sortBy === "downloadCount") {
+    toast.info(
+      "다운로드 수는 DLSite에서만 수집돼요. 다른 사이트 게임은 값이 없어 정렬 맨 뒤로 배치됩니다.",
+    );
+  } else if (sortBy === "externalRating") {
+    toast.info(
+      "사이트 별점은 일부 사이트(DLSite·Getchu 등)에서만 수집돼요. 미수집 게임은 정렬 맨 뒤로 배치됩니다.",
+    );
+  } else {
+    return;
+  }
+  shownSortHints.add(sortBy);
 }
 
 // 즐겨찾기 필터 사이클 (필터 없음 → 즐겨찾기만 → 비즐겨찾기만 → 필터 없음)
