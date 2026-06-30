@@ -1,7 +1,7 @@
 {
   "name": "yasig-menu-plus",
   "displayName": "야식메뉴판 Plus",
-  "version": "1.19.0",
+  "version": "1.20.0",
   "description": "야식 관리에 도움이 되는 가벼운 앱",
   "license": "MIT",
   "repository": {
@@ -91,7 +91,6 @@
     "fast-glob": "^3.3.3",
     "iconv-lite": "^0.7.1",
     "knex": "^3.1.0",
-
     "lucide-vue-next": "^0.563.0",
     "marked": "^17.0.4",
     "node-html-parser": "^7.0.2",
