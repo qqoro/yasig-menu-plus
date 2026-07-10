@@ -14,7 +14,9 @@ import { dirname, join } from "path";
 import { COMPRESS_FILE_TYPE } from "../constants.js";
 import { db } from "../db/db-manager.js";
 import type { IpcMainEventMap, IpcRendererEventMap } from "../events.js";
+import type { InsertGame, UpdateGame } from "../db/db.js";
 import { computeFingerprint } from "../lib/fingerprint.js";
+import { classifyCandidate, type ExistingGameRow } from "../lib/scan-diff.js";
 import { EXECUTABLE_EXTENSIONS } from "../lib/scan-logic.js";
 import {
   getEnableNonGameContent,
@@ -119,13 +121,27 @@ export async function scanFolder(
   }
 
   try {
-    // 스캔 전 DB에 있는 해당 라이브러리의 모든 게임 경로를 가져옴
-    const existingGames = await db("games")
-      .where("source", sourcePath)
-      .select("path");
-    const existingPaths = new Set(existingGames.map((g) => g.path));
+    const startedAt = Date.now();
+
+    // 전체 games를 1회 조회하여 경로 → 행 Map 구성
+    // (source 무관 전체 조회: 라이브러리 간 게임 이동 감지용.
+    //  필요한 컬럼만 선택하므로 1만 행 기준 수 MB/수 ms 수준)
+    const allGames: ExistingGameRow[] = await db("games").select(
+      "path",
+      "source",
+      "fingerprint",
+      "dirMtimeMs",
+      "hasExecutable",
+      "provider",
+      "externalId",
+    );
+    const gameByPath = new Map(allGames.map((g) => [g.path, g]));
+
+    // 스캔 전 DB에 있는 해당 라이브러리의 모든 게임 경로 (삭제 판정용)
+    const existingPaths = new Set(
+      allGames.filter((g) => g.source === sourcePath).map((g) => g.path),
+    );
     const foundPaths = new Set<string>();
-    let addedCount = 0;
 
     // 비게임 콘텐츠 인식 설정 로드
     const enableNonGameContent = getEnableNonGameContent();
@@ -137,9 +153,32 @@ export async function scanFolder(
       enableNonGameContent,
     );
 
-    // 발견한 게임 후보 등록
+    // 1단계: 후보 분류 + 신규/변경 건만 fingerprint 계산 (fs 작업, DB 쓰기 없음)
+    const inserts: InsertGame[] = [];
+    const updates: Array<{
+      path: string;
+      oldFingerprint: string | null;
+      newFingerprint: string | null;
+      provider: string | null;
+      externalId: string | null;
+      data: UpdateGame;
+    }> = [];
+    let skippedCount = 0;
+
     for (const candidate of candidates) {
       const { path: fullPath, name, isCompressFile } = candidate;
+
+      // 발견된 경로 기록
+      foundPaths.add(fullPath);
+
+      const existing = gameByPath.get(fullPath);
+      const classification = classifyCandidate(existing, candidate, sourcePath);
+
+      // 변경 없음: fingerprint 재계산과 UPDATE 모두 생략
+      if (classification === "skip") {
+        skippedCount++;
+        continue;
+      }
 
       // 압축파일인 경우 제목에서 확장자 제거
       let title = name;
@@ -152,71 +191,79 @@ export async function scanFolder(
         }
       }
 
-      // 게임 정보 생성
       const fingerprint = await computeFingerprint(
         fullPath,
         Boolean(isCompressFile),
       );
-      const gameData = {
-        path: fullPath,
-        title: title,
-        originalTitle: name,
-        source: sourcePath,
-        isCompressFile: Boolean(isCompressFile),
-        hasExecutable: candidate.hasExecutable,
-        fingerprint,
-      };
 
-      // 발견된 경로 기록
-      foundPaths.add(fullPath);
-
-      // DB에 이미 존재하는지 확인 후 삽입
-      const existing = await db("games").where("path", fullPath).first();
-      if (!existing) {
-        await db("games").insert(gameData);
-        addedCount++;
-      } else {
-        // 기존 게임 정보 업데이트 (발견한 경우)
-        // title은 정보 수집으로 변경된 값을 유지하고, originalTitle만 업데이트
-        // fingerprint 변경 시 user_game_data도 갱신
-        const oldFingerprint = existing.fingerprint;
-        const newFingerprint = fingerprint ?? existing.fingerprint;
-        if (newFingerprint && oldFingerprint !== newFingerprint) {
-          if (oldFingerprint) {
-            // fingerprint 변경: user_game_data도 같이 갱신
-            await db("userGameData")
-              .where("fingerprint", oldFingerprint)
-              .update({ fingerprint: newFingerprint });
-          } else {
-            // fingerprint 최초 설정 (마이그레이션 후 첫 스캔):
-            // external_key로 연결된 user_game_data의 fingerprint를 채운다
-            const game = await db("games")
-              .where("path", fullPath)
-              .select("provider", "externalId")
-              .first();
-            if (game?.provider && game?.externalId) {
-              const ek = `${game.provider}:${game.externalId}`;
-              // UNIQUE 충돌 방지: 해당 fingerprint를 가진 다른 레코드가 없는 경우만 갱신
-              const conflicting = await db("userGameData")
-                .where("fingerprint", newFingerprint)
-                .first();
-              if (!conflicting) {
-                await db("userGameData")
-                  .where("externalKey", ek)
-                  .whereNull("fingerprint")
-                  .update({ fingerprint: newFingerprint });
-              }
-            }
-          }
-        }
-        await db("games").where("path", fullPath).update({
+      if (classification === "new") {
+        inserts.push({
+          path: fullPath,
+          title: title,
           originalTitle: name,
           source: sourcePath,
-          fingerprint: newFingerprint,
-          updatedAt: new Date(),
+          isCompressFile: Boolean(isCompressFile),
+          hasExecutable: candidate.hasExecutable,
+          fingerprint,
+          dirMtimeMs: candidate.mtimeMs ?? null,
+        });
+      } else {
+        // 변경: title은 정보 수집으로 변경된 값을 유지하고, originalTitle만 업데이트
+        const newFingerprint = fingerprint ?? existing!.fingerprint;
+        updates.push({
+          path: fullPath,
+          oldFingerprint: existing!.fingerprint,
+          newFingerprint,
+          provider: existing!.provider,
+          externalId: existing!.externalId,
+          data: {
+            originalTitle: name,
+            source: sourcePath,
+            fingerprint: newFingerprint,
+            hasExecutable: candidate.hasExecutable,
+            dirMtimeMs: candidate.mtimeMs ?? null,
+            updatedAt: new Date(),
+          },
         });
       }
     }
+
+    // 2단계: DB 쓰기 — 트랜잭션 1개로 배치 처리
+    const INSERT_CHUNK_SIZE = 100;
+    await db.transaction(async (trx) => {
+      for (let i = 0; i < inserts.length; i += INSERT_CHUNK_SIZE) {
+        await trx("games").insert(inserts.slice(i, i + INSERT_CHUNK_SIZE));
+      }
+
+      for (const u of updates) {
+        // fingerprint 변경 시 user_game_data도 갱신
+        if (u.newFingerprint && u.oldFingerprint !== u.newFingerprint) {
+          if (u.oldFingerprint) {
+            // fingerprint 변경: user_game_data도 같이 갱신
+            await trx("userGameData")
+              .where("fingerprint", u.oldFingerprint)
+              .update({ fingerprint: u.newFingerprint });
+          } else if (u.provider && u.externalId) {
+            // fingerprint 최초 설정 (마이그레이션 후 첫 스캔):
+            // external_key로 연결된 user_game_data의 fingerprint를 채운다
+            const ek = `${u.provider}:${u.externalId}`;
+            // UNIQUE 충돌 방지: 해당 fingerprint를 가진 다른 레코드가 없는 경우만 갱신
+            const conflicting = await trx("userGameData")
+              .where("fingerprint", u.newFingerprint)
+              .first();
+            if (!conflicting) {
+              await trx("userGameData")
+                .where("externalKey", ek)
+                .whereNull("fingerprint")
+                .update({ fingerprint: u.newFingerprint });
+            }
+          }
+        }
+        await trx("games").where("path", u.path).update(u.data);
+      }
+    });
+
+    const addedCount = inserts.length;
 
     // 오프라인 경로는 삭제 로직 스킵 (일시적 접근 불가로 인한 삭제 방지)
     const offlinePaths = getOfflineLibraryPaths();
@@ -268,6 +315,10 @@ export async function scanFolder(
       .count("* as count")
       .first()) as { count: bigint } | undefined;
     updateLibraryScanHistory(sourcePath, Number(totalGames?.count ?? 0));
+
+    log.info(
+      `스캔 완료 (${sourcePath}): 신규 ${addedCount}, 변경 ${updates.length}, 스킵 ${skippedCount}, 삭제 ${deletedCount}, ${Date.now() - startedAt}ms`,
+    );
 
     return { addedCount, deletedCount };
   } catch (error) {

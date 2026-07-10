@@ -18,12 +18,14 @@ import {
 vi.mock("fs", () => ({
   existsSync: vi.fn(),
   readdirSync: vi.fn(),
+  statSync: vi.fn(),
 }));
 
 // fs 모킹 함수 가져오기
-import { existsSync, readdirSync } from "fs";
+import { existsSync, readdirSync, statSync } from "fs";
 const mockExistsSync = vi.mocked(existsSync);
 const mockReaddirSync = vi.mocked(readdirSync);
+const mockStatSync = vi.mocked(statSync);
 
 /**
  * Dirent 객체를 생성하는 헬퍼 함수
@@ -1008,5 +1010,72 @@ describe("scanFolderRecursive", () => {
       isCompressFile: false,
       hasExecutable: true,
     });
+  });
+});
+
+// ============================================
+// mtimeMs 수집 테스트 (증분 스캔용)
+// ============================================
+describe("mtimeMs 수집", () => {
+  it("폴더 후보에 statSync의 mtimeMs가 포함됨", () => {
+    mockExistsSync.mockReturnValue(true);
+    mockStatSync.mockReturnValue({ mtimeMs: 1234567890 } as any);
+    mockReaddirSync.mockImplementation((path: any) => {
+      const pathStr = String(path);
+      if (pathStr === "/library") {
+        return asReaddirReturn([
+          createDirent("GameFolder", { isDirectory: true }),
+        ]);
+      }
+      if (pathStr === join("/library", "GameFolder")) {
+        return asReaddirReturn([createDirent("game.exe", { isFile: true })]);
+      }
+      return asReaddirReturn([]);
+    });
+
+    const result = scanSingleFolder("/library");
+
+    expect(result.candidates).toHaveLength(1);
+    expect(result.candidates[0].mtimeMs).toBe(1234567890);
+  });
+
+  it("압축파일 후보에도 mtimeMs가 포함됨", () => {
+    mockExistsSync.mockReturnValue(true);
+    mockStatSync.mockReturnValue({ mtimeMs: 42 } as any);
+    mockReaddirReturn([createDirent("game.zip", { isFile: true })]);
+
+    const result = scanSingleFolder("/library");
+
+    expect(result.candidates).toHaveLength(1);
+    expect(result.candidates[0].mtimeMs).toBe(42);
+  });
+
+  it("statSync 실패 시 mtimeMs는 undefined", () => {
+    mockExistsSync.mockReturnValue(true);
+    mockStatSync.mockImplementation(() => {
+      throw new Error("EACCES: permission denied");
+    });
+    mockReaddirReturn([createDirent("launcher.exe", { isFile: true })]);
+
+    const result = scanSingleFolder("/library");
+
+    expect(result.candidates).toHaveLength(1);
+    expect(result.candidates[0].mtimeMs).toBeUndefined();
+  });
+
+  it("비게임 콘텐츠(RJ코드 폴더)에도 mtimeMs가 포함됨", () => {
+    mockExistsSync.mockReturnValue(true);
+    mockStatSync.mockReturnValue({ mtimeMs: 777 } as any);
+    vi.mocked(readdirSync).mockImplementation((path: any) => {
+      if (String(path).endsWith("RJ123456_작품명")) {
+        return [createDirent("track01.mp3", { isFile: true })] as any;
+      }
+      return [createDirent("RJ123456_작품명", { isDirectory: true })] as any;
+    });
+
+    const result = scanFolderRecursive("/library", 5, true);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].mtimeMs).toBe(777);
   });
 });

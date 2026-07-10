@@ -5,7 +5,7 @@
  * DB 의존성 없이 fs 작업만 수행합니다.
  */
 
-import { existsSync, readdirSync } from "fs";
+import { existsSync, readdirSync, statSync } from "fs";
 import { join } from "path";
 import { COMPRESS_FILE_TYPE } from "../constants.js";
 import { hasRjCode } from "./rj-code.js";
@@ -44,6 +44,7 @@ export interface GameCandidate {
   name: string;
   isCompressFile: boolean;
   hasExecutable: boolean;
+  mtimeMs?: number; // 경로의 mtime(ms) — 증분 스캔 판정용, stat 실패 시 undefined
 }
 
 /**
@@ -61,6 +62,17 @@ export function hasExecutableFile(folderPath: string): boolean {
     );
   } catch {
     return false;
+  }
+}
+
+/**
+ * 경로의 mtime(ms)을 조회 — 실패 시 undefined (증분 스캔에서 항상 재계산 대상이 됨)
+ */
+function getMtimeMs(path: string): number | undefined {
+  try {
+    return statSync(path).mtimeMs;
+  } catch {
+    return undefined;
   }
 }
 
@@ -109,6 +121,7 @@ export function scanSingleFolder(folderPath: string): {
             name: entry.name,
             isCompressFile: false,
             hasExecutable: true,
+            mtimeMs: getMtimeMs(fullPath),
           });
         } else {
           // 실행파일 없으면 하위 폴더로 스캔 예약
@@ -122,6 +135,7 @@ export function scanSingleFolder(folderPath: string): {
           name: entry.name,
           isCompressFile: true,
           hasExecutable: true,
+          mtimeMs: getMtimeMs(fullPath),
         });
       } else if (isExecutableFile) {
         // 실행파일(.exe, .lnk, .url)도 게임 후보
@@ -130,6 +144,7 @@ export function scanSingleFolder(folderPath: string): {
           name: entry.name,
           isCompressFile: false,
           hasExecutable: true,
+          mtimeMs: getMtimeMs(fullPath),
         });
       }
     }
@@ -198,6 +213,7 @@ export function scanFolderRecursive(
           name: rjFolder.split(/[\\/]/).pop() || "",
           isCompressFile: false,
           hasExecutable: false,
+          mtimeMs: getMtimeMs(rjFolder),
         });
       }
     }

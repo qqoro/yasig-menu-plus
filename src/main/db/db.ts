@@ -41,6 +41,8 @@ export interface Game extends Omit<TableBaseColumn, "createdAt" | "updatedAt"> {
   fingerprint: string | null; // SHA-256 해시 (게임 식별용)
   isHidden: SqliteBoolean;
   isCompressFile: SqliteBoolean;
+  hasExecutable: SqliteBoolean; // 실행파일 존재 여부 (비게임 콘텐츠는 false)
+  dirMtimeMs: number | null; // 게임 후보 경로의 mtime(ms) — 증분 스캔 판정용
   translatedTitle: string | null; // 번역된 제목
   translationSource: string | null; // 번역 출처 (ollama, google)
   translatedAt: Date | null; // 번역 시간
