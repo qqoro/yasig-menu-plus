@@ -1,6 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  deriveSampleImageUrl,
+  DLSiteCollector,
+  parseCircleName,
+  parseDlsiteAjaxFallback,
   parseDlsiteDownloadCount,
+  parseDlsiteProduct,
   parseDlsiteRating,
   parseDlsiteReviewCount,
 } from "./dlsite-collector.js";
@@ -223,5 +228,302 @@ describe("parseDlsiteDownloadCount", () => {
   it("잘못된 입력이면 null", () => {
     expect(parseDlsiteDownloadCount(null, id)).toBeNull();
     expect(parseDlsiteDownloadCount("nope", id)).toBeNull();
+  });
+});
+
+// ===== product.json 파싱 (판매 중 작품) =====
+
+/** 실제 product.json 응답 형태를 축약한 픽스처 */
+function makeProductFixture(id: string) {
+  return {
+    workno: id,
+    work_name: "테스트 작품",
+    maker_name: "테스트 서클",
+    work_type_string: "만화",
+    regist_date: "2013-10-15 00:00:00",
+    genres: [
+      {
+        name: "러브러브/달콤달콤",
+        id: 4,
+        search_val: "004",
+        name_base: "ラブラブ/あまあま",
+      },
+      { name: "처녀", id: 193, search_val: "193", name_base: "処女" },
+    ],
+    image_main: {
+      url: `//img.dlsite.jp/modpub/images2/work/doujin/RJ124000/${id}_img_main.jpg`,
+    },
+    image_samples: [
+      {
+        url: `//img.dlsite.jp/modpub/images2/work/doujin/RJ124000/${id}_img_smp1.jpg`,
+      },
+      {
+        url: `//img.dlsite.jp/modpub/images2/work/doujin/RJ124000/${id}_img_smp2.jpg`,
+      },
+    ],
+  };
+}
+
+describe("parseDlsiteProduct", () => {
+  const id = "RJ123456";
+
+  it("정상 응답에서 모든 필드를 매핑", () => {
+    const result = parseDlsiteProduct([makeProductFixture(id)], id);
+    expect(result).not.toBeNull();
+    expect(result!.title).toBe("테스트 작품");
+    expect(result!.thumbnailUrl).toBe(
+      "https://img.dlsite.jp/modpub/images2/work/doujin/RJ124000/RJ123456_img_main.jpg",
+    );
+    expect(result!.images).toEqual([
+      "https://img.dlsite.jp/modpub/images2/work/doujin/RJ124000/RJ123456_img_main.jpg",
+      "https://img.dlsite.jp/modpub/images2/work/doujin/RJ124000/RJ123456_img_smp1.jpg",
+      "https://img.dlsite.jp/modpub/images2/work/doujin/RJ124000/RJ123456_img_smp2.jpg",
+    ]);
+    expect(result!.publishDate).toEqual(new Date("2013-10-15T00:00:00"));
+    expect(result!.makers).toEqual(["테스트 서클"]);
+    expect(result!.categories).toEqual(["만화"]);
+    expect(result!.tags).toEqual(["러브러브/달콤달콤", "처녀"]);
+  });
+
+  it("빈 배열이면 null (판매 중단 작품)", () => {
+    expect(parseDlsiteProduct([], id)).toBeNull();
+  });
+
+  it("workno가 일치하지 않으면 null", () => {
+    const other = { ...makeProductFixture(id), workno: "RJ999999" };
+    expect(parseDlsiteProduct([other], id)).toBeNull();
+  });
+
+  it("배열이 아니면 null", () => {
+    expect(parseDlsiteProduct(null, id)).toBeNull();
+    expect(parseDlsiteProduct({}, id)).toBeNull();
+    expect(parseDlsiteProduct("oops", id)).toBeNull();
+  });
+
+  it("image_main이 없으면 썸네일 null, 샘플만 수집", () => {
+    const product = { ...makeProductFixture(id), image_main: null };
+    const result = parseDlsiteProduct([product], id);
+    expect(result!.thumbnailUrl).toBeNull();
+    expect(result!.images).toEqual([
+      "https://img.dlsite.jp/modpub/images2/work/doujin/RJ124000/RJ123456_img_smp1.jpg",
+      "https://img.dlsite.jp/modpub/images2/work/doujin/RJ124000/RJ123456_img_smp2.jpg",
+    ]);
+  });
+
+  it("regist_date가 잘못되면 publishDate null", () => {
+    const product = { ...makeProductFixture(id), regist_date: null };
+    expect(parseDlsiteProduct([product], id)!.publishDate).toBeNull();
+  });
+
+  it("genres가 없으면 빈 태그 목록", () => {
+    const product = { ...makeProductFixture(id), genres: null };
+    expect(parseDlsiteProduct([product], id)!.tags).toEqual([]);
+  });
+});
+
+// ===== info/ajax 폴백 파싱 (판매 중단 작품) =====
+
+describe("parseDlsiteAjaxFallback", () => {
+  const id = "RJ045678";
+  const entry = {
+    work_name: "くノ一捕獲",
+    work_image:
+      "//img.dlsite.jp/modpub/images2/work/doujin/RJ046000/RJ045678_img_main.jpg",
+    regist_date: "2009-01-12 00:00:00",
+    work_type: "MNG",
+    maker_id: "RG08182",
+  };
+
+  it("판매 중단 작품 엔트리에서 기본 정보 추출", () => {
+    const result = parseDlsiteAjaxFallback({ [id]: entry }, id);
+    expect(result).not.toBeNull();
+    expect(result!.title).toBe("くノ一捕獲");
+    expect(result!.thumbnailUrl).toBe(
+      "https://img.dlsite.jp/modpub/images2/work/doujin/RJ046000/RJ045678_img_main.jpg",
+    );
+    expect(result!.publishDate).toEqual(new Date("2009-01-12T00:00:00"));
+    expect(result!.category).toBe("만화");
+    expect(result!.makerId).toBe("RG08182");
+  });
+
+  it("해당 id 엔트리가 없으면 null", () => {
+    expect(parseDlsiteAjaxFallback({}, id)).toBeNull();
+    expect(parseDlsiteAjaxFallback([], id)).toBeNull();
+    expect(parseDlsiteAjaxFallback(null, id)).toBeNull();
+  });
+
+  it("알 수 없는 work_type이면 category null", () => {
+    const result = parseDlsiteAjaxFallback(
+      { [id]: { ...entry, work_type: "XXX" } },
+      id,
+    );
+    expect(result!.category).toBeNull();
+  });
+
+  it("work_image가 없으면 thumbnailUrl null", () => {
+    const result = parseDlsiteAjaxFallback(
+      { [id]: { ...entry, work_image: null } },
+      id,
+    );
+    expect(result!.thumbnailUrl).toBeNull();
+  });
+});
+
+// ===== 샘플 이미지 URL 유도 =====
+
+describe("deriveSampleImageUrl", () => {
+  const mainUrl =
+    "https://img.dlsite.jp/modpub/images2/work/doujin/RJ046000/RJ045678_img_main.jpg";
+
+  it("메인 이미지 URL에서 n번째 샘플 URL 유도", () => {
+    expect(deriveSampleImageUrl(mainUrl, 1)).toBe(
+      "https://img.dlsite.jp/modpub/images2/work/doujin/RJ046000/RJ045678_img_smp1.jpg",
+    );
+    expect(deriveSampleImageUrl(mainUrl, 3)).toBe(
+      "https://img.dlsite.jp/modpub/images2/work/doujin/RJ046000/RJ045678_img_smp3.jpg",
+    );
+  });
+
+  it("_img_main 패턴이 아니면 null", () => {
+    expect(
+      deriveSampleImageUrl("https://img.dlsite.jp/other/image.jpg", 1),
+    ).toBeNull();
+  });
+});
+
+// ===== 서클 프로필 HTML에서 서클명 추출 =====
+
+describe("parseCircleName", () => {
+  it("prof_maker_name 요소에서 서클명 추출", () => {
+    const html = `<div class="prof_maker"><strong class="prof_maker_name">みこらび</strong></div>`;
+    expect(parseCircleName(html)).toBe("みこらび");
+  });
+
+  it("서클명 요소가 없으면 null", () => {
+    expect(parseCircleName("<html><body>404</body></html>")).toBeNull();
+  });
+});
+
+// ===== fetchInfo 통합 (fetch 스텁) =====
+
+describe("DLSiteCollector.fetchInfo", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /** JSON 응답 스텁 생성 */
+  function jsonResponse(data: unknown) {
+    return {
+      ok: true,
+      json: async () => data,
+      text: async () => JSON.stringify(data),
+    };
+  }
+
+  it("판매 중 작품은 product.json 기반으로 수집하고 ajax 평점을 병합", async () => {
+    const id = "RJ123456";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url.includes("/api/=/product.json")) {
+          return jsonResponse([makeProductFixture(id)]);
+        }
+        if (url.includes("/product/info/ajax")) {
+          return jsonResponse({
+            [id]: { rate_count: 10, rate_average_2dp: 4.5, dl_count: 1000 },
+          });
+        }
+        throw new Error(`예상치 못한 fetch: ${url}`);
+      }),
+    );
+
+    const result = await DLSiteCollector.fetchInfo({ path: "x", id });
+    expect(result!.title).toBe("테스트 작품");
+    expect(result!.makers).toEqual(["테스트 서클"]);
+    expect(result!.categories).toEqual(["만화"]);
+    expect(result!.tags).toEqual(["러브러브/달콤달콤", "처녀"]);
+    expect(result!.rating).toBe(4.5);
+    expect(result!.reviewCount).toBe(10);
+    expect(result!.downloadCount).toBe(1000);
+    expect(result!.externalId).toBe(id);
+    expect(result!.provider).toBe("dlsite");
+  });
+
+  it("판매 중단 작품은 ajax 폴백 + 샘플 프로빙 + 서클명 복구", async () => {
+    const id = "RJ045678";
+    const mainImage = `//img.dlsite.jp/modpub/images2/work/doujin/RJ046000/${id}_img_main.jpg`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: { method?: string }) => {
+        if (url.includes("/api/=/product.json")) {
+          return jsonResponse([]);
+        }
+        if (url.includes("/product/info/ajax")) {
+          return jsonResponse({
+            [id]: {
+              work_name: "くノ一捕獲",
+              work_image: mainImage,
+              regist_date: "2009-01-12 00:00:00",
+              work_type: "MNG",
+              maker_id: "RG08182",
+              rate_count: 21,
+              rate_average_2dp: 3.71,
+              dl_count: 32,
+            },
+          });
+        }
+        if (init?.method === "HEAD") {
+          // smp1만 존재, smp2부터 404
+          return { ok: url.includes("_img_smp1.jpg") };
+        }
+        if (url.includes("/circle/profile/=/maker_id/RG08182.html")) {
+          return {
+            ok: true,
+            text: async () =>
+              `<strong class="prof_maker_name">みこらび</strong>`,
+          };
+        }
+        throw new Error(`예상치 못한 fetch: ${url}`);
+      }),
+    );
+
+    const result = await DLSiteCollector.fetchInfo({ path: "x", id });
+    expect(result!.title).toBe("くノ一捕獲");
+    expect(result!.thumbnailUrl).toBe(`https:${mainImage}`);
+    expect(result!.images).toEqual([
+      `https:${mainImage}`,
+      `https://img.dlsite.jp/modpub/images2/work/doujin/RJ046000/${id}_img_smp1.jpg`,
+    ]);
+    expect(result!.publishDate).toEqual(new Date("2009-01-12T00:00:00"));
+    expect(result!.makers).toEqual(["みこらび"]);
+    expect(result!.categories).toEqual(["만화"]);
+    expect(result!.tags).toEqual([]);
+    expect(result!.rating).toBe(3.71);
+    expect(result!.reviewCount).toBe(21);
+    expect(result!.downloadCount).toBe(32);
+    expect(result!.externalId).toBe(id);
+    expect(result!.provider).toBe("dlsite");
+  });
+
+  it("양쪽 API 모두 데이터가 없으면 빈 결과 반환", async () => {
+    const id = "RJ99999999";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url.includes("/api/=/product.json")) return jsonResponse([]);
+        if (url.includes("/product/info/ajax")) return jsonResponse([]);
+        throw new Error(`예상치 못한 fetch: ${url}`);
+      }),
+    );
+
+    const result = await DLSiteCollector.fetchInfo({ path: "x", id });
+    expect(result!.title).toBeNull();
+    expect(result!.thumbnailUrl).toBeNull();
+    expect(result!.images).toEqual([]);
+    expect(result!.makers).toEqual([]);
+    expect(result!.categories).toEqual([]);
+    expect(result!.tags).toEqual([]);
+    expect(result!.externalId).toBe(id);
+    expect(result!.provider).toBe("dlsite");
   });
 });

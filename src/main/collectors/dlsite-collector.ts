@@ -53,6 +53,207 @@ export function parseDlsiteDownloadCount(
   return count > 0 ? count : null;
 }
 
+/**
+ * DLsite work_type 코드 → 한국어 라벨 매핑.
+ * 판매 중단 작품 폴백 시 info/ajax의 work_type 코드를 카테고리명으로 변환하는 용도.
+ * DLsite 공식 작품 형식 목록(ko-KR) 기준이며, 하단 4개는 타 사이트(books 등)용 코드.
+ */
+const WORK_TYPE_LABELS: Record<string, string> = {
+  ACN: "액션",
+  QIZ: "퀴즈",
+  ADV: "어드벤쳐",
+  RPG: "롤플레잉",
+  TBL: "테이블",
+  DNV: "디지털 소설",
+  SLN: "시뮬레이션",
+  TYP: "타이핑",
+  STG: "슈팅",
+  PZL: "퍼즐",
+  ETC: "기타 게임",
+  ET3: "기타",
+  MNG: "만화",
+  ICG: "CG・일러스트",
+  MOV: "동영상 작품",
+  SOU: "보이스・ASMR",
+  TOL: "툴 / 악세사리",
+  IMT: "이미지 소재",
+  AMT: "소리 소재",
+  VCM: "보이스 코믹",
+  NRE: "노벨",
+  MUS: "음악",
+  SCM: "극화",
+  WBT: "웹툰",
+};
+
+/** 판매 중단 작품의 샘플 이미지 존재 여부를 확인할 최대 개수 */
+const MAX_SAMPLE_IMAGES = 20;
+
+/** 프로토콜 상대 URL(//img.dlsite.jp/...)을 https 절대 URL로 변환. 문자열이 아니면 null */
+function toAbsoluteUrl(url: unknown): string | null {
+  if (typeof url !== "string" || url === "") return null;
+  return url.startsWith("//") ? `https:${url}` : url;
+}
+
+/** regist_date("YYYY-MM-DD HH:mm:ss") 문자열을 Date로 변환. 잘못된 값이면 null */
+function parseRegistDate(value: unknown): Date | null {
+  if (typeof value !== "string" || value === "") return null;
+  const date = dayjs(value);
+  return date.isValid() ? date.toDate() : null;
+}
+
+/** 값이 비어있지 않은 문자열이면 그대로, 아니면 null */
+function asNonEmptyString(value: unknown): string | null {
+  return typeof value === "string" && value !== "" ? value : null;
+}
+
+/** product.json에서 파싱한 판매 중 작품 정보 */
+export interface DlsiteProductInfo {
+  title: string | null;
+  thumbnailUrl: string | null;
+  images: string[];
+  publishDate: Date | null;
+  makers: string[];
+  categories: string[];
+  tags: string[];
+}
+
+/**
+ * product.json 응답(배열)에서 해당 workno의 작품 정보를 파싱한다.
+ * 판매 중단 작품은 빈 배열이 반환되므로 null.
+ */
+export function parseDlsiteProduct(
+  json: unknown,
+  id: string,
+): DlsiteProductInfo | null {
+  if (!Array.isArray(json)) return null;
+  // workno 일치 확인: 빈 workno 요청 등 비정상 응답이 섞여도 무시되도록 방어
+  const product = json.find(
+    (entry) =>
+      entry &&
+      typeof entry === "object" &&
+      (entry as Record<string, unknown>).workno === id,
+  ) as Record<string, unknown> | undefined;
+  if (!product) return null;
+
+  const thumbnailUrl = toAbsoluteUrl(
+    (product.image_main as Record<string, unknown> | null)?.url,
+  );
+  const sampleUrls = Array.isArray(product.image_samples)
+    ? product.image_samples
+        .map((sample) =>
+          toAbsoluteUrl((sample as Record<string, unknown> | null)?.url),
+        )
+        .filter((url): url is string => url !== null)
+    : [];
+  const images = thumbnailUrl ? [thumbnailUrl, ...sampleUrls] : sampleUrls;
+
+  const makerName = asNonEmptyString(product.maker_name);
+  const workTypeString = asNonEmptyString(product.work_type_string);
+  const tags = Array.isArray(product.genres)
+    ? product.genres
+        .map((genre) =>
+          asNonEmptyString((genre as Record<string, unknown> | null)?.name),
+        )
+        .filter((name): name is string => name !== null)
+    : [];
+
+  return {
+    title: asNonEmptyString(product.work_name),
+    thumbnailUrl,
+    images,
+    publishDate: parseRegistDate(product.regist_date),
+    makers: makerName ? [makerName] : [],
+    categories: workTypeString ? [workTypeString] : [],
+    tags,
+  };
+}
+
+/** info/ajax에서 파싱한 판매 중단 작품 폴백 정보 */
+export interface DlsiteAjaxFallbackInfo {
+  title: string | null;
+  thumbnailUrl: string | null;
+  publishDate: Date | null;
+  category: string | null;
+  makerId: string | null;
+}
+
+/**
+ * info/ajax 응답에서 판매 중단 작품의 기본 정보를 파싱한다.
+ * info/ajax는 작품 페이지가 내려간 뒤에도 제목/썸네일/발매일 등을 계속 반환한다.
+ * 존재하지 않는 workno는 빈 배열이 반환되므로 null.
+ */
+export function parseDlsiteAjaxFallback(
+  json: unknown,
+  id: string,
+): DlsiteAjaxFallbackInfo | null {
+  if (!json || typeof json !== "object" || Array.isArray(json)) return null;
+  const entry = (json as Record<string, unknown>)[id] as
+    | Record<string, unknown>
+    | undefined;
+  if (!entry || typeof entry !== "object") return null;
+
+  const workType = asNonEmptyString(entry.work_type);
+  return {
+    title: asNonEmptyString(entry.work_name),
+    thumbnailUrl: toAbsoluteUrl(entry.work_image),
+    publishDate: parseRegistDate(entry.regist_date),
+    category: workType ? (WORK_TYPE_LABELS[workType] ?? null) : null,
+    makerId: asNonEmptyString(entry.maker_id),
+  };
+}
+
+/**
+ * 메인 이미지 URL(..._img_main.jpg)에서 n번째 샘플 이미지 URL(..._img_smpN.jpg)을 유도한다.
+ * 메인 이미지 패턴이 아니면 null.
+ */
+export function deriveSampleImageUrl(
+  mainImageUrl: string,
+  index: number,
+): string | null {
+  if (!/_img_main\.[a-zA-Z0-9]+$/.test(mainImageUrl)) return null;
+  return mainImageUrl.replace(
+    /_img_main(\.[a-zA-Z0-9]+)$/,
+    `_img_smp${index}$1`,
+  );
+}
+
+/**
+ * 서클 프로필 페이지 HTML에서 서클명을 추출한다.
+ * 서클 페이지는 작품이 판매 중단되어도 유지되므로 maker_id로 서클명을 복구할 수 있다.
+ */
+export function parseCircleName(html: string): string | null {
+  const name = parse(html)
+    .querySelector(".prof_maker_name")
+    ?.textContent.trim();
+  return name ? name : null;
+}
+
+/** 판매 중단 작품의 샘플 이미지를 CDN에서 순차 확인하여 존재하는 URL만 수집 */
+async function probeSampleImages(mainImageUrl: string): Promise<string[]> {
+  const sampleUrls: string[] = [];
+  for (let i = 1; i <= MAX_SAMPLE_IMAGES; i++) {
+    const url = deriveSampleImageUrl(mainImageUrl, i);
+    if (!url) break;
+    const exists = await fetch(url, { method: "HEAD" })
+      .then((res) => res.ok)
+      .catch(() => false);
+    if (!exists) break;
+    sampleUrls.push(url);
+  }
+  return sampleUrls;
+}
+
+/** maker_id로 서클 프로필 페이지에서 서클명을 조회. 실패해도 치명적이지 않음 */
+async function fetchCircleName(makerId: string): Promise<string | null> {
+  return fetch(
+    `https://www.dlsite.com/maniax/circle/profile/=/maker_id/${makerId}.html`,
+    { headers: { cookie: "locale=ko-kr" } },
+  )
+    .then((res) => res.text())
+    .then((html) => parseCircleName(html))
+    .catch(() => null);
+}
+
 export const DLSiteCollector: Collector = {
   name: "DLSite",
   getId: async (path) => {
@@ -60,114 +261,76 @@ export const DLSiteCollector: Collector = {
     return rjCode;
   },
   fetchInfo: async ({ id }) => {
-    const [html, ratingInfo] = await Promise.all([
-      fetch(`https://www.dlsite.com/maniax/work/=/product_id/${id}.html`, {
-        headers: { cookie: "locale=ko-kr" },
-      }).then((res) => res.text()),
-      // 평점은 별도 ajax 엔드포인트에만 존재. 실패해도 치명적이지 않음.
+    const [productJson, ajaxJson] = await Promise.all([
+      // 판매 중 작품의 전체 메타데이터 (제목/장르/카테고리/제작자/이미지/발매일)
+      fetch(
+        `https://www.dlsite.com/maniax/api/=/product.json?workno=${id}&locale=ko_KR`,
+      ).then((res) => res.json()),
+      // 평점/리뷰 수/판매 수 + 판매 중단 작품 폴백 정보. 실패해도 치명적이지 않음.
       fetch(
         `https://www.dlsite.com/maniax/product/info/ajax?product_id=${id}`,
         { headers: { cookie: "locale=ko-kr" } },
       )
         .then((res) => res.json())
-        .then((json) => ({
-          rating: parseDlsiteRating(json, id),
-          reviewCount: parseDlsiteReviewCount(json, id),
-          downloadCount: parseDlsiteDownloadCount(json, id),
-        }))
-        .catch(() => ({
-          rating: null,
-          reviewCount: null,
-          downloadCount: null,
-        })),
+        .catch(() => null),
     ]);
 
-    const body = parse(html, {
-      blockTextElements: {
-        script: false,
-        noscript: false,
-        style: false,
-        pre: false,
-      },
-    });
+    const ratingInfo = {
+      rating: parseDlsiteRating(ajaxJson, id),
+      reviewCount: parseDlsiteReviewCount(ajaxJson, id),
+      downloadCount: parseDlsiteDownloadCount(ajaxJson, id),
+    };
 
-    const title = body.querySelector("#work_name")?.textContent ?? null;
-
-    // 이미지 수집 - 기존 방식 우선, 실패 시 새로운 방식 사용
-    let allImages: string[] = [];
-
-    // 1차: 기존 방식 (product-slider-data)
-    const sliderDivs = body.querySelectorAll(".product-slider-data > div");
-    allImages = Array.from(sliderDivs)
-      .map((div) => div.getAttribute("data-src"))
-      .filter((src): src is string => src !== null)
-      .map((src) => "https:" + src);
-
-    // 2차: 새로운 방식 (기존 방식 실패 시)
-    if (allImages.length === 0) {
-      // 메인 이미지 (썸네일)
-      const mainImageSrcset =
-        body
-          .querySelector(".slider_item picture source[type='image/jpeg']")
-          ?.getAttribute("srcset") ??
-        body
-          .querySelector(".slider_item picture source")
-          ?.getAttribute("srcset") ??
-        body.querySelector(".slider_item img")?.getAttribute("srcset");
-
-      // 샘플 이미지들
-      const sampleImageElements = body.querySelectorAll(
-        "a[href*='/parts/'] img[src]",
-      );
-      const sampleImages = Array.from(sampleImageElements)
-        .map((img) => img.getAttribute("src"))
-        .filter((src): src is string => src !== null)
-        .map((src) => "https:" + src);
-
-      // 조합
-      if (mainImageSrcset) {
-        allImages.push("https:" + mainImageSrcset);
-      }
-      allImages.push(...sampleImages);
+    // 1차: product.json (판매 중 작품)
+    const product = parseDlsiteProduct(productJson, id);
+    if (product) {
+      return {
+        ...product,
+        ...ratingInfo,
+        externalId: id,
+        provider: "dlsite",
+      } satisfies CollectorResult;
     }
 
-    const thumbnailUrl = allImages.length > 0 ? allImages[0] : null;
-    const images = allImages;
+    // 2차: info/ajax 폴백 (판매 중단 작품 - product.json은 빈 배열을 반환)
+    // 태그(장르)는 판매 중단 후 어떤 공개 API에서도 제공되지 않아 수집 불가.
+    const fallback = parseDlsiteAjaxFallback(ajaxJson, id);
+    if (!fallback) {
+      // 양쪽 모두 데이터 없음 (존재하지 않는 코드 등)
+      return {
+        title: null,
+        thumbnailUrl: null,
+        images: [],
+        publishDate: null,
+        ...ratingInfo,
+        makers: [],
+        categories: [],
+        tags: [],
+        externalId: id,
+        provider: "dlsite",
+      } satisfies CollectorResult;
+    }
 
-    const date = dayjs(
-      body.querySelector("#work_outline > tr:nth-child(1) > td > a")
-        ?.textContent ?? null,
-      `YYYY년 MM월 DD일`,
-    );
-    const publishDate = date.isValid() ? date.toDate() : null;
-    const maker = body.querySelector("#work_maker > tr > td > span > a");
-    const makerName = maker?.textContent ?? "";
-    const makers = makerName ? [makerName] : [];
-
-    const category =
-      body.querySelector("#category_type > a:nth-child(1) > span")
-        ?.textContent ?? "";
-    const categories = category ? [category] : [];
-
-    const tags =
-      body
-        .querySelector(".main_genre")
-        ?.querySelectorAll("a")
-        .filter((e) => /genre\/(\d+)\/from/.test(e.getAttribute("href") ?? ""))
-        .map((e) => e.textContent ?? "")
-        .filter((name): name is string => name !== "") ?? [];
+    // 샘플 이미지는 목록 API가 없지만 CDN에는 남아있으므로 URL 패턴으로 수집
+    const sampleUrls = fallback.thumbnailUrl
+      ? await probeSampleImages(fallback.thumbnailUrl)
+      : [];
+    // 서클명은 ajax에 없으므로 (maker_id만 존재) 서클 프로필 페이지에서 복구
+    const circleName = fallback.makerId
+      ? await fetchCircleName(fallback.makerId)
+      : null;
 
     return {
-      title,
-      thumbnailUrl,
-      images,
-      publishDate,
-      rating: ratingInfo.rating,
-      reviewCount: ratingInfo.reviewCount,
-      downloadCount: ratingInfo.downloadCount,
-      makers,
-      categories,
-      tags,
+      title: fallback.title,
+      thumbnailUrl: fallback.thumbnailUrl,
+      images: fallback.thumbnailUrl
+        ? [fallback.thumbnailUrl, ...sampleUrls]
+        : [],
+      publishDate: fallback.publishDate,
+      ...ratingInfo,
+      makers: circleName ? [circleName] : [],
+      categories: fallback.category ? [fallback.category] : [],
+      tags: [],
       externalId: id,
       provider: "dlsite",
     } satisfies CollectorResult;
