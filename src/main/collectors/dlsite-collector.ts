@@ -37,7 +37,9 @@ export function parseDlsiteReviewCount(
 }
 
 /**
- * info/ajax 응답에서 다운로드 수(dl_count, 판매 수)를 파싱한다.
+ * info/ajax 응답에서 다운로드 수(판매 수)를 파싱한다.
+ * 언어 에디션(번역판)이 있는 작품은 locale 쿠키 때문에 dl_count가
+ * 해당 언어판 판매수로 한정되므로, 총 판매수(dl_count_total)를 우선 사용한다.
  * 수치가 없거나 0이면 null.
  */
 export function parseDlsiteDownloadCount(
@@ -49,7 +51,9 @@ export function parseDlsiteDownloadCount(
     | Record<string, unknown>
     | undefined;
   if (!entry) return null;
-  const count = Number(entry.dl_count ?? 0);
+  // 번역판: dl_count_total > 0 / 단일 언어 작품: dl_count_total = 0
+  const total = Number(entry.dl_count_total ?? 0);
+  const count = total > 0 ? total : Number(entry.dl_count ?? 0);
   return count > 0 ? count : null;
 }
 

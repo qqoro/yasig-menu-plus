@@ -219,6 +219,19 @@ describe("parseDlsiteDownloadCount", () => {
     expect(parseDlsiteDownloadCount(json, id)).toBeNull();
   });
 
+  it("번역판 작품은 dl_count_total(총 판매수)을 우선 사용", () => {
+    // 언어 에디션이 있는 작품은 dl_count가 로케일 에디션 판매수로 한정됨
+    const json = {
+      [id]: { dl_count: 426, dl_count_total: 16321, dl_count_items: [] },
+    };
+    expect(parseDlsiteDownloadCount(json, id)).toBe(16321);
+  });
+
+  it("dl_count_total이 0인 단일 언어 작품은 dl_count 사용", () => {
+    const json = { [id]: { dl_count: 83612, dl_count_total: 0 } };
+    expect(parseDlsiteDownloadCount(json, id)).toBe(83612);
+  });
+
   it("해당 id 항목이 없으면 null", () => {
     expect(
       parseDlsiteDownloadCount({ other: { dl_count: 10 } }, id),
