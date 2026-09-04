@@ -49,6 +49,17 @@ vi.mock("../store.js", () => ({
   setTranslationSettings: vi.fn(),
 }));
 
+const mockLog = vi.hoisted(() => ({
+  error: vi.fn(),
+  warn: vi.fn(),
+  info: vi.fn(),
+  debug: vi.fn(),
+}));
+vi.mock("../utils/logger.js", () => ({
+  createLogger: () => mockLog,
+  logger: mockLog,
+}));
+
 // 실제 이벤트 값 대신 문자열 리터럴 사용 (const enum은 직접 import 불가)
 vi.mock("../events.js", () => ({
   IpcMainSend: {
@@ -423,6 +434,88 @@ describe("translation 핸들러", () => {
       expect(result.total).toBe(2);
       expect(result.success).toBe(0);
       expect(result.failed).toBe(2);
+    });
+
+    it("번역 실패 시 원인을 로그로 남긴다", async () => {
+      // 실패가 조용히 삼켜지면 번역이 통째로 죽어도 아무도 알 수 없다
+      await seedGame(testDb, {
+        path: "/games/log-fail",
+        title: "실패로그",
+        translatedTitle: null,
+      });
+
+      mockTranslate.mockRejectedValue(new Error("구글 번역 API 오류: 429"));
+
+      await translateAllTitlesHandler(mockEvent, { force: false });
+
+      expect(mockLog.error).toHaveBeenCalledWith(
+        expect.stringContaining("실패로그"),
+        expect.objectContaining({ message: "구글 번역 API 오류: 429" }),
+      );
+    });
+
+    it("번역에 실패한 게임은 다음 실행에서 다시 번역 대상이 된다", async () => {
+      // 이슈 #11의 본체:
+      // 번역이 실패하면 translatedTitle이 NULL로 남고, force=false 조회는
+      // NULL만 고르므로 매 동기화마다 같은 게임이 계속 다시 잡힌다.
+      // 번역이 성공해야만 이 루프에서 빠져나간다.
+      await seedGame(testDb, {
+        path: "/games/retry-loop",
+        title: "재시도 대상",
+        translatedTitle: null,
+      });
+
+      // 1회차: 실패 → NULL 유지
+      mockTranslate.mockRejectedValueOnce(new Error("구글 번역 API 오류: 429"));
+      const first = await translateAllTitlesHandler(mockEvent, {
+        force: false,
+      });
+      expect(first).toMatchObject({ total: 1, success: 0, failed: 1 });
+      expect(
+        (await testDb("games").where("path", "/games/retry-loop").first())!
+          .translatedTitle,
+      ).toBeNull();
+
+      // 2회차: 같은 게임이 다시 대상으로 잡히고, 이번엔 성공
+      mockTranslate.mockResolvedValueOnce({
+        translatedText: "재시도 성공",
+        source: "google",
+      });
+      const second = await translateAllTitlesHandler(mockEvent, {
+        force: false,
+      });
+      expect(second).toMatchObject({ total: 1, success: 1, failed: 0 });
+      expect(
+        (await testDb("games").where("path", "/games/retry-loop").first())!
+          .translatedTitle,
+      ).toBe("재시도 성공");
+
+      // 3회차: 번역이 채워졌으므로 더 이상 대상이 아니다
+      const third = await translateAllTitlesHandler(mockEvent, {
+        force: false,
+      });
+      expect(third.total).toBe(0);
+    });
+
+    it("일부가 실패해도 나머지 게임의 번역을 계속 진행한다", async () => {
+      for (let i = 1; i <= 6; i++) {
+        await seedGame(testDb, {
+          path: `/games/continue-${i}`,
+          title: `계속진행${i}`,
+          translatedTitle: null,
+        });
+      }
+
+      mockTranslate.mockRejectedValue(new Error("서비스 다운"));
+
+      const result = await translateAllTitlesHandler(mockEvent, {
+        force: false,
+      });
+
+      // 연속 실패해도 중단하지 않고 전부 시도
+      expect(result.total).toBe(6);
+      expect(result.failed).toBe(6);
+      expect(mockTranslate).toHaveBeenCalledTimes(6);
     });
   });
 });

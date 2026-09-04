@@ -14,6 +14,9 @@ import {
 } from "../events.js";
 import { TranslationManager } from "../services/translation-manager.js";
 import { getTranslationSettings, setTranslationSettings } from "../store.js";
+import { createLogger } from "../utils/logger.js";
+
+const log = createLogger("Translation");
 
 /**
  * 번역 매니저 인스턴스 가져오기
@@ -94,6 +97,8 @@ export async function translateAllTitlesHandler(
   const manager = getTranslationManager();
   const win = BrowserWindow.fromWebContents(event.sender);
 
+  log.info(`전체 번역 시작: ${total}개`);
+
   // 순차적으로 번역
   for (let i = 0; i < games.length; i++) {
     const game = games[i];
@@ -119,10 +124,14 @@ export async function translateAllTitlesHandler(
       });
 
       success++;
-    } catch {
+    } catch (error) {
       failed++;
+      // 실패해도 진행은 계속하되, 원인을 남겨야 추적이 가능하다
+      log.error(`번역 실패 (${game.title}):`, error);
     }
   }
+
+  log.info(`전체 번역 완료: 성공 ${success}, 실패 ${failed} (총 ${total})`);
 
   return { total, success, failed };
 }
