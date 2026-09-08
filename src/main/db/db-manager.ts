@@ -1,5 +1,5 @@
 import { app } from "electron";
-import { createLogger } from "../utils/logger.js";
+import { createLogger, withConsoleScope } from "../utils/logger.js";
 const log = createLogger("DB");
 import { existsSync } from "fs";
 import type { Knex } from "knex";
@@ -31,8 +31,9 @@ export class DBManager {
 
       migrationsDirectory =
         possiblePaths.find((path) => existsSync(path)) || possiblePaths[0];
-      log.info(`마이그레이션 디렉토리: ${migrationsDirectory}`);
-      log.info(`디렉토리 존재 여부: ${existsSync(migrationsDirectory)}`);
+      log.debug(
+        `마이그레이션 디렉토리: ${migrationsDirectory} (존재: ${existsSync(migrationsDirectory)})`,
+      );
     }
 
     // snake_case를 camelCase로 변환하는 함수
@@ -77,7 +78,6 @@ export class DBManager {
       },
     };
 
-    log.info("Knex 설정:", JSON.stringify(config, null, 2));
     return knex(config);
   }
 
@@ -86,12 +86,13 @@ export class DBManager {
    */
   async initialize(): Promise<any> {
     try {
-      log.info("데이터베이스 초기화 시작...");
-      log.info(`환경: ${this.isDevelopment ? "개발" : "프로덕션"}`);
-      log.info(`앱 경로: ${app.getAppPath()}`);
-      log.info(`사용자 데이터 경로: ${app.getPath("userData")}`);
-      log.info(`리소스 경로: ${process.resourcesPath}`);
-      log.info("DB 파일 경로:", this.db.client.config.connection.filename);
+      log.info(
+        `데이터베이스 초기화 시작 (${this.isDevelopment ? "개발" : "프로덕션"})`,
+      );
+      log.debug(`DB 파일: ${this.db.client.config.connection.filename}`);
+      log.debug(
+        `앱 경로: ${app.getAppPath()} / 사용자 데이터: ${app.getPath("userData")} / 리소스: ${process.resourcesPath}`,
+      );
 
       // SQLite 외래키 활성화
       await this.db.raw(`PRAGMA foreign_keys = ON`);
@@ -103,6 +104,7 @@ export class DBManager {
       return list;
     } catch (error) {
       log.error("데이터베이스 초기화 실패:", error);
+      throw error;
     }
   }
 
@@ -111,14 +113,21 @@ export class DBManager {
    */
   async runMigrations(): Promise<any> {
     try {
-      log.info("마이그레이션 실행 중...");
-      const [batchNo, migrationFiles] = await this.db.migrate.latest();
+      log.debug("마이그레이션 확인 중...");
+
+      // 마이그레이션 파일은 asar 바깥(resources/migrations)에 평평하게 배치되어
+      // 로거를 import할 수 없다. 실행 구간 동안만 console을 Migration scope로
+      // 묶어, 마이그레이션이 남기는 console 출력을 파일 로그로 끌어온다.
+      const [batchNo, migrationFiles] = await withConsoleScope(
+        "Migration",
+        () => this.db.migrate.latest(),
+      );
 
       if (migrationFiles.length === 0) {
-        log.info("실행할 마이그레이션이 없습니다.");
+        log.debug("실행할 마이그레이션 없음");
       } else {
         log.info(
-          `배치 ${batchNo}에서 ${migrationFiles.length}개의 마이그레이션을 실행했습니다:`,
+          `마이그레이션 ${migrationFiles.length}개 실행 (배치 ${batchNo}):`,
           migrationFiles,
         );
       }
@@ -135,13 +144,16 @@ export class DBManager {
   async rollback(): Promise<void> {
     try {
       log.info("마이그레이션 롤백 중...");
-      const [batchNo, migrationFiles] = await this.db.migrate.rollback();
+      const [batchNo, migrationFiles] = await withConsoleScope(
+        "Migration",
+        () => this.db.migrate.rollback(),
+      );
 
       if (migrationFiles.length === 0) {
-        log.info("롤백할 마이그레이션이 없습니다.");
+        log.info("롤백할 마이그레이션 없음");
       } else {
         log.info(
-          `배치 ${batchNo}에서 ${migrationFiles.length}개의 마이그레이션을 롤백했습니다:`,
+          `마이그레이션 ${migrationFiles.length}개 롤백 (배치 ${batchNo}):`,
           migrationFiles,
         );
       }

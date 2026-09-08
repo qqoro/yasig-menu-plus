@@ -87,23 +87,29 @@ export async function findCollector(path: string) {
   ).find((data) => !!data.id);
 
   if (primaryResult) {
+    log.debug(
+      `컬렉터 매칭: ${primaryResult.collector.name} (id: ${primaryResult.id}) — ${path}`,
+    );
     return primaryResult as { collector: Collector; id: string };
   }
 
   // 2단계: 일반 컬렉터가 모두 실패하면 GoogleCollector 실행
   // 단, 설정에서 비활성화된 경우 실행하지 않음
   if (!getEnableGoogleCollector()) {
+    log.debug(`컬렉터 매칭 실패, Google 폴백은 비활성화됨 — ${path}`);
     return undefined;
   }
 
   const fallbackId = await fallbackCollector.getId(path);
   if (fallbackId) {
+    log.debug(`Google 폴백으로 매칭 (id: ${fallbackId}) — ${path}`);
     return {
       collector: fallbackCollector,
       id: fallbackId,
     } as { collector: Collector; id: string };
   }
 
+  log.warn(`매칭되는 컬렉터 없음: ${path}`);
   return undefined;
 }
 
@@ -135,7 +141,7 @@ export async function saveInfo(path: string, info: CollectorResult) {
     try {
       await deleteImage(toAbsolutePath(image.path) ?? image.path);
     } catch (error) {
-      log.error("기존 이미지 파일 삭제 실패:", error);
+      log.warn("기존 이미지 파일 삭제 실패, 계속 진행:", error);
     }
   }
 
@@ -149,7 +155,10 @@ export async function saveInfo(path: string, info: CollectorResult) {
       thumbnailPath = await downloadImage(thumbnailUrl, path, 0);
       downloadedPaths.push(thumbnailPath);
     } catch (error) {
-      log.error(`썸네일 다운로드 실패: ${thumbnailUrl}`, error);
+      log.warn(
+        `썸네일 다운로드 실패, 썸네일 없이 저장: ${thumbnailUrl}`,
+        error,
+      );
     }
   }
 
@@ -164,7 +173,7 @@ export async function saveInfo(path: string, info: CollectorResult) {
       const filePath = await downloadImage(image, path, downloadedPaths.length);
       downloadedPaths.push(filePath);
     } catch (error) {
-      log.error(`이미지 다운로드 실패, 스킵: ${image}`, error);
+      log.warn(`이미지 다운로드 실패, 스킵: ${image}`, error);
     }
   }
 
@@ -262,7 +271,7 @@ export async function saveInfo(path: string, info: CollectorResult) {
       await updateUserGameDataExternalKey(path, provider, externalId);
     }
   } catch (error) {
-    log.error("saveInfo error:", error);
+    log.error(`수집 정보 저장 실패: ${path}`, error);
     await tx.rollback();
     throw error;
   }

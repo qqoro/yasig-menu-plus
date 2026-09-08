@@ -12,6 +12,7 @@ import { getOrCreateUserGameData } from "../services/user-game-data.js";
 import { downloadImage } from "../utils/downloader.js";
 import { toAbsolutePath, toRelativePath } from "../utils/image-path.js";
 import { validatePath, validateUrl } from "../utils/validator.js";
+import { wrapIpcHandler } from "../utils/ipc-wrapper.js";
 import { createLogger } from "../utils/logger.js";
 
 const log = createLogger("GameUpdate");
@@ -360,137 +361,110 @@ export function registerHandlers(): void {
   // 메타데이터 수정
   ipcMain.handle(
     IpcRendererSend.UpdateGameMetadata,
-    async (_event, { path, metadata }) => {
-      try {
-        await updateGameMetadata(path, metadata);
-        return { path };
-      } catch (error) {
-        log.error("메타데이터 수정 실패:", error);
-        throw error;
-      }
-    },
+    wrapIpcHandler("updateGameMetadata", async (_event, { path, metadata }) => {
+      await updateGameMetadata(path, metadata);
+      log.info(
+        `메타데이터 수정: ${path} (${Object.keys(metadata).join(", ")})`,
+      );
+      return { path };
+    }),
   );
 
   // 별점 수정
   ipcMain.handle(
     IpcRendererSend.UpdateRating,
-    async (_event, { path, rating }) => {
-      try {
-        await updateRating(path, rating);
-        return { path, rating };
-      } catch (error) {
-        log.error("별점 수정 실패:", error);
-        throw error;
-      }
-    },
+    wrapIpcHandler("updateRating", async (_event, { path, rating }) => {
+      await updateRating(path, rating);
+      log.info(`별점 수정: ${path} → ${rating}`);
+      return { path, rating };
+    }),
   );
 
   // 제작사 관리
-  ipcMain.handle(IpcRendererSend.AddMaker, async (_event, { path, name }) => {
-    try {
+  ipcMain.handle(
+    IpcRendererSend.AddMaker,
+    wrapIpcHandler("addMaker", async (_event, { path, name }) => {
       await addMaker(path, name);
+      log.info(`제작사 추가: ${path} + ${name}`);
       return { path, name };
-    } catch (error) {
-      log.error("제작사 추가 실패:", error);
-      throw error;
-    }
-  });
+    }),
+  );
 
   ipcMain.handle(
     IpcRendererSend.RemoveMaker,
-    async (_event, { path, name }) => {
-      try {
-        await removeMaker(path, name);
-        return { path, name };
-      } catch (error) {
-        log.error("제작사 제거 실패:", error);
-        throw error;
-      }
-    },
+    wrapIpcHandler("removeMaker", async (_event, { path, name }) => {
+      await removeMaker(path, name);
+      log.info(`제작사 제거: ${path} - ${name}`);
+      return { path, name };
+    }),
   );
 
   // 카테고리 관리
   ipcMain.handle(
     IpcRendererSend.AddCategory,
-    async (_event, { path, name }) => {
-      try {
-        await addCategory(path, name);
-        return { path, name };
-      } catch (error) {
-        log.error("카테고리 추가 실패:", error);
-        throw error;
-      }
-    },
+    wrapIpcHandler("addCategory", async (_event, { path, name }) => {
+      await addCategory(path, name);
+      log.info(`카테고리 추가: ${path} + ${name}`);
+      return { path, name };
+    }),
   );
 
   ipcMain.handle(
     IpcRendererSend.RemoveCategory,
-    async (_event, { path, name }) => {
-      try {
-        await removeCategory(path, name);
-        return { path, name };
-      } catch (error) {
-        log.error("카테고리 제거 실패:", error);
-        throw error;
-      }
-    },
+    wrapIpcHandler("removeCategory", async (_event, { path, name }) => {
+      await removeCategory(path, name);
+      log.info(`카테고리 제거: ${path} - ${name}`);
+      return { path, name };
+    }),
   );
 
   // 태그 관리
-  ipcMain.handle(IpcRendererSend.AddTag, async (_event, { path, name }) => {
-    try {
+  ipcMain.handle(
+    IpcRendererSend.AddTag,
+    wrapIpcHandler("addTag", async (_event, { path, name }) => {
       await addTag(path, name);
+      log.info(`태그 추가: ${path} + ${name}`);
       return { path, name };
-    } catch (error) {
-      log.error("태그 추가 실패:", error);
-      throw error;
-    }
-  });
+    }),
+  );
 
-  ipcMain.handle(IpcRendererSend.RemoveTag, async (_event, { path, name }) => {
-    try {
+  ipcMain.handle(
+    IpcRendererSend.RemoveTag,
+    wrapIpcHandler("removeTag", async (_event, { path, name }) => {
       await removeTag(path, name);
+      log.info(`태그 제거: ${path} - ${name}`);
       return { path, name };
-    } catch (error) {
-      log.error("태그 제거 실패:", error);
-      throw error;
-    }
-  });
+    }),
+  );
 
   // 썸네일 관리
   ipcMain.handle(
     IpcRendererSend.SetThumbnailFromUrl,
-    async (_event, { path, url }) => {
-      try {
-        const thumbnailPath = await setThumbnailFromUrl(path, url);
-        return { path, thumbnailPath };
-      } catch (error) {
-        log.error("썸네일 설정 실패 (URL):", error);
-        throw error;
-      }
-    },
+    wrapIpcHandler("setThumbnailFromUrl", async (_event, { path, url }) => {
+      const thumbnailPath = await setThumbnailFromUrl(path, url);
+      log.info(`썸네일 설정 (URL): ${path}`);
+      return { path, thumbnailPath };
+    }),
   );
 
   ipcMain.handle(
     IpcRendererSend.SetThumbnailFromFile,
-    async (_event, { path, filePath }) => {
-      try {
+    wrapIpcHandler(
+      "setThumbnailFromFile",
+      async (_event, { path, filePath }) => {
         const thumbnailPath = await setThumbnailFromFile(path, filePath);
+        log.info(`썸네일 설정 (파일): ${path} ← ${filePath}`);
         return { path, thumbnailPath };
-      } catch (error) {
-        log.error("썸네일 설정 실패 (파일):", error);
-        throw error;
-      }
-    },
+      },
+    ),
   );
 
-  ipcMain.handle(IpcRendererSend.HideThumbnail, async (_event, { path }) => {
-    try {
+  ipcMain.handle(
+    IpcRendererSend.HideThumbnail,
+    wrapIpcHandler("hideThumbnail", async (_event, { path }) => {
       await hideThumbnail(path);
+      log.info(`썸네일 숨김: ${path}`);
       return { path };
-    } catch (error) {
-      log.error("썸네일 숨김 실패:", error);
-      throw error;
-    }
-  });
+    }),
+  );
 }

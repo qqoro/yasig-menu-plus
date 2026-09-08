@@ -32,7 +32,7 @@ export async function getSteamTagMap(): Promise<Map<number, string>> {
     const json = await res.json();
     cachedTagMap = parsePopularTags(json);
   } catch (error) {
-    log.error("Steam 태그 맵 로드 실패:", error);
+    log.warn("Steam 태그 맵 로드 실패, 태그 없이 진행:", error);
     cachedTagMap = new Map();
   }
   return cachedTagMap;

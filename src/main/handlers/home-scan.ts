@@ -117,11 +117,13 @@ export async function scanFolder(
   sourcePath: string,
 ): Promise<{ addedCount: number; deletedCount: number }> {
   if (!(await pathExists(sourcePath))) {
+    log.warn(`스캔 스킵: 경로에 접근할 수 없음 — ${sourcePath}`);
     return { addedCount: 0, deletedCount: 0 };
   }
 
   try {
     const startedAt = Date.now();
+    log.info(`스캔 시작: ${sourcePath}`);
 
     // 전체 games를 1회 조회하여 경로 → 행 Map 구성
     // (source 무관 전체 조회: 라이브러리 간 게임 이동 감지용.

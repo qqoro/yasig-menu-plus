@@ -317,6 +317,12 @@ async function handleOpenGitHubIssue() {
             <Github :size="16" />
             GitHub 이슈 등록하기
           </Button>
+          <p class="text-muted-foreground text-xs">
+            재현이 어려운 문제는
+            <code class="bg-muted rounded px-1 py-0.5">--log-level=debug</code>
+            옵션을 붙여 실행하면 더 자세한 로그가 남습니다. (바로가기 속성의
+            대상 끝에 추가)
+          </p>
         </CardContent>
       </Card>
 

@@ -184,7 +184,7 @@ export const SteamCollector: Collector = {
         }
       }
     } catch (error) {
-      log.error("steam-user 에러:", error);
+      log.warn("steam-user 조회 실패, 웹 API로 계속:", error);
     }
 
     // 이미지와 장르는 기존 Steam API 사용 (국가 차단될 수 있음)
@@ -209,7 +209,7 @@ export const SteamCollector: Collector = {
         }
       }
     } catch (error) {
-      log.error("이미지 API 에러:", error);
+      log.warn("Steam 이미지 API 실패, 썸네일 없이 계속:", error);
     }
 
     // 평점·리뷰 수: appreviews API의 긍정 비율을 0-5로 환산
@@ -226,7 +226,7 @@ export const SteamCollector: Collector = {
       rating = computeSteamRating(summary);
       reviewCount = parseSteamReviewCount(summary);
     } catch (error) {
-      log.error("appreviews 에러:", error);
+      log.warn("Steam appreviews 실패, 평점 없이 계속:", error);
     }
 
     // 데이터가 하나도 없으면 undefined 반환

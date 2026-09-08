@@ -363,7 +363,7 @@ describe("scanSingleFolder", () => {
     expect(result.subFolders[0]).toBe(join("/library", "EmptySubFolder"));
   });
 
-  it("readdirSync 오류 시 빈 결과 반환", () => {
+  it("readdirSync 오류 시 빈 결과 반환 + failed 표시", () => {
     mockExistsSync.mockReturnValue(true);
     mockReaddirSync.mockImplementation(() => {
       throw new Error("EACCES: permission denied");
@@ -373,6 +373,15 @@ describe("scanSingleFolder", () => {
 
     expect(result.candidates).toEqual([]);
     expect(result.subFolders).toEqual([]);
+    expect(result.failed).toBe(true);
+  });
+
+  it("경로가 없으면 실패가 아니라 빈 결과", () => {
+    mockExistsSync.mockReturnValue(false);
+
+    const result = scanSingleFolder("/missing");
+
+    expect(result.failed).toBe(false);
   });
 });
 

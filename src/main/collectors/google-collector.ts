@@ -52,7 +52,7 @@ export async function detectBotBlock(page: Page): Promise<BotBlockResult> {
 
     return { blocked: false };
   } catch (error) {
-    log.error("봇 차단 감지 중 오류:", error);
+    log.warn("봇 차단 감지 중 오류, 차단 아님으로 간주:", error);
     return { blocked: false };
   }
 }

@@ -233,7 +233,7 @@ async function persistGoogleCookiesFromPage(page: Page): Promise<void> {
       log.info("GOOGLE_ABUSE_EXEMPTION 쿠키 저장됨");
     }
   } catch (error) {
-    log.error("Google 쿠키 추출 실패:", error);
+    log.warn("Google 쿠키 추출 실패, 쿠키 없이 진행:", error);
   }
 }
 
@@ -564,7 +564,10 @@ async function runGoogleFallback(gamePath: string): Promise<void> {
                 .where("path", gamePath)
                 .update({ thumbnail: thumbnailPath });
             } catch (error) {
-              log.error("Google 썸네일 다운로드 실패:", error);
+              log.warn(
+                `Google 썸네일 다운로드 실패, 썸네일 없이 진행: ${gamePath}`,
+                error,
+              );
             }
           }
         } finally {
@@ -572,7 +575,7 @@ async function runGoogleFallback(gamePath: string): Promise<void> {
         }
       }
     } catch (error) {
-      log.error("Google fallback 실패:", error);
+      log.warn(`Google 폴백 실패, 썸네일 없이 진행: ${gamePath}`, error);
     }
   });
 }
