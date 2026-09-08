@@ -251,6 +251,11 @@ export async function searchGamesHandler(
     );
   }
 
+  // 제공자 필터 (다중 선택 — 선택이 없으면 미수집 포함 전체)
+  if (filters.providers && filters.providers.length > 0) {
+    query = query.whereIn("provider", filters.providers);
+  }
+
   // 텍스트 검색어 (정렬 우선순위 계산에도 사용)
   let textSearchTerm: string | undefined;
 
@@ -573,6 +578,11 @@ export async function getRandomGameHandler(
     query = query.where((qb) =>
       qb.whereNull("externalId").orWhere("externalId", "=", ""),
     );
+  }
+
+  // 제공자 필터 (다중 선택 — 선택이 없으면 미수집 포함 전체)
+  if (filters.providers && filters.providers.length > 0) {
+    query = query.whereIn("provider", filters.providers);
   }
 
   // 검색어 파싱 및 적용

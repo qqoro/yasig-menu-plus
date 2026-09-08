@@ -1017,3 +1017,87 @@ describe("searchGamesHandler — 경로 검색", () => {
     expect(result.games[0].pathMatched).toBeUndefined();
   });
 });
+
+// ============================================
+// 제공자(provider) 필터
+// ============================================
+describe("제공자 필터", () => {
+  /** dlsite / steam / 미수집 게임 3개를 시드한다 */
+  async function seedProviderGames(): Promise<void> {
+    await seedGame(db, {
+      path: "/library/path/dl-game",
+      title: "DL Game",
+      source: "/library/path",
+      provider: "dlsite",
+      externalId: "RJ000001",
+    });
+    await seedGame(db, {
+      path: "/library/path/steam-game",
+      title: "Steam Game",
+      source: "/library/path",
+      provider: "steam",
+      externalId: "123456",
+    });
+    await seedGame(db, {
+      path: "/library/path/unknown-game",
+      title: "Unknown Game",
+      source: "/library/path",
+      provider: null,
+      externalId: null,
+    });
+  }
+
+  it("providers에 지정한 제공자의 게임만 반환해야 한다", async () => {
+    await seedProviderGames();
+
+    const result = await searchGamesHandler(
+      {} as any,
+      makeSearchPayload({
+        searchQuery: { filters: { providers: ["dlsite"] } },
+      }),
+    );
+
+    expect(result.totalCount).toBe(1);
+    expect(result.games[0].title).toBe("DL Game");
+  });
+
+  it("providers를 여러 개 지정하면 모두 포함해야 한다", async () => {
+    await seedProviderGames();
+
+    const result = await searchGamesHandler(
+      {} as any,
+      makeSearchPayload({
+        searchQuery: { filters: { providers: ["dlsite", "steam"] } },
+      }),
+    );
+
+    expect(result.totalCount).toBe(2);
+    expect(result.games.map((g) => g.title).sort()).toEqual([
+      "DL Game",
+      "Steam Game",
+    ]);
+  });
+
+  it("providers가 빈 배열이면 미수집 게임을 포함해 전체를 반환해야 한다", async () => {
+    await seedProviderGames();
+
+    const result = await searchGamesHandler(
+      {} as any,
+      makeSearchPayload({ searchQuery: { filters: { providers: [] } } }),
+    );
+
+    expect(result.totalCount).toBe(3);
+  });
+
+  it("랜덤 게임 선택에도 제공자 필터가 적용되어야 한다", async () => {
+    await seedProviderGames();
+
+    const result = await getRandomGameHandler(
+      {} as any,
+      makeSearchPayload({ searchQuery: { filters: { providers: ["steam"] } } }),
+    );
+
+    expect(result.game).not.toBeNull();
+    expect(result.game!.title).toBe("Steam Game");
+  });
+});

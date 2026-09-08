@@ -85,6 +85,8 @@ export interface SearchQuery {
     showNotCompressed?: boolean;
     showWithExternalId?: boolean;
     showWithoutExternalId?: boolean;
+    /** 제공자 다중 선택 (dlsite/steam/getchu/cien) — 빈 배열이면 전체 */
+    providers?: string[];
   };
   sortBy?:
     | "title"

@@ -15,6 +15,7 @@ import {
   File,
   FileArchive,
   Folder,
+  Globe,
   Link,
   RotateCcw,
   Star,
@@ -58,7 +59,22 @@ const filters = computed<Required<SearchQuery["filters"]>>(() => ({
   showNotCompressed: props.filters.showNotCompressed ?? false,
   showWithExternalId: props.filters.showWithExternalId ?? false,
   showWithoutExternalId: props.filters.showWithoutExternalId ?? false,
+  providers: props.filters.providers ?? [],
 }));
+
+// 제공자 순환 순서 (DB provider 값 ↔ 표시 이름)
+const PROVIDER_OPTIONS = [
+  { value: "dlsite", label: "DLSite" },
+  { value: "steam", label: "Steam" },
+  { value: "getchu", label: "Getchu" },
+  { value: "cien", label: "Ci-en" },
+] as const;
+
+// 현재 선택된 제공자의 표시 이름 (없으면 null)
+const currentProviderLabel = computed(() => {
+  const [selected] = filters.value.providers;
+  return PROVIDER_OPTIONS.find((o) => o.value === selected)?.label ?? null;
+});
 
 // 필터 토글 헬퍼
 function toggleFilter<K extends keyof SearchQuery["filters"]>(
@@ -200,6 +216,17 @@ function cycleExternalId(): void {
   }
 }
 
+// 제공자 필터 사이클 (전체 → DLSite → Steam → Getchu → Ci-en → 전체)
+function cycleProvider(): void {
+  const [selected] = filters.value.providers;
+  const index = PROVIDER_OPTIONS.findIndex((o) => o.value === selected);
+  const next = PROVIDER_OPTIONS[index + 1];
+  emit("update:filters", {
+    ...props.filters,
+    providers: next ? [next.value] : [],
+  });
+}
+
 // 숨김 게임 표시 토글
 function toggleShowHidden(): void {
   toggleFilter("showHidden", !filters.value.showHidden);
@@ -245,6 +272,7 @@ const activeFilterCount = computed(() => {
   if (!filters.value.showWithExternalId && filters.value.showWithoutExternalId)
     count++;
   if (filters.value.showHidden) count++;
+  count += filters.value.providers.length;
   // 비활성화된 라이브러리 경로 수 추가
   if (props.disabledLibraryPaths && props.disabledLibraryPaths.length > 0) {
     count += props.disabledLibraryPaths.length;
@@ -415,7 +443,7 @@ function getSortButtonStyle(sortBy: SearchQuery["sortBy"]) {
         </Button>
       </div>
 
-      <!-- 숨김 -->
+      <!-- 숨김 / 제공자 -->
       <div class="flex gap-1">
         <Button
           :variant="filters.showHidden ? 'default' : 'outline'"
@@ -426,6 +454,16 @@ function getSortButtonStyle(sortBy: SearchQuery["sortBy"]) {
           <EyeOff v-if="filters.showHidden" :size="14" />
           <Eye v-else :size="14" />
           숨김
+        </Button>
+        <Button
+          :variant="currentProviderLabel ? 'default' : 'outline'"
+          size="sm"
+          class="flex-1"
+          title="정보를 수집해 온 사이트로 필터 (선택 없으면 미수집 포함 전체)"
+          @click="cycleProvider"
+        >
+          <Globe :size="14" />
+          {{ currentProviderLabel ?? "제공자" }}
         </Button>
       </div>
     </div>
