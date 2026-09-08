@@ -78,16 +78,19 @@ function getMtimeMs(path: string): number | undefined {
 
 /**
  * 단일 폴더를 스캔하여 게임 후보와 하위 폴더 목록 반환
+ *
+ * 폴더 하나가 깨져도 스캔 전체를 멈추지 않고 failed로 표시해 계속 진행한다.
  */
 export function scanSingleFolder(folderPath: string): {
   candidates: GameCandidate[];
   subFolders: string[];
+  failed: boolean;
 } {
   const candidates: GameCandidate[] = [];
   const subFolders: string[] = [];
 
   if (!existsSync(folderPath)) {
-    return { candidates, subFolders };
+    return { candidates, subFolders, failed: false };
   }
 
   try {
@@ -149,10 +152,12 @@ export function scanSingleFolder(folderPath: string): {
       }
     }
   } catch (error) {
-    console.error(`폴더 스캔 오류 (${folderPath}):`, error);
+    // 접근 권한/잠긴 폴더 등. 스캔은 계속되므로 warn.
+    console.warn(`폴더 스캔 실패: ${folderPath}`, error);
+    return { candidates, subFolders, failed: true };
   }
 
-  return { candidates, subFolders };
+  return { candidates, subFolders, failed: false };
 }
 
 /**
@@ -170,16 +175,28 @@ export function scanFolderRecursive(
     { path: startPath, depth: 0 },
   ];
 
+  // 폴더 단위 로그는 배치 규모에서 폭발하므로 집계만 하고 끝에 한 줄로 남긴다
+  const startedAt = Date.now();
+  let scannedCount = 0;
+  let failedCount = 0;
+  let depthSkipped = 0;
+
   while (queue.length > 0) {
     const { path: currentPath, depth } = queue.shift()!;
 
     // 최대 깊이 초과 시 스킵
     if (depth > maxDepth) {
-      console.log(`최대 깊이 초과로 스킵: ${currentPath}`);
+      // 깊은 라이브러리에서는 수천 줄이 나올 수 있어 debug로만 남긴다
+      console.debug(`최대 깊이 초과로 스킵: ${currentPath}`);
+      depthSkipped++;
       continue;
     }
 
-    const { candidates, subFolders } = scanSingleFolder(currentPath);
+    const { candidates, subFolders, failed } = scanSingleFolder(currentPath);
+    scannedCount++;
+    if (failed) {
+      failedCount++;
+    }
 
     // 게임 후보 수집
     allCandidates.push(...candidates);
@@ -218,6 +235,10 @@ export function scanFolderRecursive(
       }
     }
   }
+
+  console.info(
+    `스캔 완료: ${startPath} — 폴더 ${scannedCount}개, 후보 ${allCandidates.length}개, 실패 ${failedCount}개, 깊이 초과 ${depthSkipped}개 (${Date.now() - startedAt}ms)`,
+  );
 
   return allCandidates;
 }

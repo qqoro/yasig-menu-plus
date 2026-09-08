@@ -1,12 +1,11 @@
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat.js";
 import { app, BrowserWindow, ipcMain, session, shell } from "electron";
-import log from "electron-log";
 import windowStateKeeper from "electron-window-state";
 import { join } from "path";
 import { dbManager } from "./db/db-manager.js";
 import { IpcMainSend, IpcRendererSend } from "./events.js";
-import { createLogger } from "./utils/logger.js";
+import { createLogger, initLogging } from "./utils/logger.js";
 
 // 핸들러 임포트
 import * as AutoUpdateHandlers from "./handlers/autoUpdate.js";
@@ -90,9 +89,13 @@ import {
   runLibraryPathsNormalization,
 } from "./store.js";
 
-log.initialize();
+initLogging();
 const mainLog = createLogger("Main");
 dayjs.extend(customParseFormat);
+
+mainLog.info(
+  `앱 시작: v${app.getVersion()} (Electron ${process.versions.electron}, ${process.platform}-${process.arch}, ${app.isPackaged ? "패키지" : "개발"})`,
+);
 
 let mainWindow: BrowserWindow;
 let list: string[];
@@ -230,7 +233,7 @@ function createWindow() {
           mainWindow.webContents.send(IpcMainSend.AutoScanDone, result);
         }
       })
-      .catch((err) => console.error("포커스 스캔 오류:", err));
+      .catch((err) => mainLog.error("포커스 스캔 오류:", err));
   });
 }
 
@@ -567,11 +570,13 @@ app.on("window-all-closed", function () {
 
 // 애플리케이션 종료 시 데이터베이스 연결 정리
 app.on("before-quit", async () => {
+  mainLog.info("앱 종료 처리 시작");
   try {
     // 모든 활성 게임 세션 종료
     await processMonitor.endAllSessions();
     // 데이터베이스 연결 종료
     await dbManager.destroy();
+    mainLog.info("앱 종료 처리 완료");
   } catch (error) {
     mainLog.error("종료 처리 실패:", error);
   }

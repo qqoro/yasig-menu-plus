@@ -14,6 +14,9 @@ import {
   updateSettings,
 } from "../store.js";
 import { wrapIpcHandler } from "../utils/ipc-wrapper.js";
+import { createLogger } from "../utils/logger.js";
+
+const log = createLogger("Setting");
 
 /**
  * 전체 설정 조회 핸들러
@@ -39,6 +42,12 @@ export const updateSettingsHandler = wrapIpcHandler(
     payload: IpcRendererEventMap["updateSettings"],
   ): Promise<IpcMainEventMap["settingsUpdated"]> => {
     const { settings } = payload;
+
+    // 어떤 설정을 바꿨는지가 제보 분석의 출발점이라 키 목록은 info로 남긴다.
+    // 값에는 라이브러리 경로·쿠키가 들어갈 수 있어 debug에서만 펼친다.
+    log.info(`설정 변경: ${Object.keys(settings).join(", ") || "(없음)"}`);
+    log.debug("설정 변경 내용:", settings);
+
     updateSettings(settings);
 
     // 업데이트된 전체 설정 반환

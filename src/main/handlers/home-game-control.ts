@@ -27,7 +27,10 @@ import {
 } from "../store.js";
 import { validateDirectoryPath, validatePath } from "../utils/validator.js";
 import { wrapIpcHandler } from "../utils/ipc-wrapper.js";
+import { createLogger } from "../utils/logger.js";
 import { findExecutables, selectBestExecutable } from "./home-scan.js";
+
+const log = createLogger("GameLaunch");
 
 const AUDIO_EXTENSIONS = [".mp3", ".wav", ".flac", ".ogg", ".m4a"];
 const VIDEO_EXTENSIONS = [".mp4", ".avi", ".mkv", ".wmv"];
@@ -97,6 +100,8 @@ export async function executeGameLaunch(
   path: string,
   isCheatMode = false,
 ): Promise<IpcMainEventMap["gamePlayed"]> {
+  log.info(`게임 실행 요청: ${path}${isCheatMode ? " (치트 모드)" : ""}`);
+
   // 오프라인 경로 안내: 경로가 존재하지 않고 오프라인 경로인 경우 친화적 메시지
   if (!(await pathExists(path))) {
     const offlinePaths = getOfflineLibraryPaths();
@@ -105,6 +110,7 @@ export async function executeGameLaunch(
       game &&
       offlinePaths.some((p) => p.toLowerCase() === game.source.toLowerCase())
     ) {
+      log.warn(`오프라인 드라이브의 게임: ${path} (source: ${game.source})`);
       throw new Error("이 게임이 있는 드라이브가 연결되지 않았습니다");
     }
   }
@@ -125,21 +131,30 @@ export async function executeGameLaunch(
   // 압축파일이거나 바로가기 파일인 경우 파일 자체를 실행
   if (isCompressFile || isShortcutFile) {
     executablePath = path;
+    log.debug(
+      `실행 대상 결정: 파일 자체 (${isCompressFile ? "압축" : "바로가기"})`,
+    );
   } else if (game.executablePath) {
     // 직접 지정한 실행 파일이 있으면 사용
     executablePath = game.executablePath;
+    log.debug(`실행 대상 결정: 사용자 지정 경로 ${executablePath}`);
   } else {
     // 폴더에서 실행 파일 찾기
     const executables = await findExecutables(path);
     executablePath = selectBestExecutable(executables);
+    log.debug(
+      `실행 대상 결정: 자동 탐색 (후보 ${executables.length}개 → ${executablePath ?? "없음"})`,
+    );
   }
 
   if (!executablePath) {
     // 미디어 재생 fallback
     const mediaFile = await findFirstMediaFile(path);
     if (!mediaFile) {
+      log.warn(`실행 파일도 미디어 파일도 없음: ${path}`);
       throw new Error("실행 파일을 찾을 수 없습니다.");
     }
+    log.info(`실행 파일이 없어 미디어 재생으로 대체: ${mediaFile}`);
 
     const playerSettings = getMediaPlayerSettings();
     const isAudio = isAudioFile(mediaFile);
@@ -155,6 +170,7 @@ export async function executeGameLaunch(
     } else {
       const openResult = await shell.openPath(mediaFile);
       if (openResult) {
+        log.error(`미디어 파일 열기 실패: ${mediaFile} — ${openResult}`);
         throw new Error(`미디어 파일을 열 수 없습니다: ${openResult}`);
       }
     }
@@ -177,9 +193,11 @@ export async function executeGameLaunch(
       isCheatMode,
     );
     if (started) {
+      log.info(`게임 실행 (플레이 타임 추적): ${executablePath}`);
       return { executablePath };
     }
     // 이미 실행 중이거나 다른 이유로 시작 실패 시 기존 방식으로 실행
+    log.warn(`프로세스 모니터 시작 실패, 셸 실행으로 대체: ${executablePath}`);
   }
 
   // 마지막 플레이 시간 업데이트 (.exe가 아니거나 spawn 실패 시)
@@ -192,9 +210,11 @@ export async function executeGameLaunch(
   // 게임 실행 (shell.openPath 사용)
   const openResult = await shell.openPath(executablePath);
   if (openResult) {
+    log.error(`게임 실행 실패: ${executablePath} — ${openResult}`);
     throw new Error(`게임을 실행할 수 없습니다: ${openResult}`);
   }
 
+  log.info(`게임 실행 (셸): ${executablePath}`);
   return { executablePath };
 }
 
@@ -280,6 +300,7 @@ export async function batchToggleGamesHandler(
         isHidden: value ? 1 : 0,
         updatedAt: new Date(),
       });
+    log.info(`배치 토글 ${field}=${value}: ${updatedCount}/${paths.length}개`);
     return { field, updatedCount };
   }
 
@@ -303,6 +324,7 @@ export async function batchToggleGamesHandler(
       [camelField]: value ? 1 : 0,
     });
 
+  log.info(`배치 토글 ${field}=${value}: ${updatedCount}/${paths.length}개`);
   return { field, updatedCount };
 }
 
@@ -369,6 +391,7 @@ export async function setExecutablePathHandler(
     updatedAt: new Date(),
   });
 
+  log.info(`실행 파일 경로 지정: ${path} → ${executablePath}`);
   return { path, executablePath };
 }
 

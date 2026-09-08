@@ -165,7 +165,7 @@ export class ProcessMonitor {
           wasCheatMode: session.isCheatMode ?? false,
         });
       } catch (error) {
-        log.error("플레이 타임 기록 실패:", error);
+        log.error(`플레이 타임 기록 실패: ${gamePath}`, error);
       }
     } else {
       // 최소 시간 미달 시 세션 시작 기록만 제거
@@ -188,7 +188,10 @@ export class ProcessMonitor {
           success,
         });
       } catch (error) {
-        log.error("치트 복원 실패:", error);
+        log.error(
+          `치트 복원 실패, 게임 파일이 수정된 채 남음: ${session.gamePath}`,
+          error,
+        );
         this.sendEvent("cheatInjectionRestored", {
           path: session.gamePath,
           success: false,
