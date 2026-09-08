@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { computed, ref } from "vue";
+import { computed, reactive, ref } from "vue";
 
 /**
  * useRandomSelect composable 테스트
@@ -282,5 +282,29 @@ describe("useRandomSelect", () => {
         sortOrder: "desc",
       },
     });
+  });
+
+  it("배열 필터가 reactive여도 IPC 직렬화 가능한 형태로 전달해야 한다", async () => {
+    mockMutateAsync.mockResolvedValue({
+      game: {
+        path: "/game/1",
+        title: "게임",
+        originalTitle: "ゲーム",
+        translatedTitle: null,
+      },
+    });
+
+    // HomeView의 filters computed와 동일하게 reactive 배열이 그대로 실려오는 상황
+    const state = reactive({ providers: ["dlsite", "steam"] });
+    const filters = computed(() => ({ providers: state.providers })) as any;
+    const options = createOptions({ filters });
+    const { handleRandomSelect } = useRandomSelect(options);
+
+    await handleRandomSelect();
+
+    const payload = mockMutateAsync.mock.calls[0][0];
+    // reactive proxy가 섞이면 structuredClone(IPC 직렬화)에서 DataCloneError 발생
+    expect(() => structuredClone(payload)).not.toThrow();
+    expect(payload.searchQuery.filters.providers).toEqual(["dlsite", "steam"]);
   });
 });

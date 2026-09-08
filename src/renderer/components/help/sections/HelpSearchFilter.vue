@@ -208,7 +208,15 @@ const specialQueries = [
             <strong class="text-foreground">숨김</strong>: 숨김 처리된 게임 표시
             토글
           </li>
+          <li>
+            <strong class="text-foreground">제공자</strong> → DLSite → Steam →
+            Getchu → Ci-en → 전체
+          </li>
         </ul>
+        <p class="text-muted-foreground mt-2 text-sm">
+          제공자는 정보를 수집해 온 사이트를 뜻하며, 전체 상태에서는 정보를
+          수집하지 않은 게임까지 모두 표시됩니다.
+        </p>
         <p class="text-muted-foreground mt-2 text-sm">
           라이브러리 경로가 2개 이상일 경우, 경로별 활성화/비활성화도
           가능합니다.

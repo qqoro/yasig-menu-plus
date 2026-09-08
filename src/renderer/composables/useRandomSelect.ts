@@ -56,11 +56,19 @@ export function useRandomSelect({
       const randomQuery =
         specialFilters.length > 0 ? specialFilters.join(" ") : "";
 
+      // 배열 필터는 reactive proxy 그대로면 IPC 직렬화(structuredClone)에서 실패하므로 일반 배열로 복사
+      const plainFilters = Object.fromEntries(
+        Object.entries(filters.value).map(([key, value]) => [
+          key,
+          Array.isArray(value) ? [...value] : value,
+        ]),
+      ) as Required<SearchQuery["filters"]>;
+
       const result = await randomGameMutation.mutateAsync({
         sourcePaths: activeLibraryPaths.value,
         searchQuery: {
           query: randomQuery || undefined,
-          filters: filters.value,
+          filters: plainFilters,
           sortBy: sortBy.value,
           sortOrder: sortOrder.value,
         },

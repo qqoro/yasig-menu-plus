@@ -172,22 +172,41 @@ function hasSearchFilter(
 // localStorage 키
 const STORAGE_KEY = "searchFilter";
 
+/** 홈 화면 필터 상태 */
+type HomeFilters = {
+  showHidden: boolean;
+  showFavorites: boolean;
+  showNotFavorites: boolean;
+  showCleared: boolean;
+  showNotCleared: boolean;
+  showCompressed: boolean;
+  showNotCompressed: boolean;
+  showWithExternalId: boolean;
+  showWithoutExternalId: boolean;
+  /** 제공자 다중 선택 — 빈 배열이면 전체 */
+  providers: string[];
+};
+
+/** 필터 기본값 (초기화 및 localStorage 병합 기준) */
+const DEFAULT_FILTERS: HomeFilters = {
+  showHidden: false,
+  showFavorites: false,
+  showNotFavorites: false,
+  showCleared: false,
+  showNotCleared: false,
+  showCompressed: false,
+  showNotCompressed: false,
+  showWithExternalId: false,
+  showWithoutExternalId: false,
+  providers: [],
+};
+
 /**
  * localStorage에서 필터 상태 로드
  */
 function loadFromStorage(): {
   searchQuery: string;
-  filters: {
-    showHidden: boolean;
-    showFavorites: boolean;
-    showNotFavorites: boolean;
-    showCleared: boolean;
-    showNotCleared: boolean;
-    showCompressed: boolean;
-    showNotCompressed: boolean;
-    showWithExternalId: boolean;
-    showWithoutExternalId: boolean;
-  };
+  filters: Partial<HomeFilters>;
   sortBy:
     | "title"
     | "publishDate"
@@ -214,17 +233,7 @@ function loadFromStorage(): {
  */
 function saveToStorage(
   searchQuery: string,
-  filters: {
-    showHidden: boolean;
-    showFavorites: boolean;
-    showNotFavorites: boolean;
-    showCleared: boolean;
-    showNotCleared: boolean;
-    showCompressed: boolean;
-    showNotCompressed: boolean;
-    showWithExternalId: boolean;
-    showWithoutExternalId: boolean;
-  },
+  filters: HomeFilters,
   sortBy:
     | "title"
     | "publishDate"
@@ -256,29 +265,11 @@ export function useSearch(sourcePaths: () => string[]) {
 
   // 검색 상태
   const searchQuery = ref(stored?.searchQuery ?? "");
-  const filters = ref<{
-    showHidden: boolean;
-    showFavorites: boolean;
-    showNotFavorites: boolean;
-    showCleared: boolean;
-    showNotCleared: boolean;
-    showCompressed: boolean;
-    showNotCompressed: boolean;
-    showWithExternalId: boolean;
-    showWithoutExternalId: boolean;
-  }>(
-    stored?.filters ?? {
-      showHidden: false,
-      showFavorites: false,
-      showNotFavorites: false,
-      showCleared: false,
-      showNotCleared: false,
-      showCompressed: false,
-      showNotCompressed: false,
-      showWithExternalId: false,
-      showWithoutExternalId: false,
-    },
-  );
+  // 구버전 localStorage에는 없는 항목이 있으므로 기본값과 병합
+  const filters = ref<HomeFilters>({
+    ...DEFAULT_FILTERS,
+    ...stored?.filters,
+  });
 
   const sortBy = ref<
     | "title"
@@ -575,17 +566,7 @@ export function useSearch(sourcePaths: () => string[]) {
   // 필터 초기화
   function resetFilters(): void {
     searchQuery.value = "";
-    filters.value = {
-      showHidden: false,
-      showFavorites: false,
-      showNotFavorites: false,
-      showCleared: false,
-      showNotCleared: false,
-      showCompressed: false,
-      showNotCompressed: false,
-      showWithExternalId: false,
-      showWithoutExternalId: false,
-    };
+    filters.value = { ...DEFAULT_FILTERS };
     sortBy.value = "title";
     sortOrder.value = "asc";
   }
@@ -612,6 +593,7 @@ export function useSearch(sourcePaths: () => string[]) {
       filters.value.showWithoutExternalId
     )
       count++;
+    count += filters.value.providers.length;
     return count;
   });
 

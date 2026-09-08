@@ -121,6 +121,7 @@ const filters = computed<Required<SearchQuery["filters"]>>(() => ({
   showWithExternalId: searchState.filters.value.showWithExternalId ?? false,
   showWithoutExternalId:
     searchState.filters.value.showWithoutExternalId ?? false,
+  providers: searchState.filters.value.providers ?? [],
 }));
 
 // 정렬 (기본값 포함)
