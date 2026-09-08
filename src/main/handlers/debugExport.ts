@@ -234,6 +234,99 @@ export const exportDebugDataHandler = wrapIpcHandler(
 );
 
 /**
+ * 이슈 본문에 넣을 로그 상한
+ *
+ * GitHub 이슈 본문 한도는 65,536자. 환경 정보 표와 사용자가 적을 설명 여유를
+ * 남기기 위해 로그는 문자 예산으로 자르고, 줄 수 상한을 함께 둔다.
+ */
+export const ISSUE_LOG_MAX_LINES = 500;
+export const ISSUE_LOG_MAX_CHARS = 50_000;
+
+/**
+ * 로그 끝에서부터 줄 수·문자 예산 안에 들어가는 만큼 잘라낸다 (원래 순서 유지)
+ */
+export function selectRecentLogLines(
+  lines: string[],
+  maxLines: number,
+  maxChars: number,
+): string[] {
+  const picked: string[] = [];
+  let chars = 0;
+
+  for (let i = lines.length - 1; i >= 0 && picked.length < maxLines; i--) {
+    const cost = lines[i].length + 1; // 줄바꿈 포함
+    if (chars + cost > maxChars) {
+      break;
+    }
+    chars += cost;
+    picked.push(lines[i]);
+  }
+
+  return picked.reverse();
+}
+
+/**
+ * 정규식 특수문자 이스케이프
+ */
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * 경로 구분자를 백슬래시(이스케이프된 형태 포함)·슬래시 모두 허용하는 정규식 조각
+ */
+const PATH_SEP = "(?:\\\\+|/)";
+
+/**
+ * 사용자명이 드러나는 경로를 `<user>`로 가린다
+ *
+ * - 홈 디렉터리 전체 경로 (C:\Users\name, C:/Users/name, C:\\Users\\name)
+ * - 다른 드라이브의 프로필 경로 (D:\Users\name)
+ * 경로가 아닌 곳에 나오는 사용자명은 건드리지 않는다.
+ */
+export function redactUserInfo(
+  text: string,
+  homeDir: string,
+  username: string,
+): string {
+  let result = text;
+
+  const homeSegments = homeDir.split(/[\\/]+/).filter(Boolean);
+  const homeLast = homeSegments.at(-1);
+  if (homeLast) {
+    const homePattern = new RegExp(
+      homeSegments.map(escapeRegExp).join(PATH_SEP) + "(?![\\w.-])",
+      "gi",
+    );
+    result = result.replace(
+      homePattern,
+      (match) => match.slice(0, match.length - homeLast.length) + "<user>",
+    );
+  }
+
+  if (username) {
+    const profilePattern = new RegExp(
+      `(${PATH_SEP}Users${PATH_SEP})${escapeRegExp(username)}(?![\\w.-])`,
+      "gi",
+    );
+    result = result.replace(profilePattern, "$1<user>");
+  }
+
+  return result;
+}
+
+/**
+ * 현재 사용자명 (조회 실패 시 빈 문자열)
+ */
+function getUsername(): string {
+  try {
+    return os.userInfo().username;
+  } catch {
+    return "";
+  }
+}
+
+/**
  * GitHub 이슈 페이지 열기 (시스템 정보 + 최근 로그 클립보드 복사)
  * URL 길이 제한으로 본문 전체를 클립보드에 복사 후 이슈 페이지 열기
  */
@@ -243,18 +336,22 @@ export const openGitHubIssueHandler = wrapIpcHandler(
     _event: IpcMainInvokeEvent,
     _payload: IpcRendererEventMap["openGitHubIssue"],
   ): Promise<IpcMainEventMap["gitHubIssueOpened"]> => {
-    // 최근 로그 읽기 (마지막 100줄)
+    // 최근 로그 읽기 (줄 수·문자 예산 이내)
     let logSection = "";
     const logPath = getLogPath();
     if (await pathExists(logPath)) {
       try {
         const logContent = await readFile(logPath, "utf-8");
         const lines = logContent.split("\n").filter(Boolean);
-        const lastLines = lines.slice(-100);
+        const lastLines = selectRecentLogLines(
+          lines,
+          ISSUE_LOG_MAX_LINES,
+          ISSUE_LOG_MAX_CHARS,
+        );
         logSection = [
           "",
           "<details>",
-          "<summary>최근 로그 (마지막 100줄)</summary>",
+          `<summary>최근 로그 (마지막 ${lastLines.length}줄)</summary>`,
           "",
           "```",
           ...lastLines,
@@ -267,21 +364,25 @@ export const openGitHubIssueHandler = wrapIpcHandler(
       }
     }
 
-    // 이슈 본문 생성
-    const body = [
-      `## 환경 정보`,
-      ``,
-      buildSystemInfoTable(),
-      logSection,
-      ``,
-      `## 문제 설명`,
-      ``,
-      `<!-- 여기에 문제를 설명해주세요 -->`,
-      ``,
-      `## 재현 방법`,
-      ``,
-      `<!-- 문제를 재현하는 방법을 적어주세요 -->`,
-    ].join("\n");
+    // 이슈 본문 생성 (공개 이슈에 올라가므로 사용자명이 드러나는 경로는 가린다)
+    const body = redactUserInfo(
+      [
+        `## 환경 정보`,
+        ``,
+        buildSystemInfoTable(),
+        logSection,
+        ``,
+        `## 문제 설명`,
+        ``,
+        `<!-- 여기에 문제를 설명해주세요 -->`,
+        ``,
+        `## 재현 방법`,
+        ``,
+        `<!-- 문제를 재현하는 방법을 적어주세요 -->`,
+      ].join("\n"),
+      os.homedir(),
+      getUsername(),
+    );
 
     // 클립보드에 본문 복사
     clipboard.writeText(body);
