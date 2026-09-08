@@ -93,6 +93,15 @@ initLogging();
 const mainLog = createLogger("Main");
 dayjs.extend(customParseFormat);
 
+// [개발용] Chrome DevTools Protocol 포트 개방.
+//
+// 외부 디버깅 도구(chrome-devtools-mcp 등)가 --browserUrl로 이 포트에 붙어
+// 렌더러를 검사합니다. app.whenReady() 이전에 걸어야 적용됩니다.
+// 패키징된 앱에서는 절대 열지 않습니다.
+if (process.env.NODE_ENV === "development") {
+  app.commandLine.appendSwitch("remote-debugging-port", "9222");
+}
+
 mainLog.info(
   `앱 시작: v${app.getVersion()} (Electron ${process.versions.electron}, ${process.platform}-${process.arch}, ${app.isPackaged ? "패키지" : "개발"})`,
 );
