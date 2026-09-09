@@ -8,7 +8,7 @@ import { defineConfig } from "vite";
  * https://vitejs.dev/config
  */
 const config = defineConfig({
-  root: join(__dirname, "src/renderer/"),
+  root: join(import.meta.dirname, "src/renderer/"),
   publicDir: "public",
   server: {
     port: 8080,

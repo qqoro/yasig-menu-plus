@@ -49,14 +49,11 @@ pnpm changelog         # git-cliff → CHANGELOG.md (full)
 pnpm changelog:latest  # git-cliff → RELEASE_NOTES.md (latest tag only)
 ```
 
-### Native Module Rebuild (better-sqlite3)
+### Native Module (better-sqlite3)
 
-`scripts/rebuild-native.js` switches the better-sqlite3 binary between Electron ABI and Node ABI, tracked via a `node_modules/.native-target` marker file (skips rebuild if already correct):
+**No rebuild step exists, and none should be reintroduced.** better-sqlite3 13 is built on the N-API, and ships prebuilt binaries for every platform inside the package itself (`node_modules/better-sqlite3/prebuilds/`). The same `win32-x64.node` loads under both the system Node and Electron, so switching ABIs is neither needed nor possible any more.
 
-- `predev` hook → rebuilds for **Electron** (before `pnpm dev`)
-- `pretest` / `pretest:watch` hooks → rebuilds for **Node** (before `pnpm test`)
-
-This runs automatically via pre-hooks. If you see ABI mismatch errors (e.g., `NODE_MODULE_VERSION`), run `node scripts/rebuild-native.js` (Electron) or `node scripts/rebuild-native.js --node` manually.
+The old `scripts/rebuild-native.js` and its `predev` / `pretest` / `pretest:watch` hooks were removed when better-sqlite3 went to 13 — that release also dropped `prebuild-install`, so forcing a rebuild now falls through to a `node-gyp` source build and fails without Visual Studio build tools.
 
 ### CI/CD
 
@@ -153,7 +150,7 @@ yasig-menu-plus/
 │       ├── stores/        # Pinia stores (uiStore: theme, sidebar, zoom)
 │       ├── types/         # Type definitions (api.ts: IPC API types)
 │       └── assets/        # Static resources
-├── scripts/               # Build scripts (dev-server.js, build.js, rebuild-native.js, license.js)
+├── scripts/               # Build scripts (dev-server.js, build.js, license.js)
 ├── build/                 # Compilation output (gitignore)
 ├── dist/                  # Final build output (electron-builder)
 ├── vite.config.js         # Vite config
@@ -309,7 +306,7 @@ Tests are colocated (`*.test.ts` next to the module) and run against a **real in
 - `src/main/db/test-utils.ts` provides `createTestDb()` (better-sqlite3 with `:memory:`), `truncateAll(db)`, and `seedGame` / `seedUserGameData` / `seedMaker` / `seedCategory` / `seedTag` / `seedGame{Maker,Category,Tag}` / `seedGameImage`. It reuses the production `postProcessResponse`/`wrapIdentifier` pair, so the camelCase ↔ snake_case conversion behaves identically to the real DB — including the raw-SQL caveat above.
 - `createTestDb()` runs the real migrations from `src/main/db/migrations/` through a custom `VitestMigrationSource`. Knex's default migration loader cannot `require` `.ts` files, so the source uses dynamic `import()` to route them through vitest's transform. **New migrations are automatically covered by every DB test** — a migration that breaks will surface as broad test failures, not one localized one.
 - Handler tests mock `electron` with `vi.mock("electron", ...)` (`app.getPath`, `ipcMain.handle`, `shell`) and inject the test DB. Follow the existing pattern in `handlers/dashboard.test.ts`.
-- **ABI switching is the most common source of confusing test failures.** `pretest` rebuilds better-sqlite3 for the Node ABI and `predev` rebuilds it for the Electron ABI, so running `pnpm dev` after `pnpm test` (or vice versa) flips the binary. A `NODE_MODULE_VERSION` error means the marker file and the actual binary disagree — rerun the appropriate script rather than reinstalling.
+- **Tests and the dev server share one better-sqlite3 binary.** Since better-sqlite3 13 is N-API, `pnpm test` and `pnpm dev` can be run in any order without touching the native module. A `NODE_MODULE_VERSION` error should no longer be possible; if one appears, the cause is a stale `node_modules`, not an ABI mismatch — reinstall rather than adding a rebuild step back.
 - `pnpm type-check` covers three projects, including `src/main/tsconfig.test.json`; test-only type errors are caught there and nowhere else.
 
 ## Coding Conventions
@@ -385,5 +382,6 @@ pnpm type-check
 - **Type check before build**: Verify with `pnpm type-check`
 - **Security**: `webSecurity: false` enabled (external resource loading possible)
 - **Pre-commit hook**: Runs `lint-staged` (prettier + oxlint) on staged files via husky
-- **Postinstall hook**: Runs `scripts/rebuild-native.js` (better-sqlite3 rebuild) + `scripts/license.js` after `pnpm install`
+- **Postinstall hook**: Runs `scripts/license.js` after `pnpm install`
+- **pnpm settings live in `pnpm-workspace.yaml`**: pnpm 12 no longer reads the `pnpm` field in package.json. Build-script permissions are declared under `allowBuilds` (which replaced `onlyBuiltDependencies` / `ignoredBuiltDependencies`); `overrides` and `minimumReleaseAgeExclude` live there too. Removing this file silently disables native builds
 - **Electron Best Practices**: For items not specified in this document, follow [Electron official best practices](https://www.electronjs.org/docs/latest/tutorial/security) and [security guidelines](https://www.electronjs.org/docs/latest/tutorial/security)

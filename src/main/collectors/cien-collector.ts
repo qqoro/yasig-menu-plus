@@ -49,13 +49,13 @@ export const CienCollector: Collector = {
 
     // 발매일 수집
     const publishDateString =
-      article?.parentNode.parentNode.querySelector(".e-date")?.innerText;
+      article?.parentNode?.parentNode?.querySelector(".e-date")?.innerText;
     const date = dayjs(publishDateString);
     const publishDate = date.isValid() ? date.toDate() : null;
 
     // 제작사 수집
     const makerName =
-      article?.parentNode.parentNode.querySelector(".e-userName")?.innerText;
+      article?.parentNode?.parentNode?.querySelector(".e-userName")?.innerText;
     const makers = makerName ? [makerName] : [];
 
     return {

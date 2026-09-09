@@ -44,7 +44,7 @@ export const GetchuCollector: Collector = {
     const softTitle = body.getElementById("soft-title");
     const softInfoRows = softTable
       ? softTable.children[1].querySelector("table")?.children
-      : softTitle?.parentNode.parentNode.parentNode.children;
+      : softTitle?.parentNode?.parentNode?.parentNode?.children;
 
     // 섬네일 및 모든 이미지 수집 (highslide 링크들)
     const tableLinks = softTable

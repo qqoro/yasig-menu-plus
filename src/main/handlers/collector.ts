@@ -109,7 +109,7 @@ async function launchVisibleBrowser(): Promise<
   Awaited<ReturnType<typeof puppeteer.launch>>
 > {
   // 기존 visible 브라우저가 있으면 재사용
-  if (visibleBrowserInstance && visibleBrowserInstance.isConnected()) {
+  if (visibleBrowserInstance && visibleBrowserInstance.connected) {
     return visibleBrowserInstance;
   }
 

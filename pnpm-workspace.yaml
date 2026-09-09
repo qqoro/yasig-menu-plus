@@ -1,0 +1,15 @@
+# pnpm 12부터 package.json의 "pnpm" 필드를 읽지 않아 이 파일로 옮김
+# 빌드 스크립트 허용 목록은 onlyBuiltDependencies/ignoredBuiltDependencies에서 allowBuilds로 통합됨
+allowBuilds:
+  "@tailwindcss/oxide": true
+  better-sqlite3: true
+  electron: true
+  protobufjs: true
+  puppeteer: true
+  sharp: true
+  electron-winstaller: false
+  esbuild: false
+  vue-demi: false
+
+minimumReleaseAgeExclude:
+  - electron@44.3.0

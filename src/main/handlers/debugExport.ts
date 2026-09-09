@@ -4,7 +4,7 @@
  * 시스템 정보, 설정, 로그, (선택) DB를 ZIP으로 압축하여 내보내기
  */
 
-import archiver from "archiver";
+import { ZipArchive } from "archiver";
 import { app, clipboard, dialog, shell } from "electron";
 import type { IpcMainInvokeEvent } from "electron";
 import { createWriteStream } from "fs";
@@ -187,7 +187,7 @@ export const exportDebugDataHandler = wrapIpcHandler(
       // 3. ZIP 압축 생성
       await new Promise<void>((resolvePromise, rejectPromise) => {
         const output = createWriteStream(savePath);
-        const archive = archiver("zip", { zlib: { level: 9 } });
+        const archive = new ZipArchive({ zlib: { level: 9 } });
 
         output.on("close", () => {
           resolvePromise();
