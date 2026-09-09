@@ -1,8 +1,8 @@
 {
   "name": "yasig-menu-plus",
-  "displayName": "야식메뉴판 Plus",
+  "displayName": "\uc57c\uc2dd\uba54\ub274\ud310 Plus",
   "version": "1.21.2",
-  "description": "야식 관리에 도움이 되는 가벼운 앱",
+  "description": "\uc57c\uc2dd \uad00\ub9ac\uc5d0 \ub3c4\uc6c0\uc774 \ub418\ub294 \uac00\ubcbc\uc6b4 \uc571",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -122,7 +122,8 @@
       "sharp"
     ],
     "overrides": {
-      "node-abi": "^3.78.0"
+      "node-abi": "^3.78.0",
+      "basic-ftp": "5.3.1"
     }
   }
 }
