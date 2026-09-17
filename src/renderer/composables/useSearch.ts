@@ -291,11 +291,17 @@ export function useSearch(sourcePaths: () => string[]) {
     { deep: true },
   );
 
+  // IPC로 보낼 필터 — toRaw로 reactive proxy를 일반 객체로 변환 (structuredClone 호환)
+  // toRaw는 겉 객체만 벗기므로, 필터 패널에서 spread로 담겨 온 providers 배열 proxy는 따로 벗긴다
+  const plainFilters = computed(() => ({
+    ...toRaw(filters.value),
+    providers: toRaw(filters.value.providers),
+  }));
+
   // Vue Query를 사용한 검색 쿼리 객체
-  // toRaw로 감싸서 reactive proxy를 일반 객체로 변환 (structuredClone 호환)
   const searchQueryObj = computed<SearchQuery>(() => ({
     query: searchQuery.value || undefined,
-    filters: toRaw(filters.value),
+    filters: plainFilters.value,
     sortBy: sortBy.value,
     sortOrder: sortOrder.value,
   }));
@@ -389,7 +395,7 @@ export function useSearch(sourcePaths: () => string[]) {
       "specialOnly",
       toRaw({
         query: specialOnlyQuery.value,
-        filters: toRaw(filters.value),
+        filters: plainFilters.value,
         sourcePaths: toRaw(sourcePaths()),
       }),
     ]) as unknown as readonly unknown[],
@@ -398,7 +404,7 @@ export function useSearch(sourcePaths: () => string[]) {
         sourcePaths: [...sourcePaths()],
         searchQuery: {
           query: specialOnlyQuery.value || undefined,
-          filters: toRaw(filters.value),
+          filters: plainFilters.value,
           offset: 0,
           limit: 0, // totalCount만 필요하므로 0
         },
