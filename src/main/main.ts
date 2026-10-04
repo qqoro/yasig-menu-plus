@@ -65,6 +65,10 @@ import {
   exportDebugDataHandler,
   openGitHubIssueHandler,
 } from "./handlers/debugExport.js";
+import {
+  exportGameListHandler,
+  getGameExportPreviewHandler,
+} from "./handlers/exportGameList.js";
 import { registerCheatHandlers } from "./handlers/cheat.js";
 import {
   closeWindowHandler,
@@ -483,6 +487,13 @@ function registerIpcHandlers() {
 
   // ========== 디버그 데이터 내보내기 ==========
   ipcMain.handle(IpcRendererSend.ExportDebugData, exportDebugDataHandler);
+
+  // ========== 게임 목록 내보내기 ==========
+  ipcMain.handle(IpcRendererSend.ExportGameList, exportGameListHandler);
+  ipcMain.handle(
+    IpcRendererSend.GetGameExportPreview,
+    getGameExportPreviewHandler,
+  );
 
   // ========== GitHub 이슈 열기 ==========
   ipcMain.handle(IpcRendererSend.OpenGitHubIssue, openGitHubIssueHandler);

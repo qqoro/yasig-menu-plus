@@ -354,8 +354,8 @@ async function handleOpenGitHubIssue() {
         </DialogHeader>
         <div class="flex items-center gap-2">
           <Checkbox
-            :checked="includeDb"
-            @update:checked="includeDb = $event"
+            :model-value="includeDb"
+            @update:model-value="includeDb = $event as boolean"
             id="includeDb"
           />
           <label for="includeDb" class="cursor-pointer text-sm"

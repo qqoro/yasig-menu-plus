@@ -10,6 +10,7 @@ import type {
   StoreSchema,
   TitleDisplayMode,
 } from "./store.js";
+import type { ExportColumnId } from "./lib/export-columns.js";
 
 // ========== Renderer → Main 이벤트 ==========
 export const enum IpcRendererSend {
@@ -152,6 +153,10 @@ export const enum IpcRendererSend {
 
   // 디버그 데이터 내보내기
   ExportDebugData = "exportDebugData",
+
+  // 게임 목록 내보내기
+  ExportGameList = "exportGameList",
+  GetGameExportPreview = "getGameExportPreview",
 
   // GitHub 이슈 열기
   OpenGitHubIssue = "openGitHubIssue",
@@ -619,6 +624,10 @@ export interface IpcRendererEventMap {
   // 디버그 데이터 내보내기
   exportDebugData: { includeDb: boolean };
 
+  // 게임 목록 내보내기
+  exportGameList: { columns: ExportColumnId[]; includeHeader: boolean };
+  getGameExportPreview: undefined;
+
   // GitHub 이슈 열기
   openGitHubIssue: undefined;
 
@@ -824,6 +833,10 @@ export interface IpcMainEventMap {
 
   // 디버그 데이터 내보내기
   debugDataExported: { path: string } | null;
+
+  // 게임 목록 내보내기
+  gameListExported: { path: string } | null;
+  exportPreviewLoaded: { games: GameItem[] };
 
   // GitHub 이슈 열기
   gitHubIssueOpened: void;

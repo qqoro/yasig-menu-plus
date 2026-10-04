@@ -2,6 +2,7 @@
 import {
   ChevronDown,
   ChevronUp,
+  FileDown,
   FolderOpen,
   HardDriveUpload,
   Image,
@@ -12,6 +13,7 @@ import {
 } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import { toast } from "vue-sonner";
+import ExportGameListDialog from "@/components/ExportGameListDialog.vue";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -144,6 +146,9 @@ const selectFolderMutation = useSelectFolder();
 
 // 데이터 폴더 열기
 const openDataFolderMutation = useOpenDataFolder();
+
+// 게임 목록 내보내기
+const exportListOpen = ref(false);
 
 /**
  * 정보 수집 핸들러
@@ -579,6 +584,26 @@ async function handleOpenDataFolder(): Promise<void> {
         </CardContent>
       </Card>
 
+      <!-- 게임 목록 내보내기 -->
+      <Card>
+        <CardHeader class="pb-4">
+          <CardTitle class="text-lg">게임 목록 내보내기</CardTitle>
+          <CardDescription class="text-sm">
+            전체 게임 목록(숨김 포함)을 열을 선택해 TSV 파일로 저장합니다
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            @click="exportListOpen = true"
+            variant="outline"
+            class="w-full"
+          >
+            <FileDown :size="18" />
+            TSV로 내보내기
+          </Button>
+        </CardContent>
+      </Card>
+
       <!-- 데이터 폴더 -->
       <Card>
         <CardHeader class="pb-4">
@@ -599,5 +624,8 @@ async function handleOpenDataFolder(): Promise<void> {
         </CardContent>
       </Card>
     </div>
+
+    <!-- 게임 목록 내보내기 다이얼로그 -->
+    <ExportGameListDialog v-model:open="exportListOpen" />
   </div>
 </template>

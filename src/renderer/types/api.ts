@@ -119,6 +119,10 @@ type IpcInvokeReturn = {
   // 디버그 데이터 내보내기
   exportDebugData: IpcMainEventMap["debugDataExported"];
 
+  // 게임 목록 내보내기
+  exportGameList: IpcMainEventMap["gameListExported"];
+  getGameExportPreview: IpcMainEventMap["exportPreviewLoaded"];
+
   // GitHub 이슈 열기
   openGitHubIssue: IpcMainEventMap["gitHubIssueOpened"];
 
