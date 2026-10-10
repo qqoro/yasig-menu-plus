@@ -57,14 +57,16 @@ async function getOverviewStats(): Promise<DashboardStats["overview"]> {
 
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
+  // started_at은 epoch ms 정수로 저장되므로 getTime()으로 비교한다
+  // (ISO 문자열과 비교하면 SQLite 타입 정렬 규칙상 INTEGER < TEXT로 항상 거짓)
   const weekPlayRow = await db("playSessions")
-    .whereRaw("started_at >= ?", [weekStart.toISOString()])
+    .where("startedAt", ">=", weekStart.getTime())
     .sum("durationSeconds as total")
     .first();
   const thisWeekPlayTime = (weekPlayRow as any)?.total ?? 0;
 
   const monthPlayRow = await db("playSessions")
-    .whereRaw("started_at >= ?", [monthStart.toISOString()])
+    .where("startedAt", ">=", monthStart.getTime())
     .sum("durationSeconds as total")
     .first();
   const thisMonthPlayTime = (monthPlayRow as any)?.total ?? 0;
@@ -174,14 +176,22 @@ async function getMostNeglectedGames(): Promise<
 async function getMonthlyPlayTime(): Promise<
   DashboardStats["monthlyPlayTime"]
 > {
+  // started_at은 epoch ms 정수 → /1000 'unixepoch' 변환 후 'localtime'으로 로컬 시간대 기준 그룹핑
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+
   const rows = await db("playSessions")
     .select(
-      db.raw("strftime('%Y-%m', started_at) as month"),
+      db.raw(
+        "strftime('%Y-%m', started_at / 1000, 'unixepoch', 'localtime') as month",
+      ),
       db.raw("SUM(duration_seconds) as totalSeconds"),
       db.raw("COUNT(*) as sessionCount"),
     )
-    .whereRaw("started_at >= date('now', '-12 months')")
-    .groupByRaw("strftime('%Y-%m', started_at)")
+    .where("startedAt", ">=", twelveMonthsAgo.getTime())
+    .groupByRaw(
+      "strftime('%Y-%m', started_at / 1000, 'unixepoch', 'localtime')",
+    )
     .orderBy("month", "asc");
 
   return rows as any[];
@@ -189,13 +199,16 @@ async function getMonthlyPlayTime(): Promise<
 
 /** 시간대별 플레이 패턴 */
 async function getHourlyPattern(): Promise<DashboardStats["hourlyPattern"]> {
+  // started_at은 epoch ms 정수 → 로컬 시간대 기준 시간 그룹핑
   const rows = await db("playSessions")
     .select(
-      db.raw("CAST(strftime('%H', started_at) AS INTEGER) as hour"),
+      db.raw(
+        "CAST(strftime('%H', started_at / 1000, 'unixepoch', 'localtime') AS INTEGER) as hour",
+      ),
       db.raw("SUM(duration_seconds) as totalSeconds"),
       db.raw("COUNT(*) as sessionCount"),
     )
-    .groupByRaw("strftime('%H', started_at)")
+    .groupByRaw("strftime('%H', started_at / 1000, 'unixepoch', 'localtime')")
     .orderBy("hour", "asc");
 
   return rows as any[];
@@ -203,13 +216,16 @@ async function getHourlyPattern(): Promise<DashboardStats["hourlyPattern"]> {
 
 /** 요일별 플레이 패턴 */
 async function getWeekdayPattern(): Promise<DashboardStats["weekdayPattern"]> {
+  // started_at은 epoch ms 정수 → 로컬 시간대 기준 요일(0=일요일) 그룹핑
   const rows = await db("playSessions")
     .select(
-      db.raw("CAST(strftime('%w', started_at) AS INTEGER) as weekday"),
+      db.raw(
+        "CAST(strftime('%w', started_at / 1000, 'unixepoch', 'localtime') AS INTEGER) as weekday",
+      ),
       db.raw("SUM(duration_seconds) as totalSeconds"),
       db.raw("COUNT(*) as sessionCount"),
     )
-    .groupByRaw("strftime('%w', started_at)")
+    .groupByRaw("strftime('%w', started_at / 1000, 'unixepoch', 'localtime')")
     .orderBy("weekday", "asc");
 
   return rows as any[];

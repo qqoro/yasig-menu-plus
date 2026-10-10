@@ -87,10 +87,12 @@ async function seedPlaySession(
   userGameDataId: number,
   overrides: Record<string, any> = {},
 ) {
+  // started_at은 프로덕션(ProcessMonitor)과 동일하게 Date 객체로 시드한다
+  // knex better-sqlite3 dialect는 Date를 epoch ms 정수로 저장한다
   const defaults = {
     userGameDataId,
-    startedAt: new Date().toISOString(),
-    endedAt: new Date().toISOString(),
+    startedAt: new Date(),
+    endedAt: new Date(),
     durationSeconds: 3600,
   };
   const data = { ...defaults, ...overrides };
@@ -239,7 +241,7 @@ describe("getDashboardStatsHandler", () => {
       // 오늘 날짜의 세션 → 이번 주에 포함
       const now = new Date();
       await seedPlaySession(db, ugd.id, {
-        startedAt: now.toISOString(),
+        startedAt: now,
         durationSeconds: 1800,
       });
 
@@ -247,7 +249,7 @@ describe("getDashboardStatsHandler", () => {
       const twoWeeksAgo = new Date();
       twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
       await seedPlaySession(db, ugd.id, {
-        startedAt: twoWeeksAgo.toISOString(),
+        startedAt: twoWeeksAgo,
         durationSeconds: 9999,
       });
 
@@ -266,7 +268,7 @@ describe("getDashboardStatsHandler", () => {
       const now = new Date();
       const thisMonth = new Date(now.getFullYear(), now.getMonth(), 2);
       await seedPlaySession(db, ugd.id, {
-        startedAt: thisMonth.toISOString(),
+        startedAt: thisMonth,
         durationSeconds: 2400,
       });
 
@@ -274,7 +276,7 @@ describe("getDashboardStatsHandler", () => {
       const threeMonthsAgo = new Date();
       threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
       await seedPlaySession(db, ugd.id, {
-        startedAt: threeMonthsAgo.toISOString(),
+        startedAt: threeMonthsAgo,
         durationSeconds: 8888,
       });
 
@@ -379,15 +381,15 @@ describe("getDashboardStatsHandler", () => {
 
       const sessionDate = "2025-06-15T10:00:00.000Z";
       await seedPlaySession(db, ugd.id, {
-        startedAt: sessionDate,
+        startedAt: new Date(sessionDate),
         durationSeconds: 1000,
       });
       await seedPlaySession(db, ugd.id, {
-        startedAt: "2025-06-16T10:00:00.000Z",
+        startedAt: new Date("2025-06-16T10:00:00.000Z"),
         durationSeconds: 5000,
       });
       await seedPlaySession(db, ugd.id, {
-        startedAt: "2025-06-17T10:00:00.000Z",
+        startedAt: new Date("2025-06-17T10:00:00.000Z"),
         durationSeconds: 3000,
       });
 
@@ -396,8 +398,9 @@ describe("getDashboardStatsHandler", () => {
       expect(result.stats.longestSession).not.toBeNull();
       expect(result.stats.longestSession!.durationSeconds).toBe(5000);
       expect(result.stats.longestSession!.gameTitle).toBe("Long Session Game");
+      // started_at은 epoch ms 정수로 저장되므로 ms 값이 그대로 반환된다
       expect(result.stats.longestSession!.startedAt).toBe(
-        "2025-06-16T10:00:00.000Z",
+        new Date("2025-06-16T10:00:00.000Z").getTime(),
       );
     });
 
@@ -854,11 +857,11 @@ describe("getDashboardStatsHandler", () => {
       const expectedMonth = `${thisMonth.getFullYear()}-${String(thisMonth.getMonth() + 1).padStart(2, "0")}`;
 
       await seedPlaySession(db, ugd.id, {
-        startedAt: thisMonth.toISOString(),
+        startedAt: thisMonth,
         durationSeconds: 1000,
       });
       await seedPlaySession(db, ugd.id, {
-        startedAt: thisMonth.toISOString(),
+        startedAt: thisMonth,
         durationSeconds: 2000,
       });
 
@@ -882,35 +885,46 @@ describe("getDashboardStatsHandler", () => {
       const game = await seedGame(db, { path: "/g1", fingerprint: "fp1" });
       const ugd = await seedUserGameData(db, game.path);
 
-      // 14시에 세션 생성 (UTC 기준)
-      await seedPlaySession(db, ugd.id, {
-        startedAt: "2025-06-15T14:30:00.000Z",
-        durationSeconds: 1500,
-      });
-      await seedPlaySession(db, ugd.id, {
-        startedAt: "2025-06-16T14:00:00.000Z",
-        durationSeconds: 2500,
-      });
-
-      // 20시에 세션
-      await seedPlaySession(db, ugd.id, {
-        startedAt: "2025-06-15T20:00:00.000Z",
-        durationSeconds: 500,
-      });
+      // 세션 시각(UTC instant) — 기대값은 실행 환경 로컬 시간대 기준으로 계산
+      const sessions = [
+        { at: new Date("2025-06-15T14:30:00.000Z"), durationSeconds: 1500 },
+        { at: new Date("2025-06-16T14:00:00.000Z"), durationSeconds: 2500 },
+        { at: new Date("2025-06-15T20:00:00.000Z"), durationSeconds: 500 },
+      ];
+      for (const s of sessions) {
+        await seedPlaySession(db, ugd.id, {
+          startedAt: s.at,
+          durationSeconds: s.durationSeconds,
+        });
+      }
 
       const result = await getDashboardStatsHandler(fakeEvent);
 
-      expect(result.stats.hourlyPattern.length).toBeGreaterThanOrEqual(2);
+      // JS getHours()로 로컬 시간대 그룹핑한 기대값과 일치해야 한다
+      const expected = new Map<
+        number,
+        { totalSeconds: number; sessionCount: number }
+      >();
+      for (const s of sessions) {
+        const hour = s.at.getHours();
+        const cur = expected.get(hour) ?? { totalSeconds: 0, sessionCount: 0 };
+        cur.totalSeconds += s.durationSeconds;
+        cur.sessionCount += 1;
+        expected.set(hour, cur);
+      }
 
-      const hour14 = result.stats.hourlyPattern.find((h: any) => h.hour === 14);
-      expect(hour14).toBeDefined();
-      expect(hour14!.totalSeconds).toBe(4000);
-      expect(hour14!.sessionCount).toBe(2);
+      expect(result.stats.hourlyPattern.length).toBeGreaterThanOrEqual(
+        expected.size,
+      );
 
-      const hour20 = result.stats.hourlyPattern.find((h: any) => h.hour === 20);
-      expect(hour20).toBeDefined();
-      expect(hour20!.totalSeconds).toBe(500);
-      expect(hour20!.sessionCount).toBe(1);
+      for (const [hour, exp] of expected) {
+        const row = result.stats.hourlyPattern.find(
+          (h: any) => h.hour === hour,
+        );
+        expect(row, `hour=${hour} 그룹이 없음`).toBeDefined();
+        expect(row!.totalSeconds).toBe(exp.totalSeconds);
+        expect(row!.sessionCount).toBe(exp.sessionCount);
+      }
     });
   });
 
@@ -922,33 +936,48 @@ describe("getDashboardStatsHandler", () => {
       const game = await seedGame(db, { path: "/g1", fingerprint: "fp1" });
       const ugd = await seedUserGameData(db, game.path);
 
-      // 2025-06-15 = 일요일 (weekday=0)
-      await seedPlaySession(db, ugd.id, {
-        startedAt: "2025-06-15T10:00:00.000Z",
-        durationSeconds: 1000,
-      });
-
-      // 2025-06-16 = 월요일 (weekday=1)
-      await seedPlaySession(db, ugd.id, {
-        startedAt: "2025-06-16T10:00:00.000Z",
-        durationSeconds: 2000,
-      });
+      // 세션 시각(UTC instant) — 기대값은 실행 환경 로컬 시간대 기준으로 계산
+      const sessions = [
+        { at: new Date("2025-06-15T10:00:00.000Z"), durationSeconds: 1000 },
+        { at: new Date("2025-06-16T10:00:00.000Z"), durationSeconds: 2000 },
+      ];
+      for (const s of sessions) {
+        await seedPlaySession(db, ugd.id, {
+          startedAt: s.at,
+          durationSeconds: s.durationSeconds,
+        });
+      }
 
       const result = await getDashboardStatsHandler(fakeEvent);
 
-      expect(result.stats.weekdayPattern.length).toBeGreaterThanOrEqual(2);
+      // JS getDay()로 로컬 시간대 요일(0=일요일) 그룹핑한 기대값과 일치해야 한다
+      const expected = new Map<
+        number,
+        { totalSeconds: number; sessionCount: number }
+      >();
+      for (const s of sessions) {
+        const weekday = s.at.getDay();
+        const cur = expected.get(weekday) ?? {
+          totalSeconds: 0,
+          sessionCount: 0,
+        };
+        cur.totalSeconds += s.durationSeconds;
+        cur.sessionCount += 1;
+        expected.set(weekday, cur);
+      }
 
-      const sunday = result.stats.weekdayPattern.find(
-        (w: any) => w.weekday === 0,
+      expect(result.stats.weekdayPattern.length).toBeGreaterThanOrEqual(
+        expected.size,
       );
-      expect(sunday).toBeDefined();
-      expect(sunday!.totalSeconds).toBe(1000);
 
-      const monday = result.stats.weekdayPattern.find(
-        (w: any) => w.weekday === 1,
-      );
-      expect(monday).toBeDefined();
-      expect(monday!.totalSeconds).toBe(2000);
+      for (const [weekday, exp] of expected) {
+        const row = result.stats.weekdayPattern.find(
+          (w: any) => w.weekday === weekday,
+        );
+        expect(row, `weekday=${weekday} 그룹이 없음`).toBeDefined();
+        expect(row!.totalSeconds).toBe(exp.totalSeconds);
+        expect(row!.sessionCount).toBe(exp.sessionCount);
+      }
     });
   });
 });
