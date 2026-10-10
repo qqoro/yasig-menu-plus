@@ -2,6 +2,7 @@ import type { Knex } from "knex";
 import type { IpcMainInvokeEvent } from "electron";
 import {
   afterAll,
+  afterEach,
   beforeAll,
   beforeEach,
   describe,
@@ -39,10 +40,12 @@ vi.mock("../utils/validator.js", () => ({
   validateUrl: vi.fn(),
 }));
 
+const DEFAULT_PRIORITY = ["translated", "collected", "original"] as const;
+
 vi.mock("../store.js", () => ({
-  getTranslationSettings: () => ({
+  getTranslationSettings: vi.fn(() => ({
     titleDisplayPriority: ["translated", "collected", "original"],
-  }),
+  })),
   getExcludedExecutables: () => [],
   getLibraryPaths: () => [],
   getScanDepth: () => 5,
@@ -78,6 +81,19 @@ vi.mock("../db/db-manager.js", () => ({
 
 // 모킹 후 import
 import { getDashboardStatsHandler } from "./dashboard.js";
+import { getTranslationSettings } from "../store.js";
+import type { TitleDisplayMode } from "../store.js";
+
+const mockGetTranslationSettings = vi.mocked(getTranslationSettings);
+
+/** titleDisplayPriority만 바꿔서 반환하는 mock 설정 */
+function setPriorityMock(priority: TitleDisplayMode[]): void {
+  mockGetTranslationSettings.mockImplementation(() => ({
+    showTranslated: true,
+    autoTranslate: false,
+    titleDisplayPriority: priority,
+  }));
+}
 
 // ========== 헬퍼 ==========
 
@@ -502,6 +518,76 @@ describe("getDashboardStatsHandler", () => {
 
       expect(result.stats.mostNeglectedGames).toHaveLength(1);
       expect(result.stats.mostNeglectedGames[0].title).toBe("Visible");
+    });
+  });
+
+  // ============================================
+  // 제목 표시 우선순위 (titleDisplayPriority 설정 반영)
+  // ============================================
+  describe("제목 표시 우선순위", () => {
+    afterEach(() => {
+      // 다른 describe에 영향 없도록 기본 구현으로 복원
+      setPriorityMock([...DEFAULT_PRIORITY]);
+    });
+
+    /** 우선순위별 시나리오 공용 시드: gameA(플레이 기록) + gameB(방치) */
+    async function seedTitleGames() {
+      const gameA = await seedGame(db, {
+        path: "/gameA",
+        title: "Collected A",
+        originalTitle: "folder-a",
+        translatedTitle: "Translated A",
+        fingerprint: "fpA",
+      });
+      const ugd = await seedUserGameData(db, gameA.path, {
+        totalPlayTime: 100,
+      });
+      await seedPlaySession(db, ugd.id, { durationSeconds: 500 });
+
+      await seedGame(db, {
+        path: "/gameB",
+        title: "Collected B",
+        originalTitle: "folder-b",
+        translatedTitle: "Translated B",
+        fingerprint: "fpB",
+      });
+    }
+
+    it("번역 우선 설정일 때 세 목록 모두 번역 제목을 표시해야 한다", async () => {
+      await seedTitleGames();
+
+      const result = await getDashboardStatsHandler(fakeEvent);
+
+      expect(result.stats.topPlayedGames[0].title).toBe("Translated A");
+      expect(result.stats.longestSession!.gameTitle).toBe("Translated A");
+      expect(result.stats.mostNeglectedGames[0].title).toBe("Translated B");
+    });
+
+    it("원본(폴더명) 우선 설정일 때 원본 제목을 표시해야 한다", async () => {
+      setPriorityMock(["original", "collected", "translated"]);
+      await seedTitleGames();
+
+      const result = await getDashboardStatsHandler(fakeEvent);
+
+      expect(result.stats.topPlayedGames[0].title).toBe("folder-a");
+      expect(result.stats.longestSession!.gameTitle).toBe("folder-a");
+      expect(result.stats.mostNeglectedGames[0].title).toBe("folder-b");
+    });
+
+    it("우선 제목이 비어 있으면 다음 우선순위로 대체해야 한다", async () => {
+      // 번역 제목이 없는 게임 → 원문(collected) 제목으로 폴백
+      const gameA = await seedGame(db, {
+        path: "/gameA",
+        title: "Collected A",
+        originalTitle: "folder-a",
+        translatedTitle: null,
+        fingerprint: "fpA",
+      });
+      await seedUserGameData(db, gameA.path, { totalPlayTime: 100 });
+
+      const result = await getDashboardStatsHandler(fakeEvent);
+
+      expect(result.stats.topPlayedGames[0].title).toBe("Collected A");
     });
   });
 

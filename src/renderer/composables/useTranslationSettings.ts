@@ -61,6 +61,10 @@ export function useSetTranslationSettings() {
       queryClient.invalidateQueries({
         queryKey: queryKeys.games.all,
       });
+      // 통계 화면 게임 이름도 표시 우선순위를 따르므로 함께 무효화
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.dashboard.stats,
+      });
     },
   });
 }

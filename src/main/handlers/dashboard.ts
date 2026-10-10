@@ -7,9 +7,24 @@ import { readdir, stat } from "fs/promises";
 import { join } from "path";
 import { db } from "../db/db-manager.js";
 import type { DashboardStats, IpcMainEventMap } from "../events.js";
-import { leftJoinUserGameData } from "./home-utils.js";
+import { buildTitleOrderParts, leftJoinUserGameData } from "./home-utils.js";
 import { toAbsolutePath } from "../utils/image-path.js";
-import { getLibraryPaths } from "../store.js";
+import {
+  DEFAULT_TITLE_DISPLAY_PRIORITY,
+  getLibraryPaths,
+  getTranslationSettings,
+} from "../store.js";
+
+/**
+ * 설정의 제목 표시 우선순위(titleDisplayPriority)를 반영한 표시 제목 SQL 표현식
+ * (홈 화면 제목 정렬과 동일한 COALESCE 로직 — home-utils.buildTitleOrderParts)
+ */
+function displayTitleExpr(): string {
+  const priority =
+    getTranslationSettings().titleDisplayPriority ??
+    DEFAULT_TITLE_DISPLAY_PRIORITY;
+  return buildTitleOrderParts(priority);
+}
 
 /** 라이브러리 개요 통계 */
 async function getOverviewStats(): Promise<DashboardStats["overview"]> {
@@ -93,7 +108,7 @@ async function getTopPlayedGames(): Promise<DashboardStats["topPlayedGames"]> {
     .limit(10)
     .select(
       "games.path",
-      "games.title",
+      db.raw(`${displayTitleExpr()} as title`),
       "games.thumbnail",
       "userGameData.totalPlayTime",
     );
@@ -139,7 +154,7 @@ async function getLongestSession(): Promise<DashboardStats["longestSession"]> {
     `,
     )
     .where("user_game_data.id", (row as any).userGameDataId)
-    .select("games.title")
+    .select(db.raw(`${displayTitleExpr()} as title`))
     .first();
 
   return {
@@ -162,7 +177,12 @@ async function getMostNeglectedGames(): Promise<
     })
     .orderBy("games.createdAt", "asc")
     .limit(5)
-    .select("games.path", "games.title", "games.thumbnail", "games.createdAt");
+    .select(
+      "games.path",
+      db.raw(`${displayTitleExpr()} as title`),
+      "games.thumbnail",
+      "games.createdAt",
+    );
 
   return (rows as any[]).map((r) => ({
     path: r.path,
