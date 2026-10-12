@@ -82,7 +82,11 @@ export async function buildLicenseInfo() {
         if (text) licenseTexts[type] = text;
       }
       // paths는 번들에 불필요하므로 제거
-      licensesByType[type] = packages.map(({ paths: _, ...rest }) => rest);
+      licensesByType[type] = packages.map((pkg) => {
+        const copy = { ...pkg };
+        delete copy.paths;
+        return copy;
+      });
     }
 
     const data = {
