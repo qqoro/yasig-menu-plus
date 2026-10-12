@@ -1,2 +1,4 @@
 src/renderer/components/ui
 src/renderer/assets/licenses.json
+src/main/cheat
+src/renderer/public/assets/themes
