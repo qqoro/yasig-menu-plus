@@ -123,9 +123,15 @@ yasig-menu-plus/
 │   │   │   ├── debugExport.ts     # Debug info export
 │   │   │   ├── libraryPathOffline.ts / libraryPathVisibility.ts
 │   │   │   ├── setting.ts         # Settings load/save
+│   │   │   ├── mcp.ts             # MCP 서버 상태 조회
 │   │   │   ├── dialog.ts          # Folder/file selection dialogs
 │   │   │   └── windows.ts         # Window control
 │   │   ├── collectors/    # Game info collection (registry + dlsite/steam/getchu/cien/google)
+│   │   ├── mcp/           # AI 연동: 내장 MCP 서버 (127.0.0.1, Streamable HTTP)
+│   │   │   ├── server.ts         # http 서버 생명주기, Host/Origin 검사, 상태
+│   │   │   ├── register-tools.ts # McpServer 생성 + 툴 등록
+│   │   │   ├── notify.ts         # 렌더러 캐시 무효화 알림 (externalDataChanged)
+│   │   │   └── tools/            # games-read / games-write / thumbnail / library
 │   │   ├── services/      # Business logic services
 │   │   ├── workers/       # Worker threads (scan-worker: folder scanning)
 │   │   ├── cheat/         # Bundled RPG Maker MV/MZ cheat plugin assets
@@ -251,7 +257,7 @@ Collectors in `src/main/collectors/` fetch game info from external sites:
 - **Access functions**: Individual getters/setters for each setting (e.g., `getLibraryPaths()`, `setTranslationSettings()`)
 - **Deep merge**: `updateSettings()` performs deep merge for partial updates
 - **Library scan history**: `libraryScanHistory` stores scan info per path (lastScannedAt, lastGameCount)
-- **Key settings**: `excludedExecutables` (실행 제외 목록), `translationSettings`, `thumbnailSettings` (블러), `autoScanOnStartup`, `scanOnFocus`, `colorTheme`, `scanDepth` (기본 5), `disabledLibraryPaths`, `offlineLibraryPaths`, `enableNonGameContent`, `enableGoogleCollector`, `mediaPlayerSettings`, `lastRenameTemplate`
+- **Key settings**: `excludedExecutables` (실행 제외 목록), `translationSettings`, `thumbnailSettings` (블러), `autoScanOnStartup`, `scanOnFocus`, `colorTheme`, `scanDepth` (기본 5), `disabledLibraryPaths`, `offlineLibraryPaths`, `enableNonGameContent`, `enableGoogleCollector`, `mediaPlayerSettings`, `lastRenameTemplate`, `mcpSettings` (AI 연동: `enabled` 기본 false, `port` 기본 38210)
 
 ### 7. Thumbnail Management
 
@@ -309,6 +315,10 @@ Tests are colocated (`*.test.ts` next to the module) and run against a **real in
 - **Tests and the dev server share one better-sqlite3 binary.** Since better-sqlite3 13 is N-API, `pnpm test` and `pnpm dev` can be run in any order without touching the native module. A `NODE_MODULE_VERSION` error should no longer be possible; if one appears, the cause is a stale `node_modules`, not an ABI mismatch — reinstall rather than adding a rebuild step back.
 - `pnpm type-check` covers three projects, including `src/main/tsconfig.test.json`; test-only type errors are caught there and nowhere else.
 
+### 13. AI Integration (MCP Server)
+
+`src/main/mcp/` hosts a Streamable HTTP MCP server bound to `127.0.0.1:<port>/mcp` (default port 38210), enabled only when `mcpSettings.enabled` is true. Tools call the same exported handler functions the IPC layer uses (`searchGames`, `updateGameMetadata`, `scanLibraryPaths`, ...), never `ipcMain`. Every write tool calls `notifyExternalChange()` so the renderer's `useExternalChangeListener` invalidates vue-query caches. There is no auth; the request handler rejects any `Host` other than `127.0.0.1:<port>`/`localhost:<port>` and any request carrying an `Origin` header. Settings changes to `mcpSettings` restart the server via `applyMcpSettings()` in `handlers/setting.ts`.
+
 ## Coding Conventions
 
 ### Language & Comments
@@ -344,6 +354,7 @@ Tests are colocated (`*.test.ts` next to the module) and run against a **real in
   - Features: `usePlayTime`, `useDashboard`, `useDuplicates`, `useRename`, `useCheat`, `useChangelog`, `useAutoUpdate`
   - Home UI: `useHomeActions`, `useHomeBatchActions`, `useHomeKeyboard`, `useMultiSelect`, `useGridLayout`
   - Config: `useExcludedExecutables`
+  - AI: `useMcpStatus`, `useExternalChangeListener`
   - Use `useQuery` for data fetching, `useMutation` for state-changing operations
 
 ### Styling Conventions

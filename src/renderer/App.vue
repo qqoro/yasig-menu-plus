@@ -13,6 +13,7 @@ import { useViewedHelpCards } from "./composables/useHelpRedDot";
 import { ALL_CARD_IDS } from "./lib/helpCardRegistry";
 import { createLogger } from "./lib/logger";
 import { useWindow } from "./composables/useWindow";
+import { useExternalChangeListener } from "./composables/useExternalChangeListener";
 import { queryKeys } from "./queryKeys";
 import { useQueryClient } from "@tanstack/vue-query";
 import { useUIStore } from "./stores/uiStore";
@@ -40,6 +41,9 @@ const route = useRoute();
 const router = useRouter();
 const queryClient = useQueryClient();
 const uiStore = useUIStore();
+
+// MCP 툴이 데이터를 바꾸면 캐시 무효화 (앱 전체에서 한 번만 마운트)
+useExternalChangeListener();
 
 // 현재 경로가 홈인지 확인
 const isHomePage = computed(() => route.path === "/");

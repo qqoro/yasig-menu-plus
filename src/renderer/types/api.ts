@@ -16,7 +16,11 @@ import type {
 } from "../../main/events.js";
 
 // StoreSchema 타입 import
-import type { LibraryScanInfo, StoreSchema } from "../../main/store.js";
+import type {
+  LibraryScanInfo,
+  McpSettings,
+  StoreSchema,
+} from "../../main/store.js";
 
 /**
  * 핸들러 반환 타입 매핑
@@ -133,6 +137,9 @@ type IpcInvokeReturn = {
   // 파일명 관리
   previewRename: IpcMainEventMap["renamePreviewed"];
   executeRename: IpcMainEventMap["renameExecuted"];
+
+  // AI 연동(MCP 서버)
+  getMcpStatus: IpcMainEventMap["mcpStatus"];
 };
 
 /**
@@ -213,4 +220,4 @@ export type {
 };
 
 // Store 타입 재내보내기
-export type { LibraryScanInfo, StoreSchema };
+export type { LibraryScanInfo, McpSettings, StoreSchema };

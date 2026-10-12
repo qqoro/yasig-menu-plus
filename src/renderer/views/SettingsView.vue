@@ -2,6 +2,7 @@
 import { Home } from "lucide-vue-next";
 import { Button } from "@/components/ui/button";
 import AppSettingsSection from "@/components/settings/AppSettingsSection.vue";
+import AiIntegrationSection from "@/components/settings/AiIntegrationSection.vue";
 import DataSection from "@/components/settings/DataSection.vue";
 import LibrarySection from "@/components/settings/LibrarySection.vue";
 import SystemSection from "@/components/settings/SystemSection.vue";
@@ -25,6 +26,7 @@ import SystemSection from "@/components/settings/SystemSection.vue";
         <LibrarySection />
         <DataSection />
         <AppSettingsSection />
+        <AiIntegrationSection />
         <SystemSection />
       </div>
     </div>

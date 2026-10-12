@@ -340,6 +340,13 @@ export async function getExcludedExecutablesHandler(
 }
 
 /**
+ * 실행 제외 항목은 파일명만 저장한다 (경로가 섞여 들어와도 정규화)
+ */
+export function toExecutableFileName(executable: string): string {
+  return executable.split(/[/\\]/).pop() || executable;
+}
+
+/**
  * 실행 제외 목록에 추가 핸들러
  */
 export async function addExcludedExecutableHandler(
@@ -348,8 +355,7 @@ export async function addExcludedExecutableHandler(
 ): Promise<IpcMainEventMap["excludedExecutableAdded"]> {
   const { executable } = payload;
 
-  // 파일명만 추출 (경로가 포함된 경우)
-  const fileName = executable.split(/[/\\]/).pop() || executable;
+  const fileName = toExecutableFileName(executable);
 
   addExcludedExecutable(fileName);
   return { executable: fileName };
@@ -368,14 +374,12 @@ export async function removeExcludedExecutableHandler(
 }
 
 /**
- * 실행 파일 경로 직접 지정 핸들러
+ * 실행 파일 경로 직접 지정 (IPC와 MCP가 공유)
  */
-export async function setExecutablePathHandler(
-  _event: IpcMainInvokeEvent,
-  payload: IpcRendererEventMap["setExecutablePath"],
+export async function setExecutablePath(
+  path: string,
+  executablePath: string,
 ): Promise<IpcMainEventMap["executablePathSet"]> {
-  const { path, executablePath } = payload;
-
   // 경로 유효성 검증
   await validateDirectoryPath(path);
 
@@ -393,6 +397,16 @@ export async function setExecutablePathHandler(
 
   log.info(`실행 파일 경로 지정: ${path} → ${executablePath}`);
   return { path, executablePath };
+}
+
+/**
+ * 실행 파일 경로 직접 지정 핸들러
+ */
+export async function setExecutablePathHandler(
+  _event: IpcMainInvokeEvent,
+  payload: IpcRendererEventMap["setExecutablePath"],
+): Promise<IpcMainEventMap["executablePathSet"]> {
+  return setExecutablePath(payload.path, payload.executablePath);
 }
 
 /**

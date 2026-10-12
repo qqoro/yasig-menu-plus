@@ -9,10 +9,15 @@ import type { IpcMainInvokeEvent } from "electron";
 import type { IpcMainEventMap, IpcRendererEventMap } from "../events.js";
 import {
   getAllSettings,
+  getMcpSettings,
   getViewedHelpCards,
   markHelpCardsViewed,
+  MCP_PORT_MAX,
+  MCP_PORT_MIN,
   updateSettings,
+  type StoreSchema,
 } from "../store.js";
+import { applyMcpSettings } from "../mcp/server.js";
 import { wrapIpcHandler } from "../utils/ipc-wrapper.js";
 import { createLogger } from "../utils/logger.js";
 
@@ -33,6 +38,20 @@ export const getAllSettingsHandler = wrapIpcHandler(
 );
 
 /**
+ * mcpSettings 입력 검증 (포트 범위·정수)
+ * @throws {Error} 범위 밖이면 저장하지 않는다
+ */
+export function validateMcpSettingsInput(settings: Partial<StoreSchema>): void {
+  const port = settings.mcpSettings?.port;
+  if (port === undefined) return;
+  if (!Number.isInteger(port) || port < MCP_PORT_MIN || port > MCP_PORT_MAX) {
+    throw new Error(
+      `포트는 ${MCP_PORT_MIN}~${MCP_PORT_MAX} 사이의 정수여야 합니다.`,
+    );
+  }
+}
+
+/**
  * 부분 설정 업데이트 핸들러 (deep merge)
  */
 export const updateSettingsHandler = wrapIpcHandler(
@@ -43,12 +62,19 @@ export const updateSettingsHandler = wrapIpcHandler(
   ): Promise<IpcMainEventMap["settingsUpdated"]> => {
     const { settings } = payload;
 
+    validateMcpSettingsInput(settings);
+
     // 어떤 설정을 바꿨는지가 제보 분석의 출발점이라 키 목록은 info로 남긴다.
     // 값에는 라이브러리 경로·쿠키가 들어갈 수 있어 debug에서만 펼친다.
     log.info(`설정 변경: ${Object.keys(settings).join(", ") || "(없음)"}`);
     log.debug("설정 변경 내용:", settings);
 
     updateSettings(settings);
+
+    // MCP 설정이 바뀌면 서버를 재기동/정지한다 (deep merge 결과를 다시 읽는다)
+    if (settings.mcpSettings !== undefined) {
+      await applyMcpSettings(getMcpSettings());
+    }
 
     // 업데이트된 전체 설정 반환
     const updatedSettings = getAllSettings();

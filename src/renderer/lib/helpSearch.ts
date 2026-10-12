@@ -29,6 +29,7 @@ const SECTION_LABELS: Record<HelpSectionId, string> = {
   "game-detail": "게임 상세 정보",
   "special-features": "특별 기능",
   dashboard: "대시보드",
+  "ai-integration": "AI 연동",
   settings: "설정 안내",
   shortcuts: "단축키",
 };

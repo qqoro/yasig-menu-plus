@@ -168,6 +168,9 @@ export const enum IpcRendererSend {
   // 파일명 관리
   PreviewRename = "previewRename",
   ExecuteRename = "executeRename",
+
+  // AI 연동(MCP 서버)
+  GetMcpStatus = "getMcpStatus", // MCP 서버 상태 조회
 }
 
 // ========== Main → Renderer 이벤트 ==========
@@ -269,6 +272,10 @@ export const enum IpcMainSend {
   // 파일명 관리
   RenamePreviewed = "renamePreviewed",
   RenameExecuted = "renameExecuted",
+
+  // AI 연동(MCP 서버)
+  ExternalDataChanged = "externalDataChanged", // MCP 툴이 데이터를 바꿈 (캐시 무효화용)
+  McpStatusChanged = "mcpStatusChanged", // MCP 서버 상태 변경
 }
 
 /**
@@ -339,9 +346,26 @@ export type IpcMainSendChannel =
   | "viewedHelpCards"
   | "helpCardsViewed"
   | "renamePreviewed"
-  | "renameExecuted";
+  | "renameExecuted"
+  | "mcpStatusChanged"
+  | "externalDataChanged";
 
 // ========== 이벤트 페이로드 타입 ==========
+
+// AI 연동(MCP 서버) 상태
+export interface McpStatus {
+  running: boolean;
+  port: number;
+  url: string; // 실행 중이 아니면 빈 문자열
+  error: string | null; // 기동 실패 원인
+}
+
+// MCP 툴이 바꾼 데이터 범위 (렌더러 캐시 무효화용)
+export type ExternalDataScope = "games" | "library" | "excludedExecutables";
+export interface ExternalDataChangedPayload {
+  scope: ExternalDataScope;
+  paths?: string[]; // games 범위에서 바뀐 게임 경로. 없으면 전체
+}
 
 // 게임 아이템 (Phase 1: 최소 필드만)
 export interface GameItem {
@@ -638,6 +662,9 @@ export interface IpcRendererEventMap {
   // 파일명 관리
   previewRename: { template: string };
   executeRename: { items: RenameExecuteItem[] };
+
+  // AI 연동(MCP 서버)
+  getMcpStatus: undefined;
 }
 
 // Main → Renderer 페이로드
@@ -761,6 +788,11 @@ export interface IpcMainEventMap {
   // 통합 설정 관리
   allSettings: { settings: StoreSchema };
   settingsUpdated: { settings: StoreSchema };
+
+  // AI 연동(MCP 서버)
+  mcpStatus: McpStatus;
+  mcpStatusChanged: McpStatus;
+  externalDataChanged: ExternalDataChangedPayload;
 
   // 플레이 타임 관련
   playTimeLoaded: { path: string; totalPlayTime: number };

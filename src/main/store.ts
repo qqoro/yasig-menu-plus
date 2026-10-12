@@ -21,6 +21,18 @@ export interface LibraryScanInfo {
 }
 
 /**
+ * AI 연동(MCP 서버) 설정
+ */
+export interface McpSettings {
+  enabled: boolean; // 서버 켜기/끄기 (기본 꺼짐)
+  port: number; // 127.0.0.1에 바인드할 포트
+}
+
+export const MCP_DEFAULT_PORT = 38210;
+export const MCP_PORT_MIN = 1024;
+export const MCP_PORT_MAX = 65535;
+
+/**
  * 자동 업데이트 설정
  */
 export interface AutoUpdateSettings {
@@ -79,6 +91,7 @@ export interface StoreSchema {
   };
   viewedHelpCards?: string[]; // 사용자가 본 도움말 카드 ID 목록
   lastRenameTemplate?: string;
+  mcpSettings?: McpSettings; // AI 연동(MCP 서버) 설정
 }
 
 /**
@@ -126,6 +139,7 @@ const DEFAULTS: StoreSchema = {
   },
   viewedHelpCards: [],
   lastRenameTemplate: "[{externalId}] {title}",
+  mcpSettings: { enabled: false, port: MCP_DEFAULT_PORT },
 };
 
 /**
@@ -160,8 +174,7 @@ function migrateViewedHelpSections(store: StoreInstance): void {
   if (viewedCards && viewedCards.length > 0) return;
 
   const viewedSections = (store as any).get("viewedHelpSections") as
-    | string[]
-    | undefined;
+    string[] | undefined;
   if (!viewedSections || viewedSections.length === 0) return;
 
   // 섹션 ID → 카드 ID 매핑 (레지스트리와 동일)
@@ -461,6 +474,7 @@ export function getAllSettings(): StoreSchema {
     mediaPlayerSettings: store.get("mediaPlayerSettings"),
     viewedHelpCards: store.get("viewedHelpCards"),
     lastRenameTemplate: store.get("lastRenameTemplate"),
+    mcpSettings: store.get("mcpSettings"),
   };
 }
 
@@ -855,4 +869,20 @@ export function markHelpCardsViewed(cardIds: string[]): void {
   const viewed = getViewedHelpCards();
   const newViewed = [...new Set([...viewed, ...cardIds])];
   store.set("viewedHelpCards", newViewed);
+}
+
+/**
+ * AI 연동(MCP 서버) 설정 가져오기
+ */
+export function getMcpSettings(): McpSettings {
+  const store = getStore();
+  return store.get("mcpSettings") ?? DEFAULTS.mcpSettings!;
+}
+
+/**
+ * AI 연동(MCP 서버) 설정 저장
+ */
+export function setMcpSettings(settings: McpSettings): void {
+  const store = getStore();
+  store.set("mcpSettings", settings);
 }

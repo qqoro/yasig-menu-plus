@@ -8,9 +8,7 @@ const log = createLogger("SteamCollector");
 /** appreviews 요약에서 0-5 평점 계산(긍정 비율 × 5, 2자리 반올림). 리뷰 0개면 null */
 export function computeSteamRating(
   summary:
-    | { total_positive?: number; total_reviews?: number }
-    | null
-    | undefined,
+    { total_positive?: number; total_reviews?: number } | null | undefined,
 ): number | null {
   if (!summary) return null;
   const total = Number(summary.total_reviews ?? 0);

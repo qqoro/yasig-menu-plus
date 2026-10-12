@@ -36,6 +36,12 @@ export const queryKeys = {
   gameImages: (path: string | Ref<string>) => ["gameImages", path] as const,
 
   /**
+   * 게임 상세/이미지 루트 키 (경로를 모를 때 통째로 무효화)
+   */
+  gameDetailAll: ["gameDetail"] as const,
+  gameImagesAll: ["gameImages"] as const,
+
+  /**
    * 실행 제외 목록 쿼리 키
    */
   excludedExecutables: {
@@ -153,6 +159,13 @@ export const queryKeys = {
     all: ["dashboard"] as const,
     stats: ["dashboard", "stats"] as const,
     storageSize: ["dashboard", "storageSize"] as const,
+  },
+
+  /**
+   * AI 연동(MCP 서버) 상태 쿼리 키
+   */
+  mcpStatus: {
+    all: ["mcpStatus"] as const,
   },
 
   /**

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   BarChart3,
+  Bot,
   Gamepad2,
   Image,
   Home,
@@ -10,7 +11,8 @@ import {
   Type,
   Zap,
 } from "lucide-vue-next";
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
+import { useRoute } from "vue-router";
 import { Button } from "@/components/ui/button";
 import HelpSidebar, {
   type HelpSection,
@@ -24,6 +26,7 @@ import HelpImageCarousel from "@/components/help/sections/HelpImageCarousel.vue"
 import HelpGameDetail from "@/components/help/sections/HelpGameDetail.vue";
 import HelpSpecialFeatures from "@/components/help/sections/HelpSpecialFeatures.vue";
 import HelpDashboardDuplicates from "@/components/help/sections/HelpDashboardDuplicates.vue";
+import HelpAiIntegration from "@/components/help/sections/HelpAiIntegration.vue";
 import HelpSettings from "@/components/help/sections/HelpSettings.vue";
 import HelpShortcuts from "@/components/help/sections/HelpShortcuts.vue";
 import {
@@ -45,6 +48,7 @@ const sections: HelpSection[] = [
   { id: "game-detail", icon: Search, label: "게임 상세 정보" },
   { id: "special-features", icon: Sparkles, label: "특별 기능" },
   { id: "dashboard", icon: BarChart3, label: "대시보드" },
+  { id: "ai-integration", icon: Bot, label: "AI 연동" },
   { id: "settings", icon: Settings, label: "설정 안내" },
   { id: "shortcuts", icon: Type, label: "단축키" },
 ];
@@ -75,7 +79,14 @@ const unviewedSectionIds = computed(() => {
 // IntersectionObserver로 개별 카드 스크롤 추적
 let observer: IntersectionObserver | null = null;
 
+const route = useRoute();
+
 onMounted(() => {
+  // /help#section-id 로 진입하면 해당 섹션으로 스크롤
+  if (route.hash) {
+    void nextTick(() => scrollToSection(route.hash.slice(1)));
+  }
+
   const contentEl = document.getElementById("help-content");
   if (!contentEl) return;
 
@@ -195,6 +206,9 @@ function scrollToSection(id: string) {
           </div>
           <div>
             <HelpDashboardDuplicates />
+          </div>
+          <div>
+            <HelpAiIntegration />
           </div>
           <div>
             <HelpSettings />

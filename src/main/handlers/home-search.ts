@@ -112,9 +112,7 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
       if (isExclude) {
         const excludeField =
           `exclude${field.charAt(0).toUpperCase() + field.slice(1)}` as
-            | "excludeCircles"
-            | "excludeTags"
-            | "excludeCategories";
+            "excludeCircles" | "excludeTags" | "excludeCategories";
         result[excludeField].push(value);
       } else {
         result[field].push(value);
@@ -144,10 +142,9 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
 }
 
 /**
- * 게임 검색 핸들러
+ * 게임 검색 (IPC와 MCP가 공유하는 본문)
  */
-export async function searchGamesHandler(
-  _event: IpcMainInvokeEvent,
+export async function searchGames(
   payload: IpcRendererEventMap["searchGames"],
 ): Promise<IpcMainEventMap["searchedGames"]> {
   const { sourcePaths, searchQuery } = payload;
@@ -445,8 +442,7 @@ export async function searchGamesHandler(
   // 전체 개수 조회 (복제해서)
   const countQuery = query.clone();
   const totalCountResult = (await countQuery.count("* as count").first()) as
-    | { count: bigint }
-    | undefined;
+    { count: bigint } | undefined;
   const totalCount = Number(totalCountResult?.count ?? 0);
 
   // 페이지네이션 적용하여 게임 목록 조회
@@ -478,6 +474,16 @@ export async function searchGamesHandler(
   const hasMore = offset + limit < totalCount;
 
   return { games: plainGames, totalCount, hasMore };
+}
+
+/**
+ * 게임 검색 핸들러
+ */
+export async function searchGamesHandler(
+  _event: IpcMainInvokeEvent,
+  payload: IpcRendererEventMap["searchGames"],
+): Promise<IpcMainEventMap["searchedGames"]> {
+  return searchGames(payload);
 }
 
 /**
@@ -688,8 +694,7 @@ export async function getRandomGameHandler(
   // 전체 개수 조회
   const countQuery = query.clone();
   const totalCountResult = (await countQuery.count("* as count").first()) as
-    | { count: bigint }
-    | undefined;
+    { count: bigint } | undefined;
   const totalCount = Number(totalCountResult?.count ?? 0);
 
   // 결과가 없으면 null 반환

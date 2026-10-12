@@ -49,6 +49,12 @@ export const HELP_CARDS = {
     "special-features--batch-rename",
   ],
   dashboard: ["dashboard--overview", "dashboard--duplicates"],
+  "ai-integration": [
+    "ai-integration--overview",
+    "ai-integration--enable",
+    "ai-integration--connect",
+    "ai-integration--notes",
+  ],
   settings: [
     "settings--theme",
     "settings--translation",

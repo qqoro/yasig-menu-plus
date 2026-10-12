@@ -5,6 +5,7 @@
  */
 
 import { stat, access } from "fs/promises";
+import { resolve, sep } from "path";
 
 /**
  * 경로 검증 오류
@@ -75,6 +76,44 @@ export async function validateDirectoryPath(path: string): Promise<void> {
   } catch (error) {
     if (error instanceof ValidationError) throw error;
     throw new ValidationError("경로 정보를 가져올 수 없습니다.");
+  }
+}
+
+/**
+ * 실행 파일이 게임 폴더 안의 실제 파일인지 검증
+ *
+ * 앱 UI는 파일 선택 다이얼로그가 입력을 보장하지만, MCP처럼 임의 문자열이
+ * 들어오는 경로에서는 존재·파일 여부·게임 폴더 하위 여부를 직접 확인한다.
+ * @throws {ValidationError} 조건을 하나라도 만족하지 않는 경우
+ */
+export async function validateExecutableInGame(
+  gamePath: string,
+  executablePath: string,
+): Promise<void> {
+  if (typeof executablePath !== "string" || executablePath.trim() === "") {
+    throw new ValidationError("실행 파일 경로가 비어있습니다.");
+  }
+
+  // resolve()가 ".."을 접어 주므로 접두 비교만으로 탈출을 막을 수 있다
+  const gameRoot = resolve(gamePath);
+  const target = resolve(executablePath);
+  const rootWithSep = gameRoot.endsWith(sep) ? gameRoot : gameRoot + sep;
+  const isInside =
+    process.platform === "win32"
+      ? target.toLowerCase().startsWith(rootWithSep.toLowerCase())
+      : target.startsWith(rootWithSep);
+  if (!isInside) {
+    throw new ValidationError("실행 파일은 게임 폴더 안에 있어야 합니다.");
+  }
+
+  let info;
+  try {
+    info = await stat(target);
+  } catch {
+    throw new ValidationError("실행 파일이 존재하지 않습니다.");
+  }
+  if (!info.isFile()) {
+    throw new ValidationError("실행 파일 경로가 파일이 아닙니다.");
   }
 }
 

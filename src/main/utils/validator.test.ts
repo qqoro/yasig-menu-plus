@@ -1,5 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createHash } from "crypto";
+import { mkdtemp, mkdir, rm, writeFile } from "fs/promises";
+import { tmpdir } from "os";
+import { join } from "path";
+import {
+  validateExecutableInGame,
+  ValidationError as RealValidationError,
+} from "./validator.js";
 
 /**
  * Validator 유틸리티 테스트
@@ -280,5 +287,68 @@ describe("generateThumbnailFilename", () => {
       const filename = generateThumbnailFilename(path, 0);
       expect(filename).toMatch(/^[a-f0-9]{32}\.jpg$/);
     });
+  });
+});
+
+/**
+ * validateExecutableInGame — 실행 파일이 게임 폴더 안의 실제 파일인지 검증
+ */
+describe("validateExecutableInGame", () => {
+  let root: string;
+  let gameDir: string;
+
+  beforeAll(async () => {
+    root = await mkdtemp(join(tmpdir(), "ymp-validator-"));
+    gameDir = join(root, "game");
+    await mkdir(join(gameDir, "sub"), { recursive: true });
+    await writeFile(join(gameDir, "game.exe"), "x");
+    await writeFile(join(gameDir, "sub", "inner.exe"), "x");
+    await writeFile(join(root, "outside.exe"), "x");
+  });
+
+  afterAll(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it("게임 폴더 바로 아래 파일은 통과해야 한다", async () => {
+    await expect(
+      validateExecutableInGame(gameDir, join(gameDir, "game.exe")),
+    ).resolves.toBeUndefined();
+  });
+
+  it("하위 폴더의 파일도 통과해야 한다", async () => {
+    await expect(
+      validateExecutableInGame(gameDir, join(gameDir, "sub", "inner.exe")),
+    ).resolves.toBeUndefined();
+  });
+
+  it("게임 폴더 밖의 파일은 거부해야 한다", async () => {
+    await expect(
+      validateExecutableInGame(gameDir, join(root, "outside.exe")),
+    ).rejects.toBeInstanceOf(RealValidationError);
+  });
+
+  it("..로 탈출하는 경로는 거부해야 한다", async () => {
+    await expect(
+      validateExecutableInGame(gameDir, join(gameDir, "..", "outside.exe")),
+    ).rejects.toBeInstanceOf(RealValidationError);
+  });
+
+  it("존재하지 않는 파일은 거부해야 한다", async () => {
+    await expect(
+      validateExecutableInGame(gameDir, join(gameDir, "missing.exe")),
+    ).rejects.toThrow("실행 파일이 존재하지 않습니다.");
+  });
+
+  it("디렉터리는 거부해야 한다", async () => {
+    await expect(
+      validateExecutableInGame(gameDir, join(gameDir, "sub")),
+    ).rejects.toThrow("실행 파일 경로가 파일이 아닙니다.");
+  });
+
+  it("빈 문자열은 거부해야 한다", async () => {
+    await expect(validateExecutableInGame(gameDir, "  ")).rejects.toThrow(
+      "실행 파일 경로가 비어있습니다.",
+    );
   });
 });

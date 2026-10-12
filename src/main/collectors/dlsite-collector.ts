@@ -10,8 +10,7 @@ import { extractRjCode } from "../lib/rj-code.js";
 export function parseDlsiteRating(json: unknown, id: string): number | null {
   if (!json || typeof json !== "object") return null;
   const entry = (json as Record<string, unknown>)[id] as
-    | Record<string, unknown>
-    | undefined;
+    Record<string, unknown> | undefined;
   if (!entry) return null;
   const count = Number(entry.rate_count ?? 0);
   if (!count) return null;
@@ -29,8 +28,7 @@ export function parseDlsiteReviewCount(
 ): number | null {
   if (!json || typeof json !== "object") return null;
   const entry = (json as Record<string, unknown>)[id] as
-    | Record<string, unknown>
-    | undefined;
+    Record<string, unknown> | undefined;
   if (!entry) return null;
   const count = Number(entry.rate_count ?? 0);
   return count > 0 ? count : null;
@@ -48,8 +46,7 @@ export function parseDlsiteDownloadCount(
 ): number | null {
   if (!json || typeof json !== "object") return null;
   const entry = (json as Record<string, unknown>)[id] as
-    | Record<string, unknown>
-    | undefined;
+    Record<string, unknown> | undefined;
   if (!entry) return null;
   // 번역판: dl_count_total > 0 / 단일 언어 작품: dl_count_total = 0
   const total = Number(entry.dl_count_total ?? 0);
@@ -192,8 +189,7 @@ export function parseDlsiteAjaxFallback(
 ): DlsiteAjaxFallbackInfo | null {
   if (!json || typeof json !== "object" || Array.isArray(json)) return null;
   const entry = (json as Record<string, unknown>)[id] as
-    | Record<string, unknown>
-    | undefined;
+    Record<string, unknown> | undefined;
   if (!entry || typeof entry !== "object") return null;
 
   const workType = asNonEmptyString(entry.work_type);

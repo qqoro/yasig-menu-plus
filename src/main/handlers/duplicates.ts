@@ -175,17 +175,16 @@ async function buildGameItems(
 }
 
 /**
- * 중복 게임 그룹 조회 핸들러
+ * 중복 게임 그룹 조회 (IPC와 MCP가 공유)
  *
  * 중복 기준:
  * 1. provider + externalId 동일
  * 2. fingerprint 동일 (같은 실행파일 구성)
  * 3. originalTitle 정확히 일치
  */
-export async function findDuplicatesHandler(
-  _event: IpcMainInvokeEvent,
-  _payload: IpcRendererEventMap["findDuplicates"],
-): Promise<IpcMainEventMap["duplicatesFound"]> {
+export async function findDuplicates(): Promise<
+  IpcMainEventMap["duplicatesFound"]
+> {
   // 모든 게임 조회 (숨김 포함)
   const games = await leftJoinUserGameData(db("games"))
     .select(
@@ -314,6 +313,16 @@ export async function findDuplicatesHandler(
   }
 
   return { groups };
+}
+
+/**
+ * 중복 게임 그룹 조회 핸들러
+ */
+export async function findDuplicatesHandler(
+  _event: IpcMainInvokeEvent,
+  _payload: IpcRendererEventMap["findDuplicates"],
+): Promise<IpcMainEventMap["duplicatesFound"]> {
+  return findDuplicates();
 }
 
 /**

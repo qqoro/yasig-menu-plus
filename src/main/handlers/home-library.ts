@@ -64,6 +64,15 @@ export async function getLibraryPathsHandler(
 }
 
 /**
+ * 라이브러리 경로를 정규화해 설정에 등록 (IPC와 MCP가 공유)
+ */
+export function registerLibraryPath(path: string): { path: string } {
+  const normalizedPath = normalizePath(path);
+  addLibraryPathToStore(normalizedPath);
+  return { path: normalizedPath };
+}
+
+/**
  * 라이브러리 경로 추가 핸들러
  */
 export const addLibraryPathHandler = wrapIpcHandler(
@@ -72,10 +81,7 @@ export const addLibraryPathHandler = wrapIpcHandler(
     _event: IpcMainInvokeEvent,
     payload: IpcRendererEventMap["addLibraryPath"],
   ): Promise<IpcMainEventMap["libraryPathAdded"]> => {
-    const { path } = payload;
-    const normalizedPath = normalizePath(path);
-    addLibraryPathToStore(normalizedPath);
-    return { path: normalizedPath };
+    return registerLibraryPath(payload.path);
   },
 );
 

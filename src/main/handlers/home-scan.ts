@@ -330,6 +330,23 @@ export async function scanFolder(
 }
 
 /**
+ * 여러 라이브러리 경로를 순서대로 스캔하고 추가/삭제 수를 합산
+ * (IPC 재스캔과 MCP refresh_library가 공유)
+ */
+export async function scanLibraryPaths(
+  sourcePaths: string[],
+): Promise<{ addedCount: number; deletedCount: number }> {
+  let addedCount = 0;
+  let deletedCount = 0;
+  for (const sourcePath of sourcePaths) {
+    const result = await scanFolder(sourcePath);
+    addedCount += result.addedCount;
+    deletedCount += result.deletedCount;
+  }
+  return { addedCount, deletedCount };
+}
+
+/**
  * 게임 목록 새로고침 핸들러 (폴더 재스캔)
  */
 export const refreshListHandler = wrapIpcHandler(
@@ -340,14 +357,9 @@ export const refreshListHandler = wrapIpcHandler(
   ): Promise<IpcMainEventMap["listRefreshed"]> => {
     const { sourcePaths } = payload;
 
-    // 각 경로 유효성 검증 후 스캔
-    let totalAdded = 0;
-    let totalDeleted = 0;
-    for (const sourcePath of sourcePaths) {
-      const result = await scanFolder(sourcePath);
-      totalAdded += result.addedCount;
-      totalDeleted += result.deletedCount;
-    }
+    // 각 경로 스캔 (존재하지 않는 경로는 scanFolder가 스킵)
+    const { addedCount: totalAdded, deletedCount: totalDeleted } =
+      await scanLibraryPaths(sourcePaths);
 
     // sourcePaths 중 존재하는 경로만 필터링
     const sourcePathsExist = await Promise.all(

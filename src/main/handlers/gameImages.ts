@@ -5,14 +5,11 @@ import { toAbsolutePath } from "../utils/image-path.js";
 import { validatePath } from "../utils/validator.js";
 
 /**
- * 게임 이미지 목록 조회 핸들러
+ * 게임 이미지 목록 조회 (IPC와 MCP가 공유)
  */
-export async function getGameImagesHandler(
-  _event: IpcMainInvokeEvent,
-  payload: IpcRendererEventMap["getGameImages"],
+export async function getGameImages(
+  gamePath: string,
 ): Promise<IpcMainEventMap["gameImagesLoaded"]> {
-  const { gamePath } = payload;
-
   // gamePath 유효성 검증
   await validatePath(gamePath);
 
@@ -28,4 +25,14 @@ export async function getGameImagesHandler(
       sortOrder: img.sortOrder,
     })),
   };
+}
+
+/**
+ * 게임 이미지 목록 조회 핸들러
+ */
+export async function getGameImagesHandler(
+  _event: IpcMainInvokeEvent,
+  payload: IpcRendererEventMap["getGameImages"],
+): Promise<IpcMainEventMap["gameImagesLoaded"]> {
+  return getGameImages(payload.gamePath);
 }

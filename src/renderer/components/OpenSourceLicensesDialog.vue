@@ -76,8 +76,7 @@ const expandedPkg = ref<string | null>(null);
             >
               <pre
                 class="bg-muted max-h-48 overflow-auto rounded-md p-3 text-xs leading-relaxed whitespace-pre-wrap"
-                >{{ pkg.licenseText }}</pre
-              >
+                >{{ pkg.licenseText }}</pre>
             </div>
           </div>
         </div>

@@ -119,7 +119,11 @@ vi.mock("fs/promises", async (importOriginal) => {
 });
 
 // 모킹 후 import (vi.mock 호이스팅)
-import { selectBestExecutable, scanFolder } from "./home-scan.js";
+import {
+  selectBestExecutable,
+  scanFolder,
+  scanLibraryPaths,
+} from "./home-scan.js";
 import { removeLibraryPathHandler } from "./home-library.js";
 import { runScanWorker } from "../workers/run-scan-worker.js";
 import { deleteImage } from "../utils/downloader.js";
@@ -454,6 +458,18 @@ describe("scanFolder — 폴더 스캔", () => {
     expect(result.addedCount).toBe(0);
     expect(result.deletedCount).toBe(0);
     expect(updateLibraryScanHistory).toHaveBeenCalledWith("/library", 0);
+  });
+});
+
+describe("scanLibraryPaths — 여러 경로 스캔 합산", () => {
+  it("존재하지 않는 경로들은 전부 스킵돼 0을 반환해야 한다", async () => {
+    const result = await scanLibraryPaths(["/nonexistent/a", "/nonexistent/b"]);
+    expect(result).toEqual({ addedCount: 0, deletedCount: 0 });
+  });
+
+  it("빈 배열이면 0을 반환해야 한다", async () => {
+    const result = await scanLibraryPaths([]);
+    expect(result).toEqual({ addedCount: 0, deletedCount: 0 });
   });
 });
 

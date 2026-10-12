@@ -90,8 +90,16 @@ import { autoUpdaterService } from "./services/AutoUpdater.js";
 import {
   getAutoScanOnStartup,
   getAutoUpdateSettings,
+  getMcpSettings,
   runLibraryPathsNormalization,
 } from "./store.js";
+import { getMcpStatusHandler } from "./handlers/mcp.js";
+import {
+  applyMcpSettings,
+  onMcpStatusChange,
+  stopMcpServer,
+} from "./mcp/server.js";
+import { broadcast } from "./mcp/notify.js";
 
 initLogging();
 const mainLog = createLogger("Main");
@@ -498,6 +506,9 @@ function registerIpcHandlers() {
   // ========== GitHub 이슈 열기 ==========
   ipcMain.handle(IpcRendererSend.OpenGitHubIssue, openGitHubIssueHandler);
 
+  // ========== AI 연동(MCP 서버) ==========
+  ipcMain.handle(IpcRendererSend.GetMcpStatus, getMcpStatusHandler);
+
   // ========== 치트 플러그인 관련 ==========
   registerCheatHandlers();
 }
@@ -534,6 +545,14 @@ app.whenReady().then(async () => {
 
   // 치트 미복원 항목 정리 (비정상 종료 후 복원)
   await cheatInjector.restoreAllPending();
+
+  // AI 연동(MCP 서버): 상태 변경을 렌더러에 중계하고, 설정이 켜져 있으면 기동
+  onMcpStatusChange((status) => {
+    broadcast(IpcMainSend.McpStatusChanged, status);
+  });
+  applyMcpSettings(getMcpSettings()).catch((error) =>
+    mainLog.error("MCP 서버 기동 오류:", error),
+  );
 
   // 앱 시작 시 자동 스캔 (설정된 경우)
   if (getAutoScanOnStartup()) {
@@ -592,6 +611,8 @@ app.on("window-all-closed", function () {
 app.on("before-quit", async () => {
   mainLog.info("앱 종료 처리 시작");
   try {
+    // MCP 서버 정지 (열린 연결 포함)
+    await stopMcpServer();
     // 모든 활성 게임 세션 종료
     await processMonitor.endAllSessions();
     // 데이터베이스 연결 종료

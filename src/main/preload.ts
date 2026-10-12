@@ -106,6 +106,9 @@ type IpcInvokeReturn = {
   previewRename: IpcMainEventMap["renamePreviewed"];
   executeRename: IpcMainEventMap["renameExecuted"];
 
+  // AI 연동(MCP 서버)
+  getMcpStatus: IpcMainEventMap["mcpStatus"];
+
   // 치트 플러그인 관련
   detectRpgMaker: { isRpgMaker: boolean; version: "mv" | "mz" | null };
   playGameWithCheat: IpcMainEventMap["gamePlayedWithCheat"];
