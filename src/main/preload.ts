@@ -12,6 +12,57 @@ import type {
   IpcRendererEventMap,
 } from "./events.js";
 
+type IpcListener = (
+  event: Electron.IpcRendererEvent,
+  ...args: unknown[]
+) => void;
+// 콜백은 함수 참조를 키로만 쓰므로 시그니처는 보지 않는다
+type AnyCallback = object;
+
+/**
+ * 렌더러 콜백 → ipcRenderer에 실제 등록된 래퍼 목록 (채널별)
+ *
+ * removeListener가 원본 콜백만 받으므로, 래퍼를 기억해 두지 않으면 아무것도
+ * 제거되지 않아 리스너가 누적된다. 같은 콜백을 같은 채널에 여러 번 등록한
+ * 경우를 위해 배열로 보관하고, 제거는 가장 최근 것부터 뗀다.
+ */
+const listenerRegistry = new WeakMap<AnyCallback, Map<string, IpcListener[]>>();
+
+function rememberListener(
+  channel: string,
+  callback: AnyCallback,
+  listener: IpcListener,
+): void {
+  let byChannel = listenerRegistry.get(callback);
+  if (!byChannel) {
+    byChannel = new Map();
+    listenerRegistry.set(callback, byChannel);
+  }
+  const list = byChannel.get(channel) ?? [];
+  list.push(listener);
+  byChannel.set(channel, list);
+}
+
+function takeListener(
+  channel: string,
+  callback: AnyCallback,
+): IpcListener | undefined {
+  const list = listenerRegistry.get(callback)?.get(channel);
+  if (!list || list.length === 0) return undefined;
+  return list.pop();
+}
+
+function forgetListener(
+  channel: string,
+  callback: AnyCallback,
+  listener: IpcListener,
+): void {
+  const list = listenerRegistry.get(callback)?.get(channel);
+  if (!list) return;
+  const index = list.indexOf(listener);
+  if (index !== -1) list.splice(index, 1);
+}
+
 /**
  * IPC 통신 API
  *
@@ -160,16 +211,14 @@ const api = {
       ...args: IpcMainEventMap[K] extends undefined ? [] : [IpcMainEventMap[K]]
     ) => void,
   ): void => {
-    const listener = (
-      _event: Electron.IpcRendererEvent,
-      ...args: unknown[]
-    ) => {
+    const listener: IpcListener = (_event, ...args) => {
       callback(
         ...(args as IpcMainEventMap[K] extends undefined
           ? []
           : [IpcMainEventMap[K]]),
       );
     };
+    rememberListener(channel, callback, listener);
     ipcRenderer.on(channel, listener);
   },
 
@@ -182,21 +231,23 @@ const api = {
       ...args: IpcMainEventMap[K] extends undefined ? [] : [IpcMainEventMap[K]]
     ) => void,
   ): void => {
-    const listener = (
-      _event: Electron.IpcRendererEvent,
-      ...args: unknown[]
-    ) => {
+    const listener: IpcListener = (_event, ...args) => {
+      // 한 번 실행되면 ipcRenderer에서 빠지므로 기억도 같이 지운다
+      forgetListener(channel, callback, listener);
       callback(
         ...(args as IpcMainEventMap[K] extends undefined
           ? []
           : [IpcMainEventMap[K]]),
       );
     };
+    rememberListener(channel, callback, listener);
     ipcRenderer.once(channel, listener);
   },
 
   /**
    * 이벤트 리스너 제거
+   *
+   * on/once는 콜백을 래퍼로 감싸 등록하므로 기억해 둔 래퍼를 찾아 뗀다.
    */
   removeListener: <K extends IpcMainSend>(
     channel: K,
@@ -204,10 +255,10 @@ const api = {
       ...args: IpcMainEventMap[K] extends undefined ? [] : [IpcMainEventMap[K]]
     ) => void,
   ): void => {
-    ipcRenderer.removeListener(
-      channel,
-      callback as (...args: unknown[]) => void,
-    );
+    const listener = takeListener(channel, callback);
+    if (listener) {
+      ipcRenderer.removeListener(channel, listener);
+    }
   },
 
   /**
