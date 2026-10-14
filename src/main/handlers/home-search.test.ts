@@ -861,6 +861,68 @@ describe("getRandomGameHandler", () => {
 // ============================================
 // searchGamesHandler — 경로 기반 텍스트 검색
 // ============================================
+describe("searchGamesHandler — 전체 등록 개수", () => {
+  it("검색·숨김·선택 경로와 무관하게 전체 개수를 반환하고 추가·삭제를 반영한다", async () => {
+    await seedGame(db, {
+      path: "/games/visible",
+      title: "Visible",
+      source: "/library/path",
+    });
+    await seedGame(db, {
+      path: "/games/hidden",
+      title: "Hidden",
+      source: "/library/path",
+      isHidden: true,
+    });
+    await seedGame(db, {
+      path: "/games/other",
+      title: "Other",
+      source: "/other/library",
+    });
+
+    const filtered = await searchGamesHandler(
+      {} as any,
+      makeSearchPayload({ searchQuery: { query: "Visible" } }),
+    );
+    expect(filtered.totalCount).toBe(1);
+    expect(filtered.libraryTotalCount).toBe(3);
+
+    const empty = await searchGamesHandler(
+      {} as any,
+      makeSearchPayload({ sourcePaths: [] }),
+    );
+    expect(empty.totalCount).toBe(0);
+    expect(empty.libraryTotalCount).toBe(3);
+
+    const hidden = await searchGamesHandler(
+      {} as any,
+      makeSearchPayload({ searchQuery: { filters: { showHidden: true } } }),
+    );
+    expect(hidden.totalCount).toBe(1);
+    expect(hidden.libraryTotalCount).toBe(3);
+
+    await seedGame(db, {
+      path: "/games/added",
+      title: "Added",
+      source: "/library/path",
+    });
+    expect(
+      (await searchGamesHandler({} as any, makeSearchPayload()))
+        .libraryTotalCount,
+    ).toBe(4);
+    await db("games").where("path", "/games/added").delete();
+    expect(
+      (await searchGamesHandler({} as any, makeSearchPayload()))
+        .libraryTotalCount,
+    ).toBe(3);
+  });
+
+  it("등록된 게임이 없으면 전체 개수도 0이다", async () => {
+    const result = await searchGamesHandler({} as any, makeSearchPayload());
+    expect(result.libraryTotalCount).toBe(0);
+  });
+});
+
 describe("searchGamesHandler — 경로 검색", () => {
   it("중간 경로 폴더명으로 게임을 검색할 수 있어야 한다", async () => {
     await seedGame(db, {

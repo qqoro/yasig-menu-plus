@@ -693,7 +693,12 @@ export interface IpcMainEventMap {
   thumbnailDone: { gamePath: string; thumbnailPath: string };
 
   // 검색 및 필터링 관련
-  searchedGames: { games: GameItem[]; totalCount: number; hasMore: boolean };
+  searchedGames: {
+    games: GameItem[];
+    totalCount: number;
+    libraryTotalCount: number;
+    hasMore: boolean;
+  };
   randomGame: { game: GameItem | null };
   gameToggled: {
     path: string;

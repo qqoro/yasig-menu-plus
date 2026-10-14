@@ -445,6 +445,12 @@ export async function searchGames(
     { count: bigint } | undefined;
   const totalCount = Number(totalCountResult?.count ?? 0);
 
+  // 타이틀바용 전체 등록 개수는 검색 조건 및 라이브러리 선택과 분리한다.
+  const libraryTotalCountResult = (await db("games")
+    .count("* as count")
+    .first()) as { count: number } | undefined;
+  const libraryTotalCount = Number(libraryTotalCountResult?.count ?? 0);
+
   // 페이지네이션 적용하여 게임 목록 조회
   const games = await query.offset(offset).limit(limit);
 
@@ -473,7 +479,7 @@ export async function searchGames(
   // 더 로드할 데이터가 있는지 확인
   const hasMore = offset + limit < totalCount;
 
-  return { games: plainGames, totalCount, hasMore };
+  return { games: plainGames, totalCount, libraryTotalCount, hasMore };
 }
 
 /**

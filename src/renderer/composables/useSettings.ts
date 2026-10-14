@@ -45,6 +45,7 @@ export function useRemoveLibraryPath() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.libraryPaths.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.games.all });
     },
   });
 }

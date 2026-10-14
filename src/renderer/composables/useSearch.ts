@@ -335,6 +335,7 @@ export function useSearch(sourcePaths: () => string[]) {
       return result as {
         games: GameItem[];
         totalCount: number;
+        libraryTotalCount: number;
         hasMore: boolean;
       };
     },
@@ -365,6 +366,10 @@ export function useSearch(sourcePaths: () => string[]) {
   const totalCount = computed(() => {
     return infiniteData.value?.pages[0]?.totalCount ?? 0;
   });
+
+  const libraryTotalCount = computed(
+    () => infiniteData.value?.pages[0]?.libraryTotalCount,
+  );
 
   // 특수 검색어만 적용한 검색어 문자열 (랜덤 버튼 활성화용)
   const specialOnlyQuery = computed(() => {
@@ -622,6 +627,7 @@ export function useSearch(sourcePaths: () => string[]) {
     // 검색 결과
     games,
     totalCount,
+    libraryTotalCount,
     specialOnlyTotalCount,
     isSearching,
     searchError,

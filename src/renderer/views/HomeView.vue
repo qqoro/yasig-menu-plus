@@ -293,11 +293,12 @@ function handleLoadMore(): void {
   }
 }
 
-// 게임 목록 변경 시 store 업데이트
+// 검색 결과와 별개로 전체 등록 개수를 타이틀바에 표시한다.
 watch(
-  () => totalCount.value,
+  () => searchState.libraryTotalCount.value,
   (count) => {
-    uiStore.setGameCount(count);
+    // 검색 조건 변경으로 조회 중일 때는 기존 개수를 유지한다.
+    if (count !== undefined) uiStore.setGameCount(count);
   },
   { immediate: true },
 );
