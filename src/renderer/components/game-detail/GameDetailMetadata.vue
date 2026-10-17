@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
   Check,
-  Clock,
   Edit2,
   Languages,
   Loader2,
@@ -18,6 +17,7 @@ import {
 import { formatPlayTime } from "../../composables/usePlayTime";
 import { useTranslateTitleMutation } from "../../composables/useTranslation";
 import type { GameDetailItem } from "../../types";
+import { formatBytes } from "../../utils/format";
 import StarRating from "../StarRating.vue";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -59,6 +59,12 @@ const formattedPublishDate = computed(() => {
 const formattedPlayTime = computed(() => {
   if (!props.playTime?.totalPlayTime) return null;
   return formatPlayTime(props.playTime.totalPlayTime);
+});
+
+// 포맷팅된 용량 (미측정이면 null → 항목 숨김)
+const formattedSize = computed(() => {
+  if (props.game?.sizeBytes == null) return null;
+  return formatBytes(props.game.sizeBytes);
 });
 
 // 게임 데이터 변경 시 편집 상태 초기화
@@ -330,13 +336,14 @@ defineExpose({ resetState });
 
   <!-- 플레이 타임 -->
   <div v-if="formattedPlayTime">
-    <label
-      class="text-muted-foreground flex items-center gap-1 text-sm font-medium"
-    >
-      <Clock :size="14" />
-      플레이 타임
-    </label>
+    <label class="text-muted-foreground text-sm font-medium">플레이 타임</label>
     <p class="mt-1 text-sm">{{ formattedPlayTime }}</p>
+  </div>
+
+  <!-- 용량 -->
+  <div v-if="formattedSize">
+    <label class="text-muted-foreground text-sm font-medium">용량</label>
+    <p class="mt-1 text-sm">{{ formattedSize }}</p>
   </div>
 
   <!-- 별점 -->
