@@ -13,7 +13,7 @@ import {
 } from "lucide-vue-next";
 import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 import { useRoute } from "vue-router";
-import { Button } from "@/components/ui/button";
+import PageHeader from "@/components/PageHeader.vue";
 import HelpSidebar, {
   type HelpSection,
 } from "@/components/help/HelpSidebar.vue";
@@ -159,17 +159,11 @@ function scrollToSection(id: string) {
 
 <template>
   <div class="flex h-full flex-col overflow-hidden">
-    <div class="flex items-center justify-between border-b px-4 py-2">
-      <h1 class="text-base font-semibold">도움말</h1>
-      <div class="flex items-center gap-2">
+    <PageHeader title="도움말">
+      <template #actions>
         <HelpSearch />
-        <RouterLink to="/">
-          <Button variant="ghost" size="icon" class="shrink-0" title="홈">
-            <Home :size="18" />
-          </Button>
-        </RouterLink>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <div class="flex min-h-0 flex-1">
       <div class="w-40 shrink-0 overflow-y-auto border-r">

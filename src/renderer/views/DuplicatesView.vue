@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
   AlertTriangle,
-  ArrowLeft,
   CheckSquare,
   FolderOpen,
   Loader2,
@@ -9,7 +8,7 @@ import {
   Trash2,
 } from "lucide-vue-next";
 import { computed, ref } from "vue";
-import { useRouter } from "vue-router";
+import PageHeader from "../components/PageHeader.vue";
 import { Button } from "../components/ui/button";
 import {
   Card,
@@ -27,8 +26,6 @@ import {
 } from "../components/ui/dialog";
 import { useDeleteGames, useDuplicates } from "../composables/useDuplicates";
 import type { DuplicateGroup, GameItem } from "../types";
-
-const router = useRouter();
 
 // 중복 게임 데이터
 const { data: duplicateGroups, isLoading, error, refetch } = useDuplicates();
@@ -92,11 +89,6 @@ async function confirmDelete() {
   }
 }
 
-// 뒤로 가기
-function goBack() {
-  router.push("/");
-}
-
 // 날짜 포맷팅
 function formatDate(date: Date | string | null | undefined): string {
   if (!date) return "-";
@@ -127,28 +119,24 @@ const selectedGames = computed(() => {
 <template>
   <div class="bg-background flex h-full flex-col">
     <!-- 헤더 -->
-    <header class="flex items-center justify-between border-b p-4">
-      <div class="flex items-center gap-4">
-        <Button variant="ghost" size="icon" @click="goBack">
-          <ArrowLeft class="h-5 w-5" />
-        </Button>
-        <h1 class="text-xl font-semibold">중복 게임 관리</h1>
-      </div>
-
-      <div class="flex items-center gap-4">
+    <PageHeader title="중복 게임 관리" back="/settings">
+      <template #meta>
         <span class="text-muted-foreground text-sm">
           {{ stats.groupCount }}개 그룹, 총 {{ stats.totalGames }}개 게임
         </span>
+      </template>
+      <template #actions>
         <Button
           variant="destructive"
+          size="sm"
           :disabled="stats.selectedCount === 0"
           @click="openDeleteDialog"
         >
-          <Trash2 class="mr-2 h-4 w-4" />
+          <Trash2 :size="14" />
           선택 삭제 ({{ stats.selectedCount }}개)
         </Button>
-      </div>
-    </header>
+      </template>
+    </PageHeader>
 
     <!-- 메인 컨텐츠 -->
     <main class="flex-1 overflow-y-auto p-4">

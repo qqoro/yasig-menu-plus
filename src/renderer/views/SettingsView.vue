@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { Home } from "lucide-vue-next";
-import { Button } from "@/components/ui/button";
+import PageHeader from "@/components/PageHeader.vue";
 import AppSettingsSection from "@/components/settings/AppSettingsSection.vue";
 import AiIntegrationSection from "@/components/settings/AiIntegrationSection.vue";
 import DataSection from "@/components/settings/DataSection.vue";
@@ -10,15 +9,7 @@ import SystemSection from "@/components/settings/SystemSection.vue";
 
 <template>
   <div class="flex h-full flex-col overflow-hidden">
-    <!-- 도구 모음 -->
-    <div class="flex items-center justify-between border-b px-4 py-2">
-      <h1 class="text-base font-semibold">설정</h1>
-      <RouterLink to="/">
-        <Button variant="ghost" size="icon" class="shrink-0" title="홈">
-          <Home :size="18" />
-        </Button>
-      </RouterLink>
-    </div>
+    <PageHeader title="설정" />
 
     <!-- 스크롤 영역 -->
     <div class="flex-1 overflow-y-auto p-6">

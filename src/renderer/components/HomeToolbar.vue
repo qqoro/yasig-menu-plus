@@ -10,6 +10,7 @@ import {
   Shuffle,
 } from "lucide-vue-next";
 import type { ViewMode } from "../stores/uiStore";
+import PageHeader from "./PageHeader.vue";
 import { Button } from "./ui/button";
 
 interface Props {
@@ -33,9 +34,8 @@ defineEmits<Emits>();
 </script>
 
 <template>
-  <div class="flex items-center justify-between border-b px-4 py-2">
-    <h1 class="text-base font-semibold">게임 라이브러리</h1>
-    <div class="flex items-center gap-2">
+  <PageHeader title="게임 라이브러리" :home="false">
+    <template #actions>
       <!-- 줌 컨트롤 + 보기 모드 토글 -->
       <div class="mr-2 flex items-center gap-1 border-r pr-2">
         <Button
@@ -116,6 +116,6 @@ defineEmits<Emits>();
           <Settings :size="18" />
         </Button>
       </RouterLink>
-    </div>
-  </div>
+    </template>
+  </PageHeader>
 </template>

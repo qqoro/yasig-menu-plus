@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { Home, Loader2 } from "lucide-vue-next";
-import { Button } from "../components/ui/button";
+import { Loader2 } from "lucide-vue-next";
+import PageHeader from "../components/PageHeader.vue";
 import { useUIStore } from "../stores/uiStore";
 import OverviewCards from "../components/dashboard/OverviewCards.vue";
 import PlayTimeChart from "../components/dashboard/PlayTimeChart.vue";
@@ -32,14 +32,7 @@ const { data: storageInfo, isLoading: isStorageLoading } =
 <template>
   <div class="flex h-full flex-col">
     <!-- 헤더 -->
-    <div class="flex items-center justify-between border-b px-4 py-2">
-      <h1 class="text-base font-semibold">대시보드</h1>
-      <RouterLink to="/">
-        <Button variant="ghost" size="icon" class="shrink-0" title="홈으로">
-          <Home :size="18" />
-        </Button>
-      </RouterLink>
-    </div>
+    <PageHeader title="대시보드" />
 
     <!-- 로딩 -->
     <div v-if="isLoading" class="flex flex-1 items-center justify-center">

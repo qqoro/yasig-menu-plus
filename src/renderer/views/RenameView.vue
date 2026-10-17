@@ -2,7 +2,6 @@
 import {
   AlertCircle,
   AlertTriangle,
-  ArrowLeft,
   Check,
   FolderOpen,
   Info,
@@ -11,7 +10,7 @@ import {
   RefreshCw,
 } from "lucide-vue-next";
 import { computed, reactive, ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import PageHeader from "@/components/PageHeader.vue";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -22,8 +21,6 @@ import type {
 } from "@/composables/useRename";
 import { useAllSettings } from "@/composables/useAllSettings";
 import { useOpenFolder } from "@/composables/useGames";
-
-const router = useRouter();
 
 // composable
 const { data: settings } = useAllSettings();
@@ -291,19 +288,15 @@ watch(
     </Transition>
 
     <!-- 헤더 -->
-    <header class="flex items-center gap-4 border-b px-4 py-3">
-      <Button variant="ghost" size="icon" @click="router.back()">
-        <ArrowLeft class="h-5 w-5" />
-      </Button>
-      <h1 class="flex items-center gap-2 text-lg font-semibold">
-        파일명 관리
+    <PageHeader title="파일명 관리" back="/settings">
+      <template #meta>
         <span
           class="rounded bg-blue-500/15 px-1.5 py-0.5 text-xs font-medium text-blue-500"
         >
           Beta
         </span>
-      </h1>
-    </header>
+      </template>
+    </PageHeader>
 
     <!-- 경고 배너 -->
     <div
