@@ -1,4 +1,4 @@
-import { createHash } from "crypto";
+import { createHash, randomBytes } from "crypto";
 import { app } from "electron";
 import {
   access,
@@ -26,13 +26,24 @@ export function getThumbnailDir(): string {
 }
 
 /**
+ * 이미지 인덱스
+ * - 숫자: 수집기가 쓰는 순번 (0 = 썸네일, 1+ = 추가 이미지)
+ * - "unique": 사용자가 직접 넣은 이미지. 순번 파일을 덮어쓰지 않도록 고유 이름 사용
+ */
+export type ImageIndex = number | "unique";
+
+/**
  * 썸네일 파일명 생성 (게임 경로 기반 해시)
  */
 export function generateThumbnailFilename(
   gamePath: string,
-  index: number = 0,
+  index: ImageIndex = 0,
 ): string {
   const hash = createHash("md5").update(gamePath).digest("hex");
+  if (index === "unique") {
+    const id = `${Date.now().toString(36)}${randomBytes(3).toString("hex")}`;
+    return `${hash}_u${id}.jpg`;
+  }
   // 인덱스가 0이면 (썸네일) 접미사 없음, 1 이상이면 _1, _2 ... 추가
   const suffix = index === 0 ? "" : `_${index}`;
   return `${hash}${suffix}.jpg`;
@@ -65,12 +76,12 @@ export async function optimizeImage(buffer: Buffer): Promise<Buffer> {
  * URL에서 이미지 다운로드 후 WebP로 변환
  * @param url 이미지 URL
  * @param gamePath 게임 경로
- * @param index 이미지 인덱스 (0 = 썸네일, 1+ = 추가 이미지)
+ * @param index 이미지 인덱스 (0 = 썸네일, 1+ = 추가 이미지, "unique" = 사용자 추가)
  */
 export async function downloadImage(
   url: string,
   gamePath: string,
-  index: number = 0,
+  index: ImageIndex = 0,
 ): Promise<string> {
   const thumbnailDir = getThumbnailDir();
   await mkdir(thumbnailDir, { recursive: true });
@@ -170,12 +181,12 @@ export async function deleteThumbnail(filePath: string): Promise<void> {
  * 파일 복사 후 WebP로 변환
  * @param sourcePath 원본 파일 경로
  * @param gamePath 게임 경로 (파일명 생성용)
- * @param index 이미지 인덱스 (0 = 썸네일, 1+ = 추가 이미지)
+ * @param index 이미지 인덱스 (0 = 썸네일, 1+ = 추가 이미지, "unique" = 사용자 추가)
  */
 export async function copyImage(
   sourcePath: string,
   gamePath: string,
-  index: number = 0,
+  index: ImageIndex = 0,
 ): Promise<string> {
   const thumbnailDir = getThumbnailDir();
   await mkdir(thumbnailDir, { recursive: true });
@@ -188,9 +199,10 @@ export async function copyImage(
   }
 
   // WebP 확장자로 저장
-  const hash = createHash("md5").update(gamePath).digest("hex");
-  const suffix = index === 0 ? "" : `_${index}`;
-  const filename = `${hash}${suffix}.webp`;
+  const filename = generateThumbnailFilename(gamePath, index).replace(
+    /\.[^.]+$/,
+    ".webp",
+  );
   const destPath = join(thumbnailDir, filename);
 
   // 파일 읽기 → 최적화 → 저장

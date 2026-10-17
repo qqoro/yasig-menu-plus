@@ -133,7 +133,7 @@ async function handleSetThumbnailFromFile() {
   if (!props.gamePath) return;
 
   try {
-    const filePaths = await selectFileMutation.mutateAsync(undefined);
+    const filePaths = await selectFileMutation.mutateAsync(false);
     if (!filePaths || filePaths.length === 0) return;
 
     const filePath = filePaths[0];

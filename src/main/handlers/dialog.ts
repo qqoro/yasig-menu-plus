@@ -38,10 +38,12 @@ export const selectFileHandler = wrapIpcHandler(
   "selectFile",
   async (
     _event: IpcMainInvokeEvent,
-    _payload: unknown,
+    payload: IpcRendererEventMap["selectFile"] | undefined,
   ): Promise<{ filePaths: string[] | undefined }> => {
     const result = await dialog.showOpenDialog({
-      properties: ["openFile"],
+      properties: payload?.multiple
+        ? ["openFile", "multiSelections"]
+        : ["openFile"],
       title: "이미지 파일 선택",
       filters: [
         {

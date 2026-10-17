@@ -256,7 +256,8 @@ async function handleOpenDataFolder(): Promise<void> {
           <CardTitle class="text-lg">정보 수집</CardTitle>
           <CardDescription class="text-sm">
             게임 썸네일과 메타데이터를 수집합니다. 홈 화면의 정보 수집 버튼은
-            미수집 게임만 수집합니다.
+            미수집 게임만 수집합니다. 강제 전체 재수집은 직접 수정한
+            제목·태그·썸네일·이미지도 수집한 정보로 덮어씁니다.
           </CardDescription>
         </CardHeader>
         <CardContent class="space-y-4">

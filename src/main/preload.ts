@@ -135,6 +135,10 @@ type IpcInvokeReturn = {
   updateSettings: IpcMainEventMap["settingsUpdated"];
   cleanUnusedThumbnails: IpcMainEventMap["unusedThumbnailsCleaned"];
   getGameImages: IpcMainEventMap["gameImagesLoaded"];
+  addGameImageFromUrl: IpcMainEventMap["gameImagesAdded"];
+  addGameImagesFromFiles: IpcMainEventMap["gameImagesAdded"];
+  deleteGameImage: void;
+  setThumbnailFromImage: void;
   migrateThumbnails: IpcMainEventMap["thumbnailsMigrated"];
   convertImagesToWebp: IpcMainEventMap["imagesConvertedToWebp"];
   getPlayTime: IpcMainEventMap["playTimeLoaded"];

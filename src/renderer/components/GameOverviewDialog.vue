@@ -4,15 +4,28 @@ import {
   ChevronRight,
   ExternalLink,
   FolderOpen,
+  Image as ImageIcon,
   ImageOff,
+  Link2,
   Loader2,
+  Plus,
   Star,
+  Trash2,
+  Upload,
 } from "lucide-vue-next";
+import { useElementSize } from "@vueuse/core";
 import { computed, ref, watch } from "vue";
 import { toast } from "vue-sonner";
+import { useSelectFile } from "../composables/useAllInOneRefresh";
 import { useDetectRpgMaker } from "../composables/useCheat";
 import { useGameDetail, useToggleFavorite } from "../composables/useGameDetail";
-import { useGameImages } from "../composables/useGameImages";
+import {
+  useAddGameImageFromUrl,
+  useAddGameImagesFromFiles,
+  useDeleteGameImage,
+  useGameImages,
+  useSetThumbnailFromImage,
+} from "../composables/useGameImages";
 import { formatPlayTime, usePlayTime } from "../composables/usePlayTime";
 import { useTranslationSettings } from "../composables/useTranslationSettings";
 import type { GameDetailItem } from "../types";
@@ -20,6 +33,7 @@ import CheatPlayButton from "./CheatPlayButton.vue";
 import StarRating from "./StarRating.vue";
 import { Button } from "./ui/button";
 import { Dialog, DialogContent, DialogTitle } from "./ui/dialog";
+import { Input } from "./ui/input";
 
 const props = defineProps<{
   open: boolean;
@@ -68,16 +82,204 @@ watch(
   (isOpen) => {
     if (isOpen) {
       currentIndex.value = 0;
+      closeImageMenus();
     }
   },
 );
 
-// 이미지 목록 변경으로 인덱스가 범위를 벗어나면 보정
+// 이미지 목록 변경(삭제 등)으로 인덱스가 범위를 벗어나면 마지막 이미지로 보정
 watch(carouselImages, (images) => {
   if (currentIndex.value >= images.length) {
-    currentIndex.value = 0;
+    currentIndex.value = Math.max(images.length - 1, 0);
   }
 });
+
+// 다른 이미지로 넘어가면 삭제 확인은 취소
+watch(currentIndex, () => {
+  confirmingDelete.value = false;
+});
+
+// ========== 이미지 관리 ==========
+
+const addImageFromUrl = useAddGameImageFromUrl();
+const addImagesFromFiles = useAddGameImagesFromFiles();
+const deleteImage = useDeleteGameImage();
+const setThumbnail = useSetThumbnailFromImage();
+const selectFile = useSelectFile();
+
+const showAddMenu = ref(false);
+const confirmingDelete = ref(false);
+const urlInput = ref("");
+const isDragOver = ref(false);
+
+const isMutating = computed(
+  () =>
+    addImageFromUrl.isPending.value ||
+    addImagesFromFiles.isPending.value ||
+    deleteImage.isPending.value ||
+    setThumbnail.isPending.value,
+);
+
+// 실제로 그려진 이미지 크기 (object-contain 기준)
+// 이미지 비율이 영역과 다르면 위아래나 좌우가 비므로, 배지·툴바를 이미지 모서리에 맞추는 데 쓴다
+const imageAreaRef = ref<HTMLElement>();
+const { width: areaWidth, height: areaHeight } = useElementSize(imageAreaRef);
+const naturalSize = ref<{ width: number; height: number } | null>(null);
+
+function handleImageLoad(e: Event) {
+  const img = e.target as HTMLImageElement;
+  naturalSize.value = { width: img.naturalWidth, height: img.naturalHeight };
+}
+
+const imageFrameStyle = computed(() => {
+  const size = naturalSize.value;
+  if (!currentImage.value || !size || !size.width || !size.height) {
+    return { inset: "0" };
+  }
+  const scale = Math.min(
+    areaWidth.value / size.width,
+    areaHeight.value / size.height,
+  );
+  return {
+    width: `${size.width * scale}px`,
+    height: `${size.height * scale}px`,
+  };
+});
+
+// 썸네일 위치 (이미지 목록과 썸네일 모두 메인에서 절대 경로로 변환된 값)
+const thumbnailIndex = computed(() => {
+  const thumbnail = game.value?.thumbnail;
+  return thumbnail ? carouselImages.value.indexOf(thumbnail) : -1;
+});
+const isCurrentThumbnail = computed(
+  () =>
+    thumbnailIndex.value >= 0 && thumbnailIndex.value === currentIndex.value,
+);
+
+function closeImageMenus() {
+  showAddMenu.value = false;
+  confirmingDelete.value = false;
+  urlInput.value = "";
+}
+
+// 이미지 영역 클릭: 열린 메뉴가 있으면 메뉴만 닫고, 없으면 다이얼로그 닫기
+function handleImageAreaClick() {
+  if (showAddMenu.value || confirmingDelete.value) {
+    closeImageMenus();
+    return;
+  }
+  emit("update:open", false);
+}
+
+// ESC: 열린 메뉴가 있으면 메뉴만 닫기
+function handleEscapeKeyDown(e: KeyboardEvent) {
+  if (showAddMenu.value || confirmingDelete.value) {
+    e.preventDefault();
+    closeImageMenus();
+  }
+}
+
+function moveToImage(path: string | undefined) {
+  if (!path) return;
+  const index = carouselImages.value.indexOf(path);
+  if (index >= 0) currentIndex.value = index;
+}
+
+// 추가한 이미지는 보고 있던 이미지 바로 뒤에 들어가고, 첫 이미지로 이동
+async function handleAddFromUrl() {
+  const url = urlInput.value.trim();
+  if (!url) return;
+  try {
+    const result = await addImageFromUrl.mutateAsync({
+      gamePath: props.gamePath,
+      url,
+      afterPath: currentImage.value ?? null,
+    });
+    closeImageMenus();
+    moveToImage(result.paths[0]);
+    toast.success("이미지를 추가했습니다.");
+  } catch {
+    toast.error("이미지를 추가하지 못했습니다.");
+  }
+}
+
+/**
+ * @param skipped 드롭 단계에서 이미지가 아니라 걸러낸 파일 수
+ */
+async function addFiles(filePaths: string[], skipped = 0) {
+  try {
+    const result = await addImagesFromFiles.mutateAsync({
+      gamePath: props.gamePath,
+      filePaths,
+      afterPath: currentImage.value ?? null,
+    });
+    closeImageMenus();
+    moveToImage(result.paths[0]);
+    const failed = result.failed + skipped;
+    if (failed > 0) {
+      toast.warning(`이미지 ${result.paths.length}장을 추가했습니다.`, {
+        description: `${failed}장은 추가하지 못했습니다.`,
+      });
+    } else {
+      toast.success(`이미지 ${result.paths.length}장을 추가했습니다.`);
+    }
+  } catch {
+    toast.error("이미지를 추가하지 못했습니다.");
+  }
+}
+
+async function handleSelectFiles() {
+  const filePaths = await selectFile.mutateAsync(true);
+  if (!filePaths || filePaths.length === 0) return;
+  await addFiles(filePaths);
+}
+
+function handleDragEnter(e: DragEvent) {
+  if (e.dataTransfer?.types.includes("Files")) {
+    isDragOver.value = true;
+  }
+}
+
+async function handleDrop(e: DragEvent) {
+  isDragOver.value = false;
+  const dropped = Array.from(e.dataTransfer?.files ?? []);
+  const files = dropped.filter((file) => file.type.startsWith("image/"));
+  if (files.length === 0) {
+    toast.error("이미지 파일만 추가할 수 있습니다.");
+    return;
+  }
+  await addFiles(
+    files.map((file) => window.api.getPathForFile(file)),
+    dropped.length - files.length,
+  );
+}
+
+async function handleSetThumbnail() {
+  if (!currentImage.value) return;
+  try {
+    await setThumbnail.mutateAsync({
+      gamePath: props.gamePath,
+      imagePath: currentImage.value,
+    });
+    toast.success("썸네일로 지정했습니다.");
+  } catch {
+    toast.error("썸네일로 지정하지 못했습니다.");
+  }
+}
+
+async function handleDeleteImage() {
+  if (!currentImage.value) return;
+  try {
+    await deleteImage.mutateAsync({
+      gamePath: props.gamePath,
+      imagePath: currentImage.value,
+    });
+    confirmingDelete.value = false;
+    toast.success("이미지를 삭제했습니다.");
+  } catch {
+    toast.error("이미지를 삭제하지 못했습니다.");
+  }
+}
 
 function toFileUrl(path: string): string {
   return `file:///${path.replaceAll("\\", "/")}`;
@@ -98,6 +300,8 @@ function prevImage() {
 // 키보드 네비게이션
 function handleKeydown(e: KeyboardEvent) {
   if (!props.open) return;
+  // URL 입력 중 커서 이동은 캐러셀로 넘기지 않음
+  if (e.target instanceof HTMLInputElement) return;
   if (e.key === "ArrowLeft") prevImage();
   if (e.key === "ArrowRight") nextImage();
 }
@@ -216,6 +420,7 @@ async function handleToggleFavorite() {
       :show-close-button="false"
       class="flex h-[85vh] max-h-[90vh] !max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 bg-transparent p-0 px-4 shadow-none sm:px-6"
       @keydown="handleKeydown"
+      @escape-key-down="handleEscapeKeyDown"
     >
       <!-- 로딩 -->
       <div v-if="isLoading" class="flex flex-1 items-center justify-center">
@@ -226,21 +431,182 @@ async function handleToggleFavorite() {
         <!-- 좌측: 이미지 캐러셀 -->
         <!-- 이미지 영역은 카드 배경 없이 dim 위에 바로 노출 (lightbox 느낌) -->
         <!-- 이미지 영역 전체 클릭 시 다이얼로그 닫기 (이미지 유무 무관) -->
+        <!-- 이미지 파일을 끌어다 놓으면 보고 있는 이미지 뒤에 추가 -->
         <div
-          class="relative flex min-h-0 flex-1 cursor-pointer items-center justify-center md:basis-2/3"
+          ref="imageAreaRef"
+          class="group relative flex min-h-0 flex-1 cursor-pointer items-center justify-center md:basis-2/3"
           @wheel.prevent="handleWheel"
-          @click="emit('update:open', false)"
+          @click="handleImageAreaClick"
+          @dragenter.prevent="handleDragEnter"
+          @dragover.prevent
+          @drop.prevent="handleDrop"
         >
           <img
             v-if="currentImage"
             :src="toFileUrl(currentImage)"
             class="h-full w-full object-contain"
+            @load="handleImageLoad"
           />
 
           <!-- 이미지 없음 -->
           <div v-else class="flex flex-col items-center gap-2 text-white/60">
             <ImageOff class="size-8" />
             표시할 이미지가 없습니다
+            <Button
+              size="sm"
+              class="mt-1 border border-white/15 bg-black/50 text-white backdrop-blur-sm hover:bg-black/70"
+              @click.stop="showAddMenu = !showAddMenu"
+            >
+              <Plus :size="16" />
+              이미지 추가
+            </Button>
+          </div>
+
+          <!-- 실제로 그려진 이미지 크기의 틀: 배지·툴바를 이미지 모서리에 붙인다 -->
+          <div
+            class="pointer-events-none absolute *:pointer-events-auto"
+            :style="imageFrameStyle"
+          >
+            <!-- 썸네일 배지 -->
+            <div
+              v-if="isCurrentThumbnail"
+              class="absolute top-3 left-3 inline-flex items-center gap-1 rounded-md bg-sky-500/90 px-2 py-1 text-xs font-semibold text-white shadow"
+            >
+              <ImageIcon :size="14" />
+              썸네일
+            </div>
+
+            <!-- 이미지 관리 툴바 (호버 시 표시) -->
+            <div
+              v-if="currentImage && !confirmingDelete"
+              class="absolute top-3 right-3 flex items-center gap-2 transition-opacity"
+              :class="
+                showAddMenu || isMutating
+                  ? 'opacity-100'
+                  : 'opacity-0 group-hover:opacity-100'
+              "
+              @click.stop
+            >
+              <Button
+                size="sm"
+                class="border border-white/15 bg-black/50 text-white backdrop-blur-sm hover:bg-black/70"
+                @click="showAddMenu = !showAddMenu"
+              >
+                <Plus :size="16" />
+                추가
+              </Button>
+              <Button
+                v-if="!isCurrentThumbnail"
+                size="sm"
+                class="border border-white/15 bg-black/50 text-white backdrop-blur-sm hover:bg-black/70"
+                :disabled="isMutating"
+                @click="handleSetThumbnail"
+              >
+                <ImageIcon :size="16" />
+                썸네일로 지정
+              </Button>
+              <Button
+                size="sm"
+                class="hover:bg-destructive border border-white/15 bg-black/50 text-white backdrop-blur-sm"
+                :disabled="isMutating"
+                @click="
+                  showAddMenu = false;
+                  confirmingDelete = true;
+                "
+              >
+                <Trash2 :size="16" />
+                삭제
+              </Button>
+            </div>
+
+            <!-- 삭제 확인 (툴바 자리) -->
+            <div
+              v-if="confirmingDelete"
+              class="bg-popover text-popover-foreground absolute top-3 right-3 flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm shadow-lg"
+              @click.stop
+            >
+              이 이미지를 삭제할까요?
+              <Button
+                size="sm"
+                variant="destructive"
+                :disabled="isMutating"
+                @click="handleDeleteImage"
+              >
+                <Loader2
+                  v-if="deleteImage.isPending.value"
+                  class="animate-spin"
+                />
+                삭제
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                @click="confirmingDelete = false"
+              >
+                취소
+              </Button>
+            </div>
+
+            <!-- 이미지 추가 메뉴 -->
+            <div
+              v-if="showAddMenu"
+              class="bg-popover text-popover-foreground absolute flex w-80 cursor-default flex-col gap-2 rounded-lg border p-3 shadow-xl"
+              :class="
+                currentImage
+                  ? 'top-14 right-3'
+                  : 'top-1/2 left-1/2 mt-16 -translate-x-1/2'
+              "
+              @click.stop
+              @wheel.stop
+            >
+              <span class="text-sm font-medium">이미지 추가</span>
+              <form class="flex gap-2" @submit.prevent="handleAddFromUrl">
+                <Input
+                  v-model="urlInput"
+                  placeholder="이미지 URL 입력"
+                  :disabled="isMutating"
+                />
+                <Button
+                  type="submit"
+                  size="icon"
+                  :disabled="isMutating || !urlInput.trim()"
+                  title="URL로 추가"
+                >
+                  <Loader2
+                    v-if="addImageFromUrl.isPending.value"
+                    class="animate-spin"
+                  />
+                  <Link2 v-else />
+                </Button>
+              </form>
+              <Button
+                variant="secondary"
+                size="sm"
+                :disabled="isMutating"
+                @click="handleSelectFiles"
+              >
+                <Loader2
+                  v-if="addImagesFromFiles.isPending.value"
+                  class="animate-spin"
+                />
+                <Upload v-else />
+                파일에서 선택 (여러 장 가능)
+              </Button>
+              <p class="text-muted-foreground text-center text-xs">
+                또는 이미지 영역에 파일을 끌어다 놓기
+              </p>
+            </div>
+          </div>
+
+          <!-- 드래그 오버레이 (자식 요소에서 dragleave가 튀지 않도록 내용은 pointer-events 차단) -->
+          <div
+            v-if="isDragOver"
+            class="absolute inset-0 flex items-center justify-center rounded-lg border-2 border-dashed border-sky-400 bg-sky-500/20"
+            @dragleave.prevent="isDragOver = false"
+          >
+            <span class="pointer-events-none font-medium text-white">
+              여기에 놓으면 이미지로 추가됩니다
+            </span>
           </div>
 
           <!-- 이전/다음 버튼 (2장 이상일 때만) -->
@@ -264,12 +630,15 @@ async function handleToggleFavorite() {
             v-if="carouselImages.length > 1"
             class="absolute bottom-3 flex gap-2"
           >
+            <!-- 썸네일 위치는 하늘색 테두리로 표시 -->
             <span
               v-for="(_, i) in carouselImages"
               :key="i"
               :class="[
                 'h-2 w-2 rounded-full transition-colors',
                 i === currentIndex ? 'bg-white' : 'bg-white/50',
+                i === thumbnailIndex &&
+                  'ring-2 ring-sky-400 ring-offset-1 ring-offset-black',
               ]"
             />
           </div>

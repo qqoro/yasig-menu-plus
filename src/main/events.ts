@@ -70,6 +70,10 @@ export const enum IpcRendererSend {
   DeleteThumbnail = "deleteThumbnail", // 썸네일 삭제
   CleanUnusedThumbnails = "cleanUnusedThumbnails", // 사용하지 않는 썸네일 삭제
   GetGameImages = "getGameImages", // 게임 이미지 목록 조회
+  AddGameImageFromUrl = "addGameImageFromUrl", // URL 이미지 추가
+  AddGameImagesFromFiles = "addGameImagesFromFiles", // 로컬 이미지 파일 추가
+  DeleteGameImage = "deleteGameImage", // 게임 이미지 삭제
+  SetThumbnailFromImage = "setThumbnailFromImage", // 게임 이미지를 썸네일로 지정
 
   // 검색 및 필터링 관련
   SearchGames = "searchGames", // 게임 검색
@@ -523,7 +527,7 @@ export interface IpcRendererEventMap {
   maximizeWindow: undefined;
   closeWindow: undefined;
   selectFolder: undefined;
-  selectFile: undefined;
+  selectFile: { multiple?: boolean };
   selectProgram: undefined;
 
   // 컬렉터 관련
@@ -537,6 +541,19 @@ export interface IpcRendererEventMap {
   deleteThumbnail: { gamePath: string };
   cleanUnusedThumbnails: undefined;
   getGameImages: { gamePath: string };
+  // afterPath: 이 이미지 바로 뒤에 추가 (null이면 맨 뒤)
+  addGameImageFromUrl: {
+    gamePath: string;
+    url: string;
+    afterPath: string | null;
+  };
+  addGameImagesFromFiles: {
+    gamePath: string;
+    filePaths: string[];
+    afterPath: string | null;
+  };
+  deleteGameImage: { gamePath: string; imagePath: string };
+  setThumbnailFromImage: { gamePath: string; imagePath: string };
 
   // 검색 및 필터링 관련
   searchGames: { sourcePaths: string[]; searchQuery: SearchQuery };
@@ -782,6 +799,7 @@ export interface IpcMainEventMap {
   thumbnailHidden: { path: string };
   unusedThumbnailsCleaned: { deletedCount: number; freedSpace: number };
   gameImagesLoaded: { images: GameImageItem[] };
+  gameImagesAdded: { paths: string[]; failed: number };
 
   // 실행 파일 관리
   executablePathSet: { path: string; executablePath: string };

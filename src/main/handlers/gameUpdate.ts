@@ -3,26 +3,17 @@
  * 메타데이터 수정, 관계 데이터 관리, 썸네일 관리
  */
 
-import { app, ipcMain } from "electron";
-import { copyFile, mkdir } from "fs/promises";
-import { join } from "path";
+import { ipcMain } from "electron";
 import { db } from "../db/db-manager.js";
 import { IpcRendererSend } from "../events.js";
 import { getOrCreateUserGameData } from "../services/user-game-data.js";
-import { downloadImage } from "../utils/downloader.js";
-import { toAbsolutePath, toRelativePath } from "../utils/image-path.js";
+import { copyImage, downloadImage } from "../utils/downloader.js";
 import { validatePath, validateUrl } from "../utils/validator.js";
 import { wrapIpcHandler } from "../utils/ipc-wrapper.js";
 import { createLogger } from "../utils/logger.js";
+import { deleteImageFileIfUnused } from "./gameImages.js";
 
 const log = createLogger("GameUpdate");
-
-/**
- * 썸네일 저장 디렉토리 경로
- */
-function getThumbnailDir(): string {
-  return join(app.getPath("userData"), "thumbnails");
-}
 
 /**
  * 메타데이터 수정
@@ -275,16 +266,9 @@ export async function setThumbnailFromUrl(
   // URL 유효성 검증
   validateUrl(url);
 
-  const thumbnailDir = getThumbnailDir();
-  await mkdir(thumbnailDir, { recursive: true });
-
-  const filePath = await downloadImage(url, path);
-
-  // DB 업데이트 (수동 수정 표시)
-  await db("games")
-    .where("path", path)
-    .update({ thumbnail: filePath, isLoadedInfo: true, updatedAt: new Date() });
-
+  // 고유 이름으로 저장: 순번 파일(캐러셀 0번 이미지)을 덮어쓰지 않도록
+  const filePath = await downloadImage(url, path, "unique");
+  await replaceThumbnail(path, filePath);
   return filePath;
 }
 
@@ -298,60 +282,40 @@ export async function setThumbnailFromFile(
   // 경로 유효성 검증
   await validatePath(path);
 
-  const thumbnailDir = getThumbnailDir();
-  await mkdir(thumbnailDir, { recursive: true });
-
-  const { createHash } = await import("crypto");
-  const hash = createHash("md5").update(path).digest("hex");
-  const filename = `${hash}.${getFileExtension(sourceFilePath)}`;
-  const destPath = join(thumbnailDir, filename);
-
-  // 파일 복사
-  await copyFile(sourceFilePath, destPath);
-
-  // 상대 경로로 변환
-  const relativePath = toRelativePath(destPath) ?? destPath;
-
-  // DB 업데이트 (수동 수정 표시)
-  await db("games").where("path", path).update({
-    thumbnail: relativePath,
-    isLoadedInfo: true,
-    updatedAt: new Date(),
-  });
-
-  return relativePath;
+  const filePath = await copyImage(sourceFilePath, path, "unique");
+  await replaceThumbnail(path, filePath);
+  return filePath;
 }
 
 /**
- * 썸네일 삭제 (파일 삭제 + DB null)
+ * 썸네일 경로를 바꾸고, 더 이상 쓰이지 않는 이전 썸네일 파일을 정리
+ */
+async function replaceThumbnail(
+  path: string,
+  thumbnail: string | null,
+): Promise<void> {
+  const game = await db("games").where("path", path).first("thumbnail");
+  const previous: string | null = game?.thumbnail ?? null;
+
+  // DB 업데이트 (수동 수정 표시)
+  await db("games")
+    .where("path", path)
+    .update({ thumbnail, isLoadedInfo: true, updatedAt: new Date() });
+
+  // 캐러셀 이미지와 같은 파일일 수 있으므로 참조가 없을 때만 삭제
+  if (previous && previous !== thumbnail) {
+    await deleteImageFileIfUnused(previous);
+  }
+}
+
+/**
+ * 썸네일 삭제 (DB null + 쓰이지 않는 파일 삭제)
  */
 export async function hideThumbnail(path: string): Promise<void> {
   // 경로 유효성 검증
   await validatePath(path);
 
-  // 현재 썸네일 경로 조회
-  const game = await db("games").where("path", path).first();
-  const thumbnailPath = game?.thumbnail;
-
-  // DB에서 썸네일 경로 제거 (수동 수정 표시)
-  await db("games")
-    .where("path", path)
-    .update({ thumbnail: null, isLoadedInfo: true, updatedAt: new Date() });
-
-  // 실제 파일 삭제 (절대 경로로 변환)
-  if (thumbnailPath) {
-    const { deleteThumbnail: deleteFile } =
-      await import("../utils/downloader.js");
-    await deleteFile(toAbsolutePath(thumbnailPath) ?? thumbnailPath);
-  }
-}
-
-/**
- * 파일 확장자 추출
- */
-function getFileExtension(filePath: string): string {
-  const ext = filePath.split(".").pop();
-  return ext || "jpg";
+  await replaceThumbnail(path, null);
 }
 
 /**

@@ -91,17 +91,25 @@ const isNewCard = useIsNewCard();
       </CardHeader>
       <CardContent>
         <ul class="text-muted-foreground flex flex-col gap-1.5 text-sm">
+          <li>이미지에 마우스를 올리면 오른쪽 위에 관리 버튼이 나타납니다.</li>
           <li>
-            <strong class="text-foreground">이미지 추가</strong>: 우클릭
-            메뉴에서 로컬 파일을 선택하거나 URL을 입력하여 이미지를 추가합니다.
+            <strong class="text-foreground">추가</strong>: URL을 입력하거나
+            파일을 선택해 이미지를 추가합니다. 이미지 영역에 파일을 끌어다
+            놓아도 됩니다. 추가한 이미지는 보고 있던 이미지 바로 뒤에
+            들어갑니다.
           </li>
           <li>
-            <strong class="text-foreground">이미지 삭제</strong>: 캐러셀에서
-            삭제 버튼으로 개별 이미지를 삭제합니다.
+            <strong class="text-foreground">썸네일로 지정</strong>: 보고 있는
+            이미지를 대표 썸네일로 지정합니다. 썸네일인 이미지에는 "썸네일"
+            표시가 붙습니다.
           </li>
           <li>
-            <strong class="text-foreground">썸네일 설정</strong>: 추가 이미지를
-            대표 썸네일로 설정할 수 있습니다.
+            <strong class="text-foreground">삭제</strong>: 보고 있는 이미지를
+            삭제합니다. 썸네일인 이미지를 지우면 썸네일도 함께 비워집니다.
+          </li>
+          <li>
+            직접 바꾼 이미지는 정보 수집에서 유지되지만, 상세 정보의 재수집과
+            설정의 강제 전체 재수집은 수집한 이미지로 되돌립니다.
           </li>
         </ul>
       </CardContent>

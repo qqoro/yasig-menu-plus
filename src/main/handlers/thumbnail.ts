@@ -5,7 +5,6 @@ import { db } from "../db/db-manager.js";
 import type { IpcMainEventMap, IpcRendererEventMap } from "../events.js";
 import {
   copyImage,
-  deleteThumbnail as deleteFile,
   downloadImage,
   getThumbnailDir,
   optimizeImage,
@@ -13,6 +12,7 @@ import {
 import { toAbsolutePath, toRelativePath } from "../utils/image-path.js";
 import { validatePath } from "../utils/validator.js";
 import { createLogger } from "../utils/logger.js";
+import { deleteImageFileIfUnused } from "./gameImages.js";
 
 const log = createLogger("Thumbnail");
 
@@ -28,12 +28,18 @@ export async function downloadThumbnailHandler(
   // gamePath 유효성 검증
   await validatePath(gamePath);
 
-  const filePath = await downloadImage(url, gamePath);
+  // 고유 이름으로 저장: 순번 파일(캐러셀 0번 이미지)을 덮어쓰지 않도록
+  const filePath = await downloadImage(url, gamePath, "unique");
+  const game = await db("games").where("path", gamePath).first("thumbnail");
 
   // DB 업데이트 (수동 수정 표시)
   await db("games")
     .where("path", gamePath)
     .update({ thumbnail: filePath, isLoadedInfo: true });
+
+  if (game?.thumbnail) {
+    await deleteImageFileIfUnused(game.thumbnail);
+  }
 
   return { gamePath, thumbnailPath: filePath };
 }
@@ -52,12 +58,14 @@ export async function deleteThumbnailHandler(
 
   // DB에서 썸네일 경로 조회
   const game = await db("games").where("path", gamePath).first();
-  if (game?.thumbnail) {
-    await deleteFile(toAbsolutePath(game.thumbnail) ?? game.thumbnail);
-  }
 
   // DB 업데이트
   await db("games").where("path", gamePath).update({ thumbnail: null });
+
+  // 캐러셀 이미지와 같은 파일일 수 있으므로 참조가 없을 때만 삭제
+  if (game?.thumbnail) {
+    await deleteImageFileIfUnused(game.thumbnail);
+  }
 }
 
 /**

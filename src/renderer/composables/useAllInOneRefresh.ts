@@ -254,8 +254,8 @@ export function useSelectFolder() {
  */
 export function useSelectFile() {
   return useMutation({
-    mutationFn: async () => {
-      const result = await window.api.invoke("selectFile");
+    mutationFn: async (multiple: boolean = false) => {
+      const result = await window.api.invoke("selectFile", { multiple });
       return result.filePaths;
     },
   });

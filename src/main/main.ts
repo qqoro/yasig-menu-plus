@@ -335,6 +335,22 @@ function registerIpcHandlers() {
     IpcRendererSend.GetGameImages,
     GameImagesHandlers.getGameImagesHandler,
   );
+  ipcMain.handle(
+    IpcRendererSend.AddGameImageFromUrl,
+    GameImagesHandlers.addGameImageFromUrlHandler,
+  );
+  ipcMain.handle(
+    IpcRendererSend.AddGameImagesFromFiles,
+    GameImagesHandlers.addGameImagesFromFilesHandler,
+  );
+  ipcMain.handle(
+    IpcRendererSend.DeleteGameImage,
+    GameImagesHandlers.deleteGameImageHandler,
+  );
+  ipcMain.handle(
+    IpcRendererSend.SetThumbnailFromImage,
+    GameImagesHandlers.setThumbnailFromImageHandler,
+  );
 
   // ========== 검색 및 필터링 관련 ==========
   ipcMain.handle(IpcRendererSend.SearchGames, searchGamesHandler);
