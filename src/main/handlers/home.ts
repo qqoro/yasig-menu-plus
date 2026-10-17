@@ -19,6 +19,7 @@ export {
 
 // 폴더 스캔 및 목록 새로고침
 export {
+  countUnmeasuredSizeHandler,
   findExecutables,
   openFolderHandler,
   refreshListHandler,

@@ -8,6 +8,7 @@ import {
   FolderOpen,
   FolderSearch,
   Globe,
+  HardDrive,
   Info,
   Loader2,
   Play,
@@ -22,6 +23,7 @@ import { formatPlayTime } from "../composables/usePlayTime";
 import { useTranslationSettings } from "../composables/useTranslationSettings";
 import type { ViewMode } from "../stores/uiStore";
 import type { GameItem, SearchQuery } from "../types";
+import { formatBytes } from "../utils/format";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import {
@@ -128,6 +130,15 @@ const showAllTags = ref(false);
 const formattedPlayTime = computed(() => {
   if (!props.game.totalPlayTime) return null;
   return formatPlayTime(props.game.totalPlayTime);
+});
+
+// 용량순 정렬 여부 — 정렬 중엔 플레이 시간 배지 자리에 용량 배지를 표시
+const isSizeSort = computed(() => props.sortBy === "size");
+
+// 용량 포맷팅 (미측정이면 null → 배지 숨김)
+const formattedSize = computed(() => {
+  if (props.game.sizeBytes == null) return null;
+  return formatBytes(props.game.sizeBytes);
 });
 
 // 발매일 포맷팅
@@ -431,9 +442,24 @@ function handleMouseDown(event: MouseEvent): void {
       >
         압축
       </div>
+      <!-- 용량 배지 (용량순 정렬 시 플레이 시간 배지 대체) -->
+      <div
+        v-if="isSizeSort && formattedSize"
+        class="bg-popover/80 absolute bottom-2 left-2 flex items-center gap-1 rounded-md px-2 py-1 backdrop-blur-sm @max-[110px]:hidden"
+        title="용량"
+      >
+        <HardDrive
+          :size="12"
+          class="text-popover-foreground shrink-0 @max-[170px]:size-[11px] @max-[140px]:size-[10px]"
+        />
+        <span
+          class="text-popover-foreground text-xs font-medium @max-[170px]:text-[11px]! @max-[140px]:text-[10px]!"
+          >{{ formattedSize }}</span
+        >
+      </div>
       <!-- 플레이 시간 배지 -->
       <div
-        v-if="formattedPlayTime"
+        v-else-if="!isSizeSort && formattedPlayTime"
         class="bg-popover/80 absolute bottom-2 left-2 flex items-center gap-1 rounded-md px-2 py-1 backdrop-blur-sm @max-[110px]:hidden"
       >
         <Clock

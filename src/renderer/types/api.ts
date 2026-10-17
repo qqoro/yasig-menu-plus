@@ -28,6 +28,7 @@ import type {
  */
 type IpcInvokeReturn = {
   refreshList: IpcMainEventMap["listRefreshed"];
+  countUnmeasuredSize: IpcMainEventMap["unmeasuredSizeCount"];
   playGame: IpcMainEventMap["gamePlayed"];
   openFolder: void;
   minimizeWindow: void;

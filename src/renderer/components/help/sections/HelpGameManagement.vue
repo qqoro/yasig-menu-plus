@@ -157,7 +157,14 @@ const isNewCard = useIsNewCard();
           다시 클릭하면 오름차순/내림차순이 전환됩니다.
         </p>
         <ul class="text-muted-foreground mt-2 flex flex-col gap-1 text-sm">
-          <li>제목, 발매일, 최근 플레이, 등록일, 별점, 플레이 시간, 서클명</li>
+          <li>
+            제목, 발매일, 최근 플레이, 등록일, 별점, 사이트 별점, 다운로드,
+            플레이 시간, 서클명, 용량
+          </li>
+          <li>
+            용량순 정렬 시 카드에 게임 용량이 표시됩니다. 용량은 폴더 스캔 때
+            측정되며, 아직 측정되지 않은 게임은 맨 뒤로 배치됩니다.
+          </li>
         </ul>
       </CardContent>
     </Card>

@@ -113,6 +113,7 @@ export function buildGameItems(
     externalRating?: number | null;
     externalReviewCount?: number | null;
     downloadCount?: number | null;
+    sizeBytes?: number | null;
     totalPlayTime?: number | null;
     isFavorite?: SqliteBoolean;
     isHidden?: SqliteBoolean;
@@ -147,6 +148,7 @@ export function buildGameItems(
     externalRating: g.externalRating ?? null,
     externalReviewCount: g.externalReviewCount ?? null,
     downloadCount: g.downloadCount ?? null,
+    sizeBytes: g.sizeBytes ?? null,
     totalPlayTime: g.totalPlayTime ?? undefined,
     isFavorite: g.isFavorite !== undefined ? Boolean(g.isFavorite) : undefined,
     isHidden: g.isHidden !== undefined ? Boolean(g.isHidden) : undefined,

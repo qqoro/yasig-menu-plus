@@ -54,7 +54,7 @@ vi.mock("../store.js", () => ({
   }),
   getExcludedExecutables: () => [],
   getLibraryPaths: () => [],
-  getOfflineLibraryPaths: () => [],
+  getOfflineLibraryPaths: vi.fn(() => []),
   getScanDepth: () => 5,
   getEnableNonGameContent: () => false,
   DEFAULT_TITLE_DISPLAY_PRIORITY: ["translated", "collected", "original"],
@@ -82,6 +82,9 @@ vi.mock("../lib/fingerprint.js", () => ({
 }));
 vi.mock("../utils/downloader.js", () => ({
   deleteImage: vi.fn(),
+}));
+vi.mock("../lib/folder-size.js", () => ({
+  getGameSize: vi.fn(() => Promise.resolve(null)),
 }));
 
 // normalizePath 모킹 — 테스트에서는 입력 경로를 그대로 반환
@@ -120,16 +123,19 @@ vi.mock("fs/promises", async (importOriginal) => {
 
 // 모킹 후 import (vi.mock 호이스팅)
 import {
+  countUnmeasuredSizeGames,
   selectBestExecutable,
   scanFolder,
   scanLibraryPaths,
 } from "./home-scan.js";
+import { getGameSize } from "../lib/folder-size.js";
 import { removeLibraryPathHandler } from "./home-library.js";
 import { runScanWorker } from "../workers/run-scan-worker.js";
 import { deleteImage } from "../utils/downloader.js";
 import { access } from "fs/promises";
 import { computeFingerprint } from "../lib/fingerprint.js";
 import {
+  getOfflineLibraryPaths,
   removeLibraryPath,
   removeLibraryScanHistory,
   updateLibraryScanHistory,
@@ -153,6 +159,11 @@ beforeEach(async () => {
   vi.mocked(access).mockImplementation(() => Promise.resolve());
   // 기본: computeFingerprint는 "mock-fp" 반환
   vi.mocked(computeFingerprint).mockResolvedValue("mock-fp");
+  // 기본: 스캔 결과 없음 (이전 테스트의 후보 목록이 새지 않도록)
+  vi.mocked(runScanWorker).mockResolvedValue([]);
+  // 기본: 용량 측정 불가(null), 오프라인 경로 없음
+  vi.mocked(getGameSize).mockResolvedValue(null);
+  vi.mocked(getOfflineLibraryPaths).mockReturnValue([]);
 });
 
 // ============================================
@@ -458,6 +469,144 @@ describe("scanFolder — 폴더 스캔", () => {
     expect(result.addedCount).toBe(0);
     expect(result.deletedCount).toBe(0);
     expect(updateLibraryScanHistory).toHaveBeenCalledWith("/library", 0);
+  });
+});
+
+describe("scanFolder — 용량 측정", () => {
+  it("새 게임은 용량을 측정해 저장해야 한다", async () => {
+    vi.mocked(runScanWorker).mockResolvedValue([
+      {
+        path: "/library/game-a",
+        name: "game-a",
+        isCompressFile: false,
+        hasExecutable: true,
+      },
+    ]);
+    vi.mocked(getGameSize).mockResolvedValue(1234);
+
+    await scanFolder("/library");
+
+    const game = await db("games").where("path", "/library/game-a").first();
+    expect(game!.sizeBytes).toBe(1234);
+    expect(getGameSize).toHaveBeenCalledWith("/library/game-a", false);
+  });
+
+  it("변경 없는 게임이라도 용량이 없으면 용량만 채우고 updatedAt은 유지해야 한다", async () => {
+    await seedGame(db, {
+      path: "/library/game-a",
+      source: "/library",
+      fingerprint: "fp",
+      dirMtimeMs: 100,
+      hasExecutable: true,
+      updatedAt: null,
+    });
+    vi.mocked(runScanWorker).mockResolvedValue([
+      {
+        path: "/library/game-a",
+        name: "game-a",
+        isCompressFile: false,
+        hasExecutable: true,
+        mtimeMs: 100,
+      },
+    ]);
+    vi.mocked(getGameSize).mockResolvedValue(5000);
+
+    await scanFolder("/library");
+
+    const game = await db("games").where("path", "/library/game-a").first();
+    expect(game!.sizeBytes).toBe(5000);
+    expect(game!.updatedAt).toBeNull();
+    expect(computeFingerprint).not.toHaveBeenCalled();
+  });
+
+  it("변경 없고 용량도 있는 게임은 용량을 다시 측정하지 않아야 한다", async () => {
+    await seedGame(db, {
+      path: "/library/game-a",
+      source: "/library",
+      fingerprint: "fp",
+      dirMtimeMs: 100,
+      hasExecutable: true,
+      sizeBytes: 777,
+    });
+    vi.mocked(runScanWorker).mockResolvedValue([
+      {
+        path: "/library/game-a",
+        name: "game-a",
+        isCompressFile: false,
+        hasExecutable: true,
+        mtimeMs: 100,
+      },
+    ]);
+
+    await scanFolder("/library");
+
+    const game = await db("games").where("path", "/library/game-a").first();
+    expect(game!.sizeBytes).toBe(777);
+    expect(getGameSize).not.toHaveBeenCalled();
+  });
+
+  it("변경된 게임은 용량을 다시 측정하고, 측정 실패 시 기존 값을 유지해야 한다", async () => {
+    await seedGame(db, {
+      path: "/library/game-a",
+      source: "/library",
+      fingerprint: "fp",
+      dirMtimeMs: 100,
+      sizeBytes: 777,
+    });
+    await seedGame(db, {
+      path: "/library/game-b",
+      source: "/library",
+      fingerprint: "fp-b",
+      dirMtimeMs: 100,
+      sizeBytes: 888,
+    });
+    vi.mocked(runScanWorker).mockResolvedValue([
+      {
+        path: "/library/game-a",
+        name: "game-a",
+        isCompressFile: false,
+        hasExecutable: true,
+        mtimeMs: 200,
+      },
+      {
+        path: "/library/game-b",
+        name: "game-b",
+        isCompressFile: false,
+        hasExecutable: true,
+        mtimeMs: 200,
+      },
+    ]);
+    vi.mocked(getGameSize).mockImplementation(async (p) =>
+      p === "/library/game-a" ? 999 : null,
+    );
+
+    await scanFolder("/library");
+
+    const games = await db("games").orderBy("path").select("sizeBytes");
+    expect(games.map((g) => g.sizeBytes)).toEqual([999, 888]);
+  });
+});
+
+describe("countUnmeasuredSizeGames — 용량 미측정 게임 수", () => {
+  it("지정 경로의 용량 미측정 게임만 세야 한다", async () => {
+    await seedGame(db, { path: "/lib-a/1", source: "/lib-a", sizeBytes: null });
+    await seedGame(db, { path: "/lib-a/2", source: "/lib-a", sizeBytes: 10 });
+    await seedGame(db, { path: "/lib-b/1", source: "/lib-b", sizeBytes: null });
+
+    expect(await countUnmeasuredSizeGames(["/lib-a"])).toBe(1);
+    expect(await countUnmeasuredSizeGames(["/lib-a", "/lib-b"])).toBe(2);
+  });
+
+  it("오프라인 라이브러리는 대소문자 무관하게 제외해야 한다", async () => {
+    await seedGame(db, { path: "/lib-a/1", source: "/lib-a", sizeBytes: null });
+    await seedGame(db, { path: "/LIB-B/1", source: "/LIB-B", sizeBytes: null });
+    vi.mocked(getOfflineLibraryPaths).mockReturnValue(["/lib-b"]);
+
+    expect(await countUnmeasuredSizeGames(["/lib-a", "/LIB-B"])).toBe(1);
+  });
+
+  it("빈 경로 목록이면 0을 반환해야 한다", async () => {
+    expect(await countUnmeasuredSizeGames([])).toBe(0);
   });
 });
 

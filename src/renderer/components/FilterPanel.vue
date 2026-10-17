@@ -553,6 +553,15 @@ function getSortButtonStyle(sortBy: SearchQuery["sortBy"]) {
           서클명
           <ArrowUpDown v-if="sortBy === 'maker'" :size="14" />
         </Button>
+        <Button
+          :class="getSortButtonStyle('size')"
+          size="sm"
+          variant="secondary"
+          @click="setSortBy('size')"
+        >
+          용량
+          <ArrowUpDown v-if="sortBy === 'size'" :size="14" />
+        </Button>
       </div>
       <Button
         variant="outline"

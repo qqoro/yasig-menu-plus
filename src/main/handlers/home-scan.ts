@@ -16,6 +16,7 @@ import { db } from "../db/db-manager.js";
 import type { IpcMainEventMap, IpcRendererEventMap } from "../events.js";
 import type { InsertGame, UpdateGame } from "../db/db.js";
 import { computeFingerprint } from "../lib/fingerprint.js";
+import { getGameSize } from "../lib/folder-size.js";
 import { classifyCandidate, type ExistingGameRow } from "../lib/scan-diff.js";
 import { EXECUTABLE_EXTENSIONS } from "../lib/scan-logic.js";
 import {
@@ -128,15 +129,17 @@ export async function scanFolder(
     // 전체 games를 1회 조회하여 경로 → 행 Map 구성
     // (source 무관 전체 조회: 라이브러리 간 게임 이동 감지용.
     //  필요한 컬럼만 선택하므로 1만 행 기준 수 MB/수 ms 수준)
-    const allGames: ExistingGameRow[] = await db("games").select(
-      "path",
-      "source",
-      "fingerprint",
-      "dirMtimeMs",
-      "hasExecutable",
-      "provider",
-      "externalId",
-    );
+    const allGames: Array<ExistingGameRow & { sizeBytes: number | null }> =
+      await db("games").select(
+        "path",
+        "source",
+        "fingerprint",
+        "dirMtimeMs",
+        "hasExecutable",
+        "provider",
+        "externalId",
+        "sizeBytes",
+      );
     const gameByPath = new Map(allGames.map((g) => [g.path, g]));
 
     // 스캔 전 DB에 있는 해당 라이브러리의 모든 게임 경로 (삭제 판정용)
@@ -165,6 +168,8 @@ export async function scanFolder(
       externalId: string | null;
       data: UpdateGame;
     }> = [];
+    // 변경 없음이지만 용량 미측정인 게임 (용량만 채움, updatedAt은 건드리지 않음)
+    const sizeUpdates: Array<{ path: string; sizeBytes: number }> = [];
     let skippedCount = 0;
 
     for (const candidate of candidates) {
@@ -179,6 +184,14 @@ export async function scanFolder(
       // 변경 없음: fingerprint 재계산과 UPDATE 모두 생략
       if (classification === "skip") {
         skippedCount++;
+        if (existing!.sizeBytes == null) {
+          const sizeBytes = await getGameSize(
+            fullPath,
+            Boolean(isCompressFile),
+          );
+          if (sizeBytes != null)
+            sizeUpdates.push({ path: fullPath, sizeBytes });
+        }
         continue;
       }
 
@@ -197,6 +210,7 @@ export async function scanFolder(
         fullPath,
         Boolean(isCompressFile),
       );
+      const sizeBytes = await getGameSize(fullPath, Boolean(isCompressFile));
 
       if (classification === "new") {
         inserts.push({
@@ -208,6 +222,7 @@ export async function scanFolder(
           hasExecutable: candidate.hasExecutable,
           fingerprint,
           dirMtimeMs: candidate.mtimeMs ?? null,
+          sizeBytes,
         });
       } else {
         // 변경: title은 정보 수집으로 변경된 값을 유지하고, originalTitle만 업데이트
@@ -224,6 +239,7 @@ export async function scanFolder(
             fingerprint: newFingerprint,
             hasExecutable: candidate.hasExecutable,
             dirMtimeMs: candidate.mtimeMs ?? null,
+            sizeBytes: sizeBytes ?? existing!.sizeBytes,
             updatedAt: new Date(),
           },
         });
@@ -262,6 +278,12 @@ export async function scanFolder(
           }
         }
         await trx("games").where("path", u.path).update(u.data);
+      }
+
+      for (const s of sizeUpdates) {
+        await trx("games")
+          .where("path", s.path)
+          .update({ sizeBytes: s.sizeBytes });
       }
     });
 
@@ -319,7 +341,7 @@ export async function scanFolder(
     updateLibraryScanHistory(sourcePath, Number(totalGames?.count ?? 0));
 
     log.info(
-      `스캔 완료 (${sourcePath}): 신규 ${addedCount}, 변경 ${updates.length}, 스킵 ${skippedCount}, 삭제 ${deletedCount}, ${Date.now() - startedAt}ms`,
+      `스캔 완료 (${sourcePath}): 신규 ${addedCount}, 변경 ${updates.length}, 스킵 ${skippedCount}(용량 측정 ${sizeUpdates.length}), 삭제 ${deletedCount}, ${Date.now() - startedAt}ms`,
     );
 
     return { addedCount, deletedCount };
@@ -403,6 +425,41 @@ export const refreshListHandler = wrapIpcHandler(
       addedCount: totalAdded,
       deletedCount: totalDeleted,
     };
+  },
+);
+
+/**
+ * 용량 미측정 게임 수 조회
+ * 오프라인 라이브러리는 재스캔해도 측정할 수 없으므로 제외
+ */
+export async function countUnmeasuredSizeGames(
+  sourcePaths: string[],
+): Promise<number> {
+  const offlinePaths = getOfflineLibraryPaths().map((p) => p.toLowerCase());
+  const targetPaths = sourcePaths.filter(
+    (p) => !offlinePaths.includes(p.toLowerCase()),
+  );
+  if (targetPaths.length === 0) return 0;
+
+  const row = (await db("games")
+    .whereIn("source", targetPaths)
+    .whereNull("sizeBytes")
+    .count("* as count")
+    .first()) as { count: number | bigint } | undefined;
+  return Number(row?.count ?? 0);
+}
+
+/**
+ * 용량 미측정 게임 수 조회 핸들러 (용량순 정렬 안내용)
+ */
+export const countUnmeasuredSizeHandler = wrapIpcHandler(
+  "countUnmeasuredSize",
+  async (
+    _event: IpcMainInvokeEvent,
+    payload: IpcRendererEventMap["countUnmeasuredSize"],
+  ): Promise<IpcMainEventMap["unmeasuredSizeCount"]> => {
+    const count = await countUnmeasuredSizeGames(payload.sourcePaths);
+    return { count };
   },
 );
 

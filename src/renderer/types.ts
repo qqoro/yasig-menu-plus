@@ -37,6 +37,7 @@ export interface GameItem {
   externalRating?: number | null; // 사이트 외부 평균 평점 (0-5)
   externalReviewCount?: number | null; // 사이트 외부 리뷰 수
   downloadCount?: number | null; // 사이트 다운로드/판매 수
+  sizeBytes?: number | null; // 게임 용량 (바이트, 미측정 시 null)
   totalPlayTime?: number; // 총 플레이 시간 (초)
   fileCreatedAt?: Date | null; // 파일 생성일 (파일 시스템)
   fileModifiedAt?: Date | null; // 파일 수정일 (파일 시스템)
@@ -97,7 +98,8 @@ export interface SearchQuery {
     | "externalRating"
     | "playTime"
     | "maker"
-    | "downloadCount";
+    | "downloadCount"
+    | "size";
   sortOrder?: "asc" | "desc";
   // 페이지네이션 파라미터
   offset?: number;

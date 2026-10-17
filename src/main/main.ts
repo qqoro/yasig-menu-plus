@@ -24,6 +24,7 @@ import {
   addLibraryPathHandler,
   autoScanLibraries,
   batchToggleGamesHandler,
+  countUnmeasuredSizeHandler,
   getAllLibraryScanHistoryHandler,
   getAutocompleteSuggestionsHandler,
   getExcludedExecutablesHandler,
@@ -269,6 +270,10 @@ function createWindow() {
 function registerIpcHandlers() {
   // ========== 게임 목록 관련 ==========
   ipcMain.handle(IpcRendererSend.RefreshList, refreshListHandler);
+  ipcMain.handle(
+    IpcRendererSend.CountUnmeasuredSize,
+    countUnmeasuredSizeHandler,
+  );
 
   // ========== 게임 실행 관련 ==========
   ipcMain.handle(IpcRendererSend.PlayGame, playGameHandler);

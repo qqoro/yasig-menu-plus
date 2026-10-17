@@ -48,6 +48,7 @@ describe("toGameSummary", () => {
       hasExecutable: true,
       executablePath: null,
       thumbnail: true,
+      sizeBytes: null,
     });
   });
 

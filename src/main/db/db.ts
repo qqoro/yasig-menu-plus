@@ -43,6 +43,7 @@ export interface Game extends Omit<TableBaseColumn, "createdAt" | "updatedAt"> {
   isCompressFile: SqliteBoolean;
   hasExecutable: SqliteBoolean; // 실행파일 존재 여부 (비게임 콘텐츠는 false)
   dirMtimeMs: number | null; // 게임 후보 경로의 mtime(ms) — 증분 스캔 판정용
+  sizeBytes: number | null; // 게임 폴더/압축파일 용량(바이트) — 미측정 시 null
   translatedTitle: string | null; // 번역된 제목
   translationSource: string | null; // 번역 출처 (ollama, google)
   translatedAt: Date | null; // 번역 시간

@@ -3,9 +3,8 @@
  */
 
 import type { IpcMainInvokeEvent } from "electron";
-import { readdir, stat } from "fs/promises";
-import { join } from "path";
 import { db } from "../db/db-manager.js";
+import { getFolderSize } from "../lib/folder-size.js";
 import type { DashboardStats, IpcMainEventMap } from "../events.js";
 import { buildTitleOrderParts, leftJoinUserGameData } from "./home-utils.js";
 import { toAbsolutePath } from "../utils/image-path.js";
@@ -391,35 +390,6 @@ export async function getDashboardStatsHandler(
 export async function getLibraryStorageSizeHandler(
   _event: IpcMainInvokeEvent,
 ): Promise<IpcMainEventMap["libraryStorageSize"]> {
-  async function getFolderSize(dirPath: string): Promise<number> {
-    let size = 0;
-    try {
-      const entries = await readdir(dirPath, { withFileTypes: true });
-      // 병렬로 처리하여 성능 개선
-      const results = await Promise.all(
-        entries.map(async (entry) => {
-          const fullPath = join(dirPath, entry.name);
-          if (entry.isDirectory()) {
-            return getFolderSize(fullPath);
-          } else if (entry.isFile()) {
-            try {
-              const fileStat = await stat(fullPath);
-              return fileStat.size;
-            } catch {
-              // 접근 불가 파일 무시
-              return 0;
-            }
-          }
-          return 0;
-        }),
-      );
-      size = results.reduce((sum, s) => sum + s, 0);
-    } catch {
-      // 접근 불가 디렉토리 무시
-    }
-    return size;
-  }
-
   const libraryPaths = getLibraryPaths();
   const libraries: Array<{ path: string; size: number; gameCount: number }> =
     [];

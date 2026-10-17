@@ -43,6 +43,7 @@ const SORT_BY = [
   "playTime",
   "maker",
   "downloadCount",
+  "size",
 ] as const;
 
 export const searchGamesInput = {

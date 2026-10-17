@@ -381,6 +381,40 @@ describe("searchGamesHandler — 정렬", () => {
     expect(result.games[0].title).toBe("New Game");
     expect(result.games[1].title).toBe("Old Game");
   });
+
+  it("size 정렬은 용량 순으로, 미측정 게임은 방향과 무관하게 뒤로 보내야 한다", async () => {
+    await seedGame(db, {
+      path: "/games/small",
+      title: "Small",
+      source: "/library/path",
+      sizeBytes: 100,
+    });
+    await seedGame(db, {
+      path: "/games/unknown",
+      title: "Unknown",
+      source: "/library/path",
+      sizeBytes: null,
+    });
+    await seedGame(db, {
+      path: "/games/big",
+      title: "Big",
+      source: "/library/path",
+      sizeBytes: 5_000_000_000,
+    });
+
+    const search = (sortOrder: "asc" | "desc") =>
+      searchGamesHandler(
+        {} as any,
+        makeSearchPayload({ searchQuery: { sortBy: "size", sortOrder } }),
+      );
+
+    const desc = await search("desc");
+    expect(desc.games.map((g) => g.title)).toEqual(["Big", "Small", "Unknown"]);
+    expect(desc.games[0].sizeBytes).toBe(5_000_000_000);
+
+    const asc = await search("asc");
+    expect(asc.games.map((g) => g.title)).toEqual(["Small", "Big", "Unknown"]);
+  });
 });
 
 // ============================================

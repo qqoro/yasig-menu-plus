@@ -27,6 +27,7 @@ export interface GameSummary {
   hasExecutable: boolean;
   executablePath: string | null;
   thumbnail: boolean; // 썸네일 유무
+  sizeBytes: number | null; // 게임 용량 (바이트, 미측정 시 null)
 }
 
 export interface GameDetailSummary extends GameSummary {
@@ -69,6 +70,7 @@ export function toGameSummary(game: GameItem): GameSummary {
     hasExecutable: game.hasExecutable,
     executablePath: game.executablePath,
     thumbnail: game.thumbnail !== null,
+    sizeBytes: game.sizeBytes ?? null,
   };
 }
 

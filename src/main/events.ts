@@ -39,6 +39,7 @@ export interface ListCheckPreviewInfo {
 export const enum IpcRendererSend {
   // 게임 목록 관련
   RefreshList = "refreshList", // 폴더 재스캔
+  CountUnmeasuredSize = "countUnmeasuredSize", // 용량 미측정 게임 수 조회
 
   // 게임 실행 관련
   PlayGame = "playGame",
@@ -420,6 +421,7 @@ export interface GameItem {
   externalRating?: number | null; // 사이트 외부 평균 평점 (0-5)
   externalReviewCount?: number | null; // 사이트 외부 리뷰 수
   downloadCount?: number | null; // 사이트 다운로드/판매 수
+  sizeBytes?: number | null; // 게임 용량 (바이트, 미측정 시 null)
   totalPlayTime?: number; // 총 플레이 시간 (초)
   sessionStartAt?: Date | null; // 현재 세션 시작 시간
   fileCreatedAt?: Date | null; // 파일 생성일 (파일 시스템)
@@ -501,7 +503,8 @@ export interface SearchQuery {
     | "externalRating"
     | "playTime"
     | "maker"
-    | "downloadCount";
+    | "downloadCount"
+    | "size";
   sortOrder?: "asc" | "desc";
   // 페이지네이션 파라미터
   offset?: number;
@@ -511,6 +514,7 @@ export interface SearchQuery {
 // Renderer → Main 페이로드
 export interface IpcRendererEventMap {
   refreshList: { sourcePaths: string[] };
+  countUnmeasuredSize: { sourcePaths: string[] };
   playGame: { path: string };
   detectRpgMaker: { path: string };
   playGameWithCheat: { path: string };
@@ -707,6 +711,7 @@ export interface IpcMainEventMap {
     addedCount: number;
     deletedCount: number;
   };
+  unmeasuredSizeCount: { count: number };
   message: { type: "info" | "success" | "error" | "warning"; message: string };
   windowMaximized: undefined;
   windowUnmaximized: undefined;

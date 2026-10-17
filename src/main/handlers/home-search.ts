@@ -186,6 +186,7 @@ export async function searchGames(
       "games.externalRating",
       "games.externalReviewCount",
       "games.downloadCount",
+      "games.sizeBytes",
       "games.isHidden",
       "games.provider",
       "games.externalId",
@@ -417,6 +418,10 @@ export async function searchGames(
       query = query.orderByRaw(
         "download_count IS NULL, download_count " + order,
       );
+      break;
+    case "size":
+      // 용량 순으로 정렬 (용량 미측정 게임은 뒤로)
+      query = query.orderByRaw("size_bytes IS NULL, size_bytes " + order);
       break;
     case "playTime":
       // 플레이 시간 순으로 정렬 (플레이 시간 없는 게임은 뒤로)

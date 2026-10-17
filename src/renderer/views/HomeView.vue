@@ -40,7 +40,10 @@ import {
   useAllInOneRefreshMutation,
   useLastRefreshed,
 } from "../composables/useAllInOneRefresh";
-import { useAutoScanListener } from "../composables/useGames";
+import {
+  useAutoScanListener,
+  useSizeSortNotice,
+} from "../composables/useGames";
 import { useGridLayout } from "../composables/useGridLayout";
 import { useHomeActions } from "../composables/useHomeActions";
 import { useHomeBatchActions } from "../composables/useHomeBatchActions";
@@ -77,6 +80,9 @@ const uiStore = useUIStore();
 
 // 자동 스캔 완료 리스너 (포커스/시작 시 스캔 후 캐시 무효화)
 useAutoScanListener();
+
+// 용량순 정렬 시 용량 미측정 게임 안내
+const { notifyUnmeasuredSize } = useSizeSortNotice();
 
 // 전체 동기화 composable
 const {
@@ -215,6 +221,9 @@ function updateFilters(newFilters: Partial<SearchQuery["filters"]>): void {
  */
 function updateSortBy(newSortBy: SearchQuery["sortBy"]): void {
   (searchState.sortBy.value as SearchQuery["sortBy"]) = newSortBy;
+  if (newSortBy === "size") {
+    void notifyUnmeasuredSize(activeLibraryPaths.value);
+  }
 }
 
 /**

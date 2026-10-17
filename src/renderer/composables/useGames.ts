@@ -54,6 +54,47 @@ export function useRefreshGames() {
 }
 
 /**
+ * 용량순 정렬 선택 시 용량 미측정 게임 안내 (토스트 + 스캔 버튼)
+ */
+export function useSizeSortNotice() {
+  const queryClient = useQueryClient();
+  const refreshGames = useRefreshGames();
+
+  async function notifyUnmeasuredSize(sourcePaths: string[]): Promise<void> {
+    const paths = [...sourcePaths];
+    if (paths.length === 0) return;
+
+    try {
+      const { count } = await queryClient.fetchQuery({
+        queryKey: [...queryKeys.games.all, "unmeasuredSize", paths],
+        queryFn: () =>
+          window.api.invoke("countUnmeasuredSize", { sourcePaths: paths }),
+        staleTime: 0,
+      });
+      if (count === 0) return;
+
+      toast.warning(`용량이 측정되지 않은 게임이 ${count}개 있습니다.`, {
+        description: "재스캔이 필요합니다.",
+        action: {
+          label: "스캔",
+          onClick: () => {
+            toast.promise(refreshGames.mutateAsync(paths), {
+              loading: "폴더 스캔 중...",
+              success: "스캔이 완료되었습니다.",
+              error: "스캔에 실패했습니다.",
+            });
+          },
+        },
+      });
+    } catch (err) {
+      log.error("용량 미측정 게임 수 조회 오류:", err);
+    }
+  }
+
+  return { notifyUnmeasuredSize };
+}
+
+/**
  * 게임 실행 Mutation (Vue Query 기반)
  */
 export function usePlayGame() {
