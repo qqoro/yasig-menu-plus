@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { FolderOpen, Loader2, Play, RefreshCw } from "lucide-vue-next";
+import {
+  FolderOpen,
+  Loader2,
+  Maximize2,
+  Play,
+  RefreshCw,
+} from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
 import { toast } from "vue-sonner";
 import { useRunCollector } from "../composables/useCollector";
@@ -29,6 +35,7 @@ import {
   DialogTitle,
 } from "./ui/dialog";
 import CheatPlayButton from "./CheatPlayButton.vue";
+import GameOverviewDialog from "./GameOverviewDialog.vue";
 
 interface Props {
   open?: boolean;
@@ -51,6 +58,9 @@ const emit = defineEmits<Emits>();
 
 // 컬렉터 실행 상태
 const isRunningCollector = ref(false);
+
+// 미리보기(오버뷰) 다이얼로그 — 상세 창 위에 겹쳐 열고, 닫으면 상세 창으로 복귀
+const overviewOpen = ref(false);
 
 // 자식 컴포넌트 refs
 const thumbnailRef = ref<InstanceType<typeof GameDetailThumbnail>>();
@@ -91,6 +101,10 @@ watch(
   (open) => {
     if (open && props.gamePath) {
       resetChildStates();
+    }
+    // 상세 창이 닫히면 미리보기도 함께 닫기
+    if (!open) {
+      overviewOpen.value = false;
     }
   },
 );
@@ -246,6 +260,14 @@ async function handleRunCollector() {
         <Button variant="outline" @click="closeDialog"> 닫기 </Button>
         <Button
           variant="secondary"
+          :disabled="!game"
+          @click="overviewOpen = true"
+        >
+          <Maximize2 :size="16" />
+          미리보기
+        </Button>
+        <Button
+          variant="secondary"
           :disabled="isRunningCollector"
           @click="handleRunCollector"
         >
@@ -268,4 +290,13 @@ async function handleRunCollector() {
       </DialogFooter>
     </DialogContent>
   </Dialog>
+
+  <!-- 미리보기 (실행 시 상세 창도 함께 닫힘) -->
+  <GameOverviewDialog
+    v-model:open="overviewOpen"
+    :game-path="gamePathRef"
+    @play="handlePlay"
+    @play-cheat="handlePlayCheat"
+    @open-folder="handleOpenFolder"
+  />
 </template>
