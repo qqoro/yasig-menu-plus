@@ -69,6 +69,11 @@ import {
   exportGameListHandler,
   getGameExportPreviewHandler,
 } from "./handlers/exportGameList.js";
+import {
+  checkGameListHandler,
+  fetchListCheckImageHandler,
+  fetchListCheckPreviewHandler,
+} from "./handlers/listCheck.js";
 import { registerCheatHandlers } from "./handlers/cheat.js";
 import {
   closeWindowHandler,
@@ -501,6 +506,17 @@ function registerIpcHandlers() {
   ipcMain.handle(
     IpcRendererSend.GetGameExportPreview,
     getGameExportPreviewHandler,
+  );
+
+  // ========== 목록 대조 ==========
+  ipcMain.handle(IpcRendererSend.CheckGameList, checkGameListHandler);
+  ipcMain.handle(
+    IpcRendererSend.FetchListCheckPreview,
+    fetchListCheckPreviewHandler,
+  );
+  ipcMain.handle(
+    IpcRendererSend.FetchListCheckImage,
+    fetchListCheckImageHandler,
   );
 
   // ========== GitHub 이슈 열기 ==========

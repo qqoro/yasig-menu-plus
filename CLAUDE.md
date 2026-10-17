@@ -116,6 +116,7 @@ yasig-menu-plus/
 │   │   │   ├── translation.ts     # Title translation
 │   │   │   ├── rename.ts          # Metadata-based bulk file rename
 │   │   │   ├── duplicates.ts      # Duplicate game detection
+│   │   │   ├── listCheck.ts       # Pasted work list vs library (owned check + remote preview)
 │   │   │   ├── dashboard.ts       # Statistics dashboard
 │   │   │   ├── cheat.ts           # RPG Maker cheat plugin injection
 │   │   │   ├── autoUpdate.ts      # In-app update
@@ -150,10 +151,10 @@ yasig-menu-plus/
 │       ├── App.vue        # Root component with custom titlebar
 │       ├── queryKeys.ts   # Centralized Vue Query cache key definitions
 │       ├── router/        # Vue Router configuration
-│       ├── views/         # HomeView, SettingsView, DashboardView, DuplicatesView, RenameView, HelpView
+│       ├── views/         # HomeView, SettingsView, DashboardView, DuplicatesView, RenameView, ListCheckView, HelpView
 │       ├── components/    # Reusable Vue components (shadcn-vue)
 │       ├── composables/   # Vue composables (IPC wrappers, state management)
-│       ├── stores/        # Pinia stores (uiStore: theme, sidebar, zoom)
+│       ├── stores/        # Pinia stores (uiStore: theme, sidebar, zoom / listCheckStore: list-check input & results)
 │       ├── types/         # Type definitions (api.ts: IPC API types)
 │       └── assets/        # Static resources
 ├── scripts/               # Build scripts (dev-server.js, build.js, license.js)
@@ -189,6 +190,7 @@ All IPC handlers are in `src/main/handlers/`, dynamically imported in `main.ts`.
   - `/dashboard` → DashboardView (play statistics)
   - `/duplicates` → DuplicatesView (duplicate game detection)
   - `/rename` → RenameView (metadata-based bulk rename)
+  - `/list-check` → ListCheckView (paste a work list, check which are already in the library)
   - `/help` → HelpView
 - Custom titlebar in `App.vue` with page-aware navigation
 
@@ -351,7 +353,7 @@ Tests are colocated (`*.test.ts` next to the module) and run against a **real in
   - Collector: `useCollector`, `useAllInOneRefresh`
   - Media: `useGameImages`, `useCleanThumbnails`, `useConvertImagesToWebp`, `useMigrateThumbnails`
   - Translation: `useTranslation`, `useTranslationSettings`
-  - Features: `usePlayTime`, `useDashboard`, `useDuplicates`, `useRename`, `useCheat`, `useChangelog`, `useAutoUpdate`
+  - Features: `usePlayTime`, `useDashboard`, `useDuplicates`, `useListCheck`, `useRename`, `useCheat`, `useChangelog`, `useAutoUpdate`
   - Home UI: `useHomeActions`, `useHomeBatchActions`, `useHomeKeyboard`, `useMultiSelect`, `useGridLayout`
   - Config: `useExcludedExecutables`
   - AI: `useMcpStatus`, `useExternalChangeListener`

@@ -11,6 +11,29 @@ import type {
   TitleDisplayMode,
 } from "./store.js";
 import type { ExportColumnId } from "./lib/export-columns.js";
+import type { ListCheckRow } from "./lib/list-check.js";
+
+/** 목록 대조 결과 한 줄 (표시용 코드·작품 페이지 URL 포함) */
+export interface ListCheckResultRow extends ListCheckRow {
+  /** 표시용 코드 (RJ01089692, ST1145360, GC1234, CE12-34) */
+  code: string | null;
+  /** 원본 작품 페이지 URL */
+  url: string | null;
+}
+
+/** 목록 대조 미리보기 정보 (컬렉터 조회 결과 / 보유 게임은 DB) */
+export interface ListCheckPreviewInfo {
+  title: string | null;
+  /** 사이트 평균 평점 (0-5) */
+  rating: number | null;
+  reviewCount: number | null;
+  /** 판매 수 (DLsite만) */
+  downloadCount: number | null;
+  /** ISO 문자열 */
+  publishDate: string | null;
+  makers: string[];
+  tags: string[];
+}
 
 // ========== Renderer → Main 이벤트 ==========
 export const enum IpcRendererSend {
@@ -157,6 +180,11 @@ export const enum IpcRendererSend {
   // 게임 목록 내보내기
   ExportGameList = "exportGameList",
   GetGameExportPreview = "getGameExportPreview",
+
+  // 목록 대조
+  CheckGameList = "checkGameList",
+  FetchListCheckPreview = "fetchListCheckPreview",
+  FetchListCheckImage = "fetchListCheckImage",
 
   // GitHub 이슈 열기
   OpenGitHubIssue = "openGitHubIssue",
@@ -652,6 +680,11 @@ export interface IpcRendererEventMap {
   exportGameList: { columns: ExportColumnId[]; includeHeader: boolean };
   getGameExportPreview: undefined;
 
+  // 목록 대조
+  checkGameList: { text: string };
+  fetchListCheckPreview: { provider: string; externalId: string };
+  fetchListCheckImage: { url: string };
+
   // GitHub 이슈 열기
   openGitHubIssue: undefined;
 
@@ -874,6 +907,17 @@ export interface IpcMainEventMap {
   // 게임 목록 내보내기
   gameListExported: { path: string } | null;
   exportPreviewLoaded: { games: GameItem[] };
+
+  // 목록 대조
+  gameListChecked: { rows: ListCheckResultRow[] };
+  listCheckPreviewFetched: {
+    /** 대표 이미지 data URL */
+    thumbnail: string | null;
+    /** 샘플 이미지 원본 URL (fetchListCheckImage로 받아옴) */
+    images: string[];
+    info: ListCheckPreviewInfo | null;
+  };
+  listCheckImageFetched: { dataUrl: string | null };
 
   // GitHub 이슈 열기
   gitHubIssueOpened: void;

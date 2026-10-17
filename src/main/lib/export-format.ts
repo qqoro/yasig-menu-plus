@@ -65,11 +65,18 @@ const PROVIDER_ID_PREFIX: Record<string, string> = {
 };
 
 /** 외부 ID → 공급자 프리픽스 부착 (dlsite/알 수 없는 공급자는 그대로) */
+export function formatExternalCode(
+  provider: string | null | undefined,
+  externalId: string,
+): string {
+  const prefix = provider ? PROVIDER_ID_PREFIX[provider] : undefined;
+  return prefix ? `${prefix}${externalId}` : externalId;
+}
+
 function externalIdCell(g: GameItem): string {
   const id = stringCell(g.externalId);
   if (!id) return "";
-  const prefix = g.provider ? PROVIDER_ID_PREFIX[g.provider] : undefined;
-  return prefix ? `${prefix}${id}` : id;
+  return formatExternalCode(g.provider, id);
 }
 
 type CellFormatter = (g: GameItem) => string;

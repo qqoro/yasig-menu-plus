@@ -9,6 +9,7 @@ import DuplicatesView from "../views/DuplicatesView.vue";
 import DashboardView from "../views/DashboardView.vue";
 import HelpView from "../views/HelpView.vue";
 import RenameView from "../views/RenameView.vue";
+import ListCheckView from "../views/ListCheckView.vue";
 
 const routes: RouteRecordRaw[] = [
   {
@@ -40,6 +41,11 @@ const routes: RouteRecordRaw[] = [
     path: "/rename",
     name: "rename",
     component: RenameView,
+  },
+  {
+    path: "/list-check",
+    name: "list-check",
+    component: ListCheckView,
   },
 ];
 

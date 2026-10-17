@@ -127,6 +127,11 @@ type IpcInvokeReturn = {
   exportGameList: IpcMainEventMap["gameListExported"];
   getGameExportPreview: IpcMainEventMap["exportPreviewLoaded"];
 
+  // 목록 대조
+  checkGameList: IpcMainEventMap["gameListChecked"];
+  fetchListCheckPreview: IpcMainEventMap["listCheckPreviewFetched"];
+  fetchListCheckImage: IpcMainEventMap["listCheckImageFetched"];
+
   // GitHub 이슈 열기
   openGitHubIssue: IpcMainEventMap["gitHubIssueOpened"];
 

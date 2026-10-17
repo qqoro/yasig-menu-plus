@@ -7,8 +7,9 @@ export const CienCollector: Collector = {
   getId: async (path) => {
     const id = /(?:CE|CIEN|CI-EN)(\d+-\d+|(creator)?\d+article\d+)/i
       .exec(path)?.[1]
-      ?.replace("creator", "")
-      .replace("article", "-");
+      // 정규식이 대소문자를 무시하므로 치환도 대소문자 무시 (CIENCREATOR1ARTICLE2 대응)
+      ?.replace(/creator/i, "")
+      .replace(/article/i, "-");
     return id;
   },
   fetchInfo: async ({ id }) => {

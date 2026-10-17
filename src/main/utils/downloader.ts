@@ -92,6 +92,17 @@ export async function downloadImage(
     return toRelativePath(filePath) ?? filePath;
   }
 
+  const buffer = await fetchImageBuffer(url);
+  const optimized = await optimizeImage(buffer);
+  await writeFile(filePath, optimized);
+  return toRelativePath(filePath) ?? filePath;
+}
+
+/**
+ * URL에서 이미지 원본 바이트를 받아온다 (저장하지 않음)
+ * @param url 이미지 URL (http/https)
+ */
+export function fetchImageBuffer(url: string): Promise<Buffer> {
   // URL 검증
   validateUrl(url);
 
@@ -113,16 +124,8 @@ export async function downloadImage(
 
         const chunks: Buffer[] = [];
         response.on("data", (chunk: Buffer) => chunks.push(chunk));
-        response.on("end", async () => {
-          try {
-            const buffer = Buffer.concat(chunks);
-            const optimized = await optimizeImage(buffer);
-            await writeFile(filePath, optimized);
-            resolve(toRelativePath(filePath) ?? filePath);
-          } catch (error) {
-            reject(error);
-          }
-        });
+        response.on("end", () => resolve(Buffer.concat(chunks)));
+        response.on("error", reject);
       },
     );
 
@@ -132,6 +135,17 @@ export async function downloadImage(
       reject(new Error("다운로드 타임아웃"));
     });
   });
+}
+
+/**
+ * 미리보기용 이미지 data URL 생성 (작게 줄인 WebP, 디스크에 저장하지 않음)
+ */
+export async function toPreviewDataUrl(buffer: Buffer): Promise<string> {
+  const webp = await sharp(buffer)
+    .resize(480, undefined, { fit: "inside", withoutEnlargement: true })
+    .webp({ quality: 75 })
+    .toBuffer();
+  return `data:image/webp;base64,${webp.toString("base64")}`;
 }
 
 /**

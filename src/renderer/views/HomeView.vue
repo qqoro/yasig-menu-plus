@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   CircleHelp,
+  ListChecks,
   Loader2,
   PanelLeftClose,
   PanelLeftOpen,
@@ -423,6 +424,17 @@ onMounted(() => {
               placeholder="검색어를 입력하세요 (예: tag:RPG circle:name)"
               class="flex-1"
             />
+
+            <!-- 보유 확인 — 작품 목록을 붙여넣어 여러 개를 한꺼번에 찾기 -->
+            <RouterLink to="/list-check" class="shrink-0">
+              <Button
+                variant="outline"
+                title="작품 목록을 붙여넣어 보유 여부 확인"
+              >
+                <ListChecks :size="16" />
+                보유 확인
+              </Button>
+            </RouterLink>
           </div>
 
           <!-- 검색 결과 정보 -->

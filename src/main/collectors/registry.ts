@@ -278,6 +278,16 @@ export async function saveInfo(path: string, info: CollectorResult) {
 }
 
 /**
+ * DB provider 값 → 컬렉터 매핑 (순서 = collectors 우선순위)
+ */
+export const PROVIDER_COLLECTORS: Record<string, Collector> = {
+  dlsite: DLSiteCollector,
+  steam: SteamCollector,
+  getchu: GetchuCollector,
+  cien: CienCollector,
+};
+
+/**
  * 제공자와 외부 ID로 원본 사이트 URL 생성
  */
 export function getCollectorUrl(
@@ -286,14 +296,6 @@ export function getCollectorUrl(
 ): string | null {
   if (!provider || !externalId) return null;
 
-  // Collector name과 DB provider 값 매핑 (대소문자 처리)
-  const collectorMap: Record<string, Collector> = {
-    dlsite: DLSiteCollector,
-    steam: SteamCollector,
-    getchu: GetchuCollector,
-    cien: CienCollector,
-  };
-
-  const collector = collectorMap[provider.toLowerCase()];
+  const collector = PROVIDER_COLLECTORS[provider.toLowerCase()];
   return collector?.getUrl?.(externalId) ?? null;
 }

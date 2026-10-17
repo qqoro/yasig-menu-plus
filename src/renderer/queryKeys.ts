@@ -197,4 +197,16 @@ export const queryKeys = {
     all: ["rename"] as const,
     preview: ["rename", "preview"] as const,
   },
+
+  /**
+   * 목록 대조 쿼리 키
+   */
+  listCheck: {
+    /** 미보유 작품 미리보기 (대표 이미지 + 샘플 이미지 목록 + 정보) */
+    preview: (provider: string, externalId: string) =>
+      ["listCheck", "preview", provider, externalId] as const,
+    /** 미보유 작품 샘플 이미지 한 장 */
+    image: (url: string | Ref<string | null>) =>
+      ["listCheck", "image", url] as const,
+  },
 } as const;
