@@ -854,7 +854,7 @@ export async function getAutocompleteSuggestionsHandler(
       }
       case "provider": {
         // 제공자는 고정값
-        const providers = ["dlsite", "steam", "getchu", "cien"];
+        const providers = ["dlsite", "steam", "getchu", "cien", "vndb"];
         suggestions = providers.filter((p) =>
           p.toLowerCase().startsWith(query.toLowerCase()),
         );

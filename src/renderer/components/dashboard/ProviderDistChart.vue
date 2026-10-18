@@ -20,6 +20,7 @@ const providerNames: Record<string, string> = {
   steam: "Steam",
   getchu: "Getchu",
   cien: "Ci-en",
+  vndb: "VNDB",
   unknown: "기타",
 };
 

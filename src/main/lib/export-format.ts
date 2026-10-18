@@ -62,6 +62,7 @@ const PROVIDER_ID_PREFIX: Record<string, string> = {
   steam: "ST",
   getchu: "GC",
   cien: "CE",
+  vndb: "v",
 };
 
 /** 외부 ID → 공급자 프리픽스 부착 (dlsite/알 수 없는 공급자는 그대로) */

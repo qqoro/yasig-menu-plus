@@ -27,6 +27,12 @@ const collectors = [
     description: "Ci-en",
     example: "CE1234 Creator Title",
   },
+  {
+    prefix: "v, vn",
+    description: "VNDB",
+    example: "v562 Game Title, vn4 Game Title",
+    note: "v는 숫자 2자리 이상, vn은 1자리부터 인식하며, 상위 폴더가 아닌 게임 폴더/파일 이름에서만 찾습니다. v1.02처럼 버전 표기로 보이는 것은 무시하고, 다른 사이트 접두어가 함께 있으면 그쪽을 우선합니다.",
+  },
 ];
 </script>
 
@@ -76,6 +82,11 @@ const collectors = [
             </div>
             <span class="text-muted-foreground text-xs"
               >예: {{ collector.example }}</span
+            >
+            <span
+              v-if="'note' in collector"
+              class="text-muted-foreground text-xs"
+              >{{ collector.note }}</span
             >
           </div>
         </div>

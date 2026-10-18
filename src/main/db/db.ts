@@ -30,7 +30,7 @@ export interface Game extends Omit<TableBaseColumn, "createdAt" | "updatedAt"> {
   source: string; // 라이브러리 경로
   thumbnail: string | null; // 썸네일 경로
   executablePath: string | null; // 실행 파일 경로 (직접 지정 시)
-  provider: string | null; // 제공자 (dlsite, steam, getchu, cien, null)
+  provider: string | null; // 제공자 (dlsite, steam, getchu, cien, vndb, null)
   externalId: string | null; // 외부 ID (RJ123456, Steam AppID 등)
   memo: string | null; // 메모
   publishDate: Date | null; // 발매일

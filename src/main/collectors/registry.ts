@@ -10,6 +10,7 @@ import { DLSiteCollector } from "./dlsite-collector.js";
 import { GetchuCollector } from "./getchu-collector.js";
 import { GoogleCollector } from "./google-collector.js";
 import { SteamCollector } from "./steam-collector.js";
+import { VndbCollector } from "./vndb-collector.js";
 
 const log = createLogger("Registry");
 
@@ -60,11 +61,14 @@ export interface Collector {
   getUrl?: (id: string) => string;
 }
 
+// 배열 순서 = 우선순위 (코드가 여럿 인식되면 앞쪽 컬렉터 사용)
+// VNDB는 v+숫자라 버전 표기와 겹칠 수 있어 맨 뒤
 export const collectors: Collector[] = [
   DLSiteCollector,
   SteamCollector,
   GetchuCollector,
   CienCollector,
+  VndbCollector,
 ];
 
 // Fallback 컬렉터: 다른 컬렉터가 정보를 찾지 못했을 때만 사용
@@ -285,6 +289,7 @@ export const PROVIDER_COLLECTORS: Record<string, Collector> = {
   steam: SteamCollector,
   getchu: GetchuCollector,
   cien: CienCollector,
+  vndb: VndbCollector,
 };
 
 /**

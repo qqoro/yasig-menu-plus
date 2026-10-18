@@ -349,6 +349,8 @@ const siteUrl = computed(() => {
       return `https://store.steampowered.com/app/${id}/`;
     case "getchu":
       return `https://www.getchu.com/item/${id}/`;
+    case "vndb":
+      return `https://vndb.org/v${id}`;
     default:
       return null;
   }

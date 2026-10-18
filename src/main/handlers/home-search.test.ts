@@ -468,7 +468,13 @@ describe("getAutocompleteSuggestionsHandler", () => {
       });
 
       // 빈 쿼리는 startsWith("") → 모든 항목 포함
-      expect(result.suggestions).toEqual(["dlsite", "steam", "getchu", "cien"]);
+      expect(result.suggestions).toEqual([
+        "dlsite",
+        "steam",
+        "getchu",
+        "cien",
+        "vndb",
+      ]);
     });
 
     it("매칭되는 제공자가 없으면 빈 배열을 반환해야 한다", async () => {

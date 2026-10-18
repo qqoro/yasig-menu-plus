@@ -68,6 +68,7 @@ const PROVIDER_OPTIONS = [
   { value: "steam", label: "Steam" },
   { value: "getchu", label: "Getchu" },
   { value: "cien", label: "Ci-en" },
+  { value: "vndb", label: "VNDB" },
 ] as const;
 
 // 현재 선택된 제공자의 표시 이름 (없으면 null)
@@ -216,7 +217,7 @@ function cycleExternalId(): void {
   }
 }
 
-// 제공자 필터 사이클 (전체 → DLSite → Steam → Getchu → Ci-en → 전체)
+// 제공자 필터 사이클 (전체 → DLSite → Steam → Getchu → Ci-en → VNDB → 전체)
 function cycleProvider(): void {
   const [selected] = filters.value.providers;
   const index = PROVIDER_OPTIONS.findIndex((o) => o.value === selected);

@@ -59,6 +59,7 @@ const collectors = [
   { prefix: "RJ, BJ, VJ", description: "DLSite" },
   { prefix: "GC, GETCHU", description: "Getchu" },
   { prefix: "CE, CIEN", description: "Ci-en" },
+  { prefix: "v, vn", description: "VNDB" },
 ];
 </script>
 

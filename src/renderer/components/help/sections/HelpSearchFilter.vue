@@ -210,7 +210,7 @@ const specialQueries = [
           </li>
           <li>
             <strong class="text-foreground">제공자</strong> → DLSite → Steam →
-            Getchu → Ci-en → 전체
+            Getchu → Ci-en → VNDB → 전체
           </li>
         </ul>
         <p class="text-muted-foreground mt-2 text-sm">

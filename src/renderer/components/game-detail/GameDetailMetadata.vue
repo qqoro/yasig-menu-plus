@@ -48,11 +48,14 @@ const translateTitle = useTranslateTitleMutation();
 // 번역 진행 상태
 const isTranslating = computed(() => translateTitle.isPending.value);
 
-// 발매일 포맷팅
+// 발매일 포맷팅 (로컬 날짜 기준 — 수집기는 로컬 자정으로 저장하므로 UTC로 바꾸면 하루 밀림)
 const formattedPublishDate = computed(() => {
   if (!props.game?.publishDate) return null;
   const date = new Date(props.game.publishDate);
-  return date.toISOString().split("T")[0]; // YYYY-MM-DD 형식
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 });
 
 // 포맷팅된 플레이 타임
@@ -134,8 +137,9 @@ async function savePublishDate() {
   if (!props.gamePath) return;
 
   try {
+    // "YYYY-MM-DD"만 넘기면 UTC 자정으로 해석되므로 시각을 붙여 로컬 자정으로 저장
     const date = editedPublishDate.value
-      ? new Date(editedPublishDate.value)
+      ? new Date(`${editedPublishDate.value}T00:00:00`)
       : null;
     await updateMetadata.mutateAsync({
       path: props.gamePath,

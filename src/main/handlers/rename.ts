@@ -150,6 +150,7 @@ const PROVIDER_ID_PREFIX: Record<string, string> = {
   steam: "ST",
   getchu: "GC",
   cien: "CE",
+  vndb: "v",
 };
 
 function toTemplateContext(game: GameWithRelations): TemplateContext {
