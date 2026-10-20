@@ -8,6 +8,7 @@
  */
 // ESM에서는 확장자 없는 서브패스를 해석하지 못하므로 node.js까지 명시한다
 import log from "electron-log/node.js";
+import { expandErrorsHook } from "../utils/log-error-format.js";
 import type { LogLevel } from "../utils/log-level.js";
 
 /**
@@ -33,6 +34,8 @@ export function initWorkerLogging(
   log.transports.console.level = level;
   log.transports.file.format =
     "[{y}-{m}-{d} {h}:{i}:{s}] [{level}] {scope} │ {text}";
+  // 메인 로거와 마찬가지로 Error 인자를 cause까지 펼친다
+  log.hooks.push(expandErrorsHook);
 
   const scoped = log.scope(scope);
   console.log = scoped.info;

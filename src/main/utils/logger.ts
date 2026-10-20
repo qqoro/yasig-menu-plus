@@ -13,6 +13,7 @@
  */
 import { app } from "electron";
 import log from "electron-log";
+import { expandErrorsHook } from "./log-error-format.js";
 import {
   DEFAULT_DEV_CONSOLE_LOG_LEVEL,
   moreVerboseLevel,
@@ -93,6 +94,11 @@ export function initLogging(): void {
     "[{y}-{m}-{d} {h}:{i}:{s}.{ms}] [{level}] {scope} │ {text}";
   log.transports.file.format =
     "[{y}-{m}-{d} {h}:{i}:{s}] [{level}] {scope} │ {text}";
+
+  // Error 인자가 stack 한 줄로 납작해지지 않도록 cause까지 펼친다
+  if (!log.hooks.includes(expandErrorsHook)) {
+    log.hooks.push(expandErrorsHook);
+  }
 
   // 렌더러 프로세스 로그를 메인 로그 파일로 모은다
   log.initialize();
