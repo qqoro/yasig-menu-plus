@@ -9,13 +9,18 @@ import { app, BrowserWindow, shell } from "electron";
 import pkg from "electron-updater";
 import { IpcMainSend } from "../events.js";
 import { createLogger } from "../utils/logger.js";
+import { changelogService } from "./ChangelogService.js";
 
 const { autoUpdater } = pkg;
 const log = createLogger("AutoUpdater");
 
+const RELEASES_PAGE_URL = "https://github.com/qqoro/yasig-menu-plus/releases";
+
 export class AutoUpdater {
   private mainWindow: BrowserWindow | null = null;
   private isPortable: boolean;
+  /** 포터블 업데이트 확인으로 찾은 새 버전의 릴리즈 페이지 */
+  private portableReleaseUrl: string | null = null;
 
   constructor() {
     this.isPortable = this.checkPortable();
@@ -99,8 +104,48 @@ export class AutoUpdater {
       return;
     }
 
+    // 포터블 빌드에는 app-update.yml이 없어 electron-updater가 항상 실패한다
+    if (this.isPortable) {
+      await this.checkPortableUpdate();
+      return;
+    }
+
     try {
       await autoUpdater.checkForUpdates();
+    } catch (error) {
+      log.error("업데이트 확인 실패:", error);
+      this.send(IpcMainSend.UpdateError, {
+        error: error instanceof Error ? error.message : "알 수 없는 오류",
+      });
+    }
+  }
+
+  /**
+   * 포터블 버전 업데이트 확인 (GitHub Releases API로 새 버전만 비교)
+   */
+  private async checkPortableUpdate(): Promise<void> {
+    log.info("업데이트 확인 중... (포터블)");
+    this.send(IpcMainSend.UpdateChecking);
+
+    try {
+      const [latest] = await changelogService.fetchReleasesAfterVersion(
+        app.getVersion(),
+      );
+
+      if (!latest) {
+        log.info("업데이트 없음: 최신 버전입니다.");
+        this.send(IpcMainSend.UpdateNotAvailable);
+        return;
+      }
+
+      this.portableReleaseUrl = latest.htmlUrl;
+      log.info(`업데이트 있음: ${latest.version}`);
+      this.send(IpcMainSend.UpdateAvailable, {
+        // electron-updater와 같은 형식 (v 접두사 없음)
+        version: latest.version.replace(/^v/, ""),
+        releaseDate: latest.publishedAt,
+        isPortable: true,
+      });
     } catch (error) {
       log.error("업데이트 확인 실패:", error);
       this.send(IpcMainSend.UpdateError, {
@@ -115,11 +160,9 @@ export class AutoUpdater {
    */
   async downloadUpdate(): Promise<void> {
     if (this.isPortable) {
-      // 포터블: GitHub Releases 페이지 열기
+      // 포터블: 확인된 새 버전의 릴리즈 페이지, 없으면 릴리즈 목록 열기
       log.debug("포터블 버전: GitHub Releases 페이지 열기");
-      await shell.openExternal(
-        "https://github.com/qqoro/yasig-menu-plus/releases",
-      );
+      await shell.openExternal(this.portableReleaseUrl ?? RELEASES_PAGE_URL);
       return;
     }
 

@@ -223,6 +223,33 @@ describe("ChangelogService", () => {
     });
   });
 
+  describe("fetchReleasesAfterVersion", () => {
+    it("현재 버전 이후 릴리즈를 반환한다", async () => {
+      const releases = [makeRelease("v1.2.0"), makeRelease("v1.0.0")];
+      vi.stubGlobal("fetch", mockFetchSuccess(releases));
+
+      const result = await service.fetchReleasesAfterVersion("1.0.0");
+
+      expect(result.map((r) => r.version)).toEqual(["v1.2.0"]);
+    });
+
+    it("fetch 실패 시 빈 배열 대신 에러를 던진다", async () => {
+      vi.stubGlobal("fetch", mockFetchNetworkError());
+
+      await expect(service.fetchReleasesAfterVersion("1.0.0")).rejects.toThrow(
+        "Network error",
+      );
+    });
+
+    it("response.ok가 false이면 에러를 던진다", async () => {
+      vi.stubGlobal("fetch", mockFetchError(403));
+
+      await expect(service.fetchReleasesAfterVersion("1.0.0")).rejects.toThrow(
+        "GitHub API error: 403",
+      );
+    });
+  });
+
   describe("getRecentReleases", () => {
     it("limit만큼만 반환한다", async () => {
       const releases = [
@@ -399,6 +426,43 @@ describe("ChangelogService", () => {
       vi.stubGlobal("fetch", mockFetchSuccess(releases));
 
       const result = await service.getReleasesAfterVersion("1.0.0");
+
+      expect(result).toHaveLength(0);
+    });
+
+    it("pre-release 사용자에게 같은 버전의 정식 릴리즈를 포함한다 (1.25.0 > 1.25.0-beta.1)", async () => {
+      const releases = [
+        makeRelease("v1.25.0"),
+        makeRelease("v1.25.0-beta.1", { prerelease: true }),
+        makeRelease("v1.24.0"),
+      ];
+      vi.stubGlobal("fetch", mockFetchSuccess(releases));
+
+      const result = await service.getReleasesAfterVersion("1.25.0-beta.1");
+
+      expect(result.map((r) => r.version)).toEqual(["v1.25.0"]);
+    });
+
+    it("pre-release 번호가 높은 릴리즈를 포함한다 (beta.10 > beta.2)", async () => {
+      const releases = [
+        makeRelease("v1.25.0-beta.10", { prerelease: true }),
+        makeRelease("v1.25.0-beta.2", { prerelease: true }),
+      ];
+      vi.stubGlobal("fetch", mockFetchSuccess(releases));
+
+      const result = await service.getReleasesAfterVersion("1.25.0-beta.2");
+
+      expect(result.map((r) => r.version)).toEqual(["v1.25.0-beta.10"]);
+    });
+
+    it("pre-release는 이전 정식 릴리즈보다 높다 (1.25.0-beta.1 > 1.24.0)", async () => {
+      const releases = [
+        makeRelease("v1.25.0-beta.1", { prerelease: true }),
+        makeRelease("v1.24.0"),
+      ];
+      vi.stubGlobal("fetch", mockFetchSuccess(releases));
+
+      const result = await service.getReleasesAfterVersion("1.25.0-beta.1");
 
       expect(result).toHaveLength(0);
     });
