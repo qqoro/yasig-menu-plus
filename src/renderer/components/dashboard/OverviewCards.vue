@@ -143,12 +143,19 @@ defineProps<Props>();
       <CardContent class="flex items-start justify-between p-4">
         <div>
           <p class="text-muted-foreground text-xs font-medium">저장공간</p>
-          <p
-            v-if="!isStorageLoading && storageInfo"
-            class="mt-1 text-2xl font-bold tabular-nums"
-          >
-            {{ formatBytes(storageInfo.totalSize) }}
-          </p>
+          <template v-if="!isStorageLoading && storageInfo">
+            <p class="mt-1 text-2xl font-bold tabular-nums">
+              {{ formatBytes(storageInfo.totalSize) }}
+            </p>
+            <!-- 용량 미측정 게임은 합계에 빠져 있다 (전체 동기화 시 측정됨) -->
+            <p
+              v-if="storageInfo.unmeasuredCount > 0"
+              class="text-muted-foreground/70 mt-1 text-xs"
+            >
+              {{ storageInfo.unmeasuredCount }}개 용량 미측정 · 전체 동기화가
+              필요합니다
+            </p>
+          </template>
           <Loader2
             v-else
             :size="24"

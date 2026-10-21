@@ -4,7 +4,6 @@
 
 import type { IpcMainInvokeEvent } from "electron";
 import { db } from "../db/db-manager.js";
-import { getFolderSize } from "../lib/folder-size.js";
 import type { DashboardStats, IpcMainEventMap } from "../events.js";
 import { buildTitleOrderParts, leftJoinUserGameData } from "./home-utils.js";
 import { toAbsolutePath } from "../utils/image-path.js";
@@ -386,31 +385,47 @@ export async function getDashboardStatsHandler(
   };
 }
 
-/** 라이브러리 저장공간 조회 핸들러 */
+/**
+ * 라이브러리 저장공간 조회 핸들러
+ *
+ * 디스크를 다시 훑지 않고 스캔 때 저장해 둔 games.size_bytes를 합산한다.
+ * 폴더 전체 stat은 파일이 많으면 수십 초 동안 다른 파일 작업까지 막는다.
+ */
 export async function getLibraryStorageSizeHandler(
   _event: IpcMainInvokeEvent,
 ): Promise<IpcMainEventMap["libraryStorageSize"]> {
   const libraryPaths = getLibraryPaths();
-  const libraries: Array<{ path: string; size: number; gameCount: number }> =
-    [];
+  if (libraryPaths.length === 0) {
+    return { totalSize: 0, unmeasuredCount: 0, libraries: [] };
+  }
 
-  // 각 라이브러리 병렬 처리
-  const libraryResults = await Promise.all(
-    libraryPaths.map(async (libPath) => {
-      const [size, gameCountRow] = await Promise.all([
-        getFolderSize(libPath),
-        db("games").where("source", libPath).count("path as count").first(),
-      ]);
-      return {
-        path: libPath,
-        size,
-        gameCount: (gameCountRow as any)?.count ?? 0,
-      };
-    }),
-  );
-  libraries.push(...libraryResults);
+  // count(컬럼)은 NULL을 세지 않으므로 측정된 게임 수가 된다
+  const rows = (await db("games")
+    .whereIn("source", libraryPaths)
+    .groupBy("source")
+    .select("source")
+    .sum("sizeBytes as size")
+    .count("path as gameCount")
+    .count("sizeBytes as measuredCount")) as unknown as Array<{
+    source: string;
+    size: number | null;
+    gameCount: number;
+    measuredCount: number;
+  }>;
+  const rowBySource = new Map(rows.map((row) => [row.source, row]));
+
+  let unmeasuredCount = 0;
+  const libraries = libraryPaths.map((libPath) => {
+    const row = rowBySource.get(libPath);
+    unmeasuredCount += row ? row.gameCount - row.measuredCount : 0;
+    return {
+      path: libPath,
+      size: row?.size ?? 0,
+      gameCount: row?.gameCount ?? 0,
+    };
+  });
 
   const totalSize = libraries.reduce((sum, lib) => sum + lib.size, 0);
 
-  return { totalSize, libraries };
+  return { totalSize, unmeasuredCount, libraries };
 }

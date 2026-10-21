@@ -47,7 +47,7 @@ vi.mock("../store.js", () => ({
     titleDisplayPriority: ["translated", "collected", "original"],
   })),
   getExcludedExecutables: () => [],
-  getLibraryPaths: () => [],
+  getLibraryPaths: vi.fn(() => []),
   getScanDepth: () => 5,
   DEFAULT_TITLE_DISPLAY_PRIORITY: ["translated", "collected", "original"],
   addExcludedExecutable: vi.fn(),
@@ -80,8 +80,11 @@ vi.mock("../db/db-manager.js", () => ({
 }));
 
 // 모킹 후 import
-import { getDashboardStatsHandler } from "./dashboard.js";
-import { getTranslationSettings } from "../store.js";
+import {
+  getDashboardStatsHandler,
+  getLibraryStorageSizeHandler,
+} from "./dashboard.js";
+import { getLibraryPaths, getTranslationSettings } from "../store.js";
 import type { TitleDisplayMode } from "../store.js";
 
 const mockGetTranslationSettings = vi.mocked(getTranslationSettings);
@@ -1064,6 +1067,72 @@ describe("getDashboardStatsHandler", () => {
         expect(row!.totalSeconds).toBe(exp.totalSeconds);
         expect(row!.sessionCount).toBe(exp.sessionCount);
       }
+    });
+  });
+});
+
+describe("getLibraryStorageSizeHandler", () => {
+  const mockGetLibraryPaths = vi.mocked(getLibraryPaths);
+
+  afterEach(() => {
+    mockGetLibraryPaths.mockReturnValue([]);
+  });
+
+  it("라이브러리별로 DB에 저장된 게임 용량을 합산한다", async () => {
+    mockGetLibraryPaths.mockReturnValue(["/lib-a", "/lib-b"]);
+    await seedGame(db, { path: "/lib-a/g1", source: "/lib-a", sizeBytes: 100 });
+    await seedGame(db, { path: "/lib-a/g2", source: "/lib-a", sizeBytes: 250 });
+    await seedGame(db, { path: "/lib-b/g3", source: "/lib-b", sizeBytes: 50 });
+
+    const result = await getLibraryStorageSizeHandler(fakeEvent);
+
+    expect(result).toEqual({
+      totalSize: 400,
+      unmeasuredCount: 0,
+      libraries: [
+        { path: "/lib-a", size: 350, gameCount: 2 },
+        { path: "/lib-b", size: 50, gameCount: 1 },
+      ],
+    });
+  });
+
+  it("용량을 측정하지 않은 게임은 합계에서 빼고 개수로 알린다", async () => {
+    mockGetLibraryPaths.mockReturnValue(["/lib-a"]);
+    await seedGame(db, { path: "/lib-a/g1", source: "/lib-a", sizeBytes: 100 });
+    await seedGame(db, {
+      path: "/lib-a/g2",
+      source: "/lib-a",
+      sizeBytes: null,
+    });
+    await seedGame(db, {
+      path: "/lib-a/g3",
+      source: "/lib-a",
+      sizeBytes: null,
+    });
+
+    const result = await getLibraryStorageSizeHandler(fakeEvent);
+
+    expect(result.totalSize).toBe(100);
+    expect(result.unmeasuredCount).toBe(2);
+    expect(result.libraries).toEqual([
+      { path: "/lib-a", size: 100, gameCount: 3 },
+    ]);
+  });
+
+  it("게임이 없는 라이브러리도 0으로 포함하고, 등록되지 않은 경로의 게임은 제외한다", async () => {
+    mockGetLibraryPaths.mockReturnValue(["/lib-empty"]);
+    await seedGame(db, {
+      path: "/removed/g1",
+      source: "/removed",
+      sizeBytes: 999,
+    });
+
+    const result = await getLibraryStorageSizeHandler(fakeEvent);
+
+    expect(result).toEqual({
+      totalSize: 0,
+      unmeasuredCount: 0,
+      libraries: [{ path: "/lib-empty", size: 0, gameCount: 0 }],
     });
   });
 });

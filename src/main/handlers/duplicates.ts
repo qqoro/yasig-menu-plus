@@ -331,6 +331,9 @@ export async function findDuplicatesHandler(
  * 삭제 대상:
  * - DB: games, gameMakers, gameCategories, gameTags, gameImages, playSessions
  * - 파일: 게임 폴더/파일, 썸네일, 이미지
+ *
+ * 휴지통 이동을 먼저 하고 성공한 게임만 DB에서 지운다.
+ * 순서가 반대면 이동에 실패했을 때 폴더는 남았는데 목록에서만 사라진다.
  */
 export async function deleteGamesHandler(
   _event: IpcMainInvokeEvent,
@@ -339,45 +342,57 @@ export async function deleteGamesHandler(
   const { paths } = payload;
 
   if (paths.length === 0) {
-    return { deletedCount: 0 };
+    return { deletedCount: 0, failed: [] };
   }
 
-  // 삭제 전 썸네일 및 이미지 경로 조회
   const gamesToDelete = await db("games")
     .whereIn("path", paths)
-    .select("path", "thumbnail", "isCompressFile");
+    .select("path", "thumbnail");
 
-  const thumbnailsToDelete = gamesToDelete
+  // 1. 실제 파일을 휴지통으로 이동 (복원 가능). 이미 없는 경로는 성공으로 본다
+  const trashed: typeof gamesToDelete = [];
+  const failed: IpcMainEventMap["gamesDeleted"]["failed"] = [];
+  for (const game of gamesToDelete) {
+    try {
+      if (await pathExists(game.path)) {
+        await shell.trashItem(game.path);
+      }
+      trashed.push(game);
+    } catch (error) {
+      log.error(`게임 폴더 삭제 실패: ${game.path}`, error);
+      failed.push({
+        path: game.path,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  if (trashed.length === 0) {
+    return { deletedCount: 0, failed };
+  }
+
+  const trashedPaths = trashed.map((g) => g.path);
+
+  // 2. DB 삭제 전에 썸네일 및 이미지 경로 조회
+  const thumbnailsToDelete = trashed
     .map((g) => g.thumbnail)
     .filter((t): t is string => t !== null);
 
   const imagesToDelete = await db("gameImages")
-    .whereIn("gamePath", paths)
+    .whereIn("gamePath", trashedPaths)
     .pluck("path");
 
-  // 관계 데이터 삭제 (CASCADE로 자동 삭제되지만 명시적으로)
-  await db("gameMakers").whereIn("gamePath", paths).delete();
-  await db("gameCategories").whereIn("gamePath", paths).delete();
-  await db("gameTags").whereIn("gamePath", paths).delete();
-  await db("gameImages").whereIn("gamePath", paths).delete();
+  // 3. 관계 데이터 삭제 (CASCADE로 자동 삭제되지만 명시적으로)
+  await db("gameMakers").whereIn("gamePath", trashedPaths).delete();
+  await db("gameCategories").whereIn("gamePath", trashedPaths).delete();
+  await db("gameTags").whereIn("gamePath", trashedPaths).delete();
+  await db("gameImages").whereIn("gamePath", trashedPaths).delete();
   // playSessions는 user_game_data에 속하므로 보존
 
   // 게임 레코드 삭제
-  const deletedCount = await db("games").whereIn("path", paths).delete();
+  const deletedCount = await db("games").whereIn("path", trashedPaths).delete();
 
-  // 실제 파일 삭제 (휴지통으로 이동)
-  for (const game of gamesToDelete) {
-    try {
-      if (await pathExists(game.path)) {
-        // 휴지통으로 이동 (복원 가능)
-        shell.trashItem(game.path);
-      }
-    } catch (error) {
-      log.error(`게임 폴더 삭제 실패: ${game.path}`, error);
-    }
-  }
-
-  // 썸네일 및 이미지 파일 삭제 (상대 경로를 절대 경로로 변환)
+  // 4. 썸네일 및 이미지 파일 삭제 (상대 경로를 절대 경로로 변환)
   for (const thumbnail of thumbnailsToDelete) {
     await deleteImage(toAbsolutePath(thumbnail) ?? thumbnail);
   }
@@ -385,5 +400,5 @@ export async function deleteGamesHandler(
     await deleteImage(toAbsolutePath(imagePath) ?? imagePath);
   }
 
-  return { deletedCount };
+  return { deletedCount, failed };
 }

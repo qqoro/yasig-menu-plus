@@ -1,6 +1,7 @@
 import type { Knex } from "knex";
 import {
   afterAll,
+  afterEach,
   beforeAll,
   beforeEach,
   describe,
@@ -525,5 +526,113 @@ describe("deleteGamesHandler — 파일 시스템 삭제", () => {
     });
 
     expect(shell.trashItem).not.toHaveBeenCalled();
+  });
+
+  it("경로가 없으면 휴지통 이동 없이 DB에서만 삭제한다", async () => {
+    const { access } = await import("fs/promises");
+    vi.mocked(access).mockRejectedValue(new Error("ENOENT"));
+
+    await seedGame(db, {
+      path: "/games/gone",
+      title: "Gone",
+      originalTitle: "사라진 게임",
+      source: "/lib",
+    });
+
+    const result = await deleteGamesHandler({} as any, {
+      paths: ["/games/gone"],
+    });
+
+    expect(result).toEqual({ deletedCount: 1, failed: [] });
+    expect(await db("games").where("path", "/games/gone").first()).toBe(
+      undefined,
+    );
+  });
+});
+
+// ============================================
+// deleteGamesHandler — 휴지통 이동 실패
+// ============================================
+describe("deleteGamesHandler — 휴지통 이동 실패", () => {
+  beforeEach(async () => {
+    const { access } = await import("fs/promises");
+    vi.mocked(access).mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    // clearAllMocks는 구현을 지우지 않으므로 다른 테스트로 새지 않게 초기화
+    vi.mocked(shell.trashItem).mockReset();
+  });
+
+  it("휴지통 이동에 실패한 게임은 DB와 썸네일을 남기고 실패 목록으로 알린다", async () => {
+    vi.mocked(shell.trashItem).mockRejectedValueOnce(
+      new Error("Failed to perform delete operation"),
+    );
+    await seedGame(db, {
+      path: "/games/locked",
+      title: "Locked",
+      originalTitle: "잠긴 게임",
+      source: "/lib",
+      thumbnail: "thumb-locked.webp",
+    });
+    await seedGameTag(db, "/games/locked", "rpg");
+    await seedGameImage(db, "/games/locked", "locked-1.webp", 0);
+
+    const result = await deleteGamesHandler({} as any, {
+      paths: ["/games/locked"],
+    });
+
+    expect(result).toEqual({
+      deletedCount: 0,
+      failed: [
+        {
+          path: "/games/locked",
+          message: "Failed to perform delete operation",
+        },
+      ],
+    });
+    expect(await db("games").where("path", "/games/locked").first()).toEqual(
+      expect.objectContaining({ path: "/games/locked" }),
+    );
+    expect(
+      await db("gameTags").where("gamePath", "/games/locked").select(),
+    ).toHaveLength(1);
+    expect(
+      await db("gameImages").where("gamePath", "/games/locked").select(),
+    ).toHaveLength(1);
+    expect(deleteImage).not.toHaveBeenCalled();
+  });
+
+  it("일부만 실패하면 성공한 게임만 삭제한다", async () => {
+    vi.mocked(shell.trashItem).mockImplementation(async (path: string) => {
+      if (path === "/games/fail") {
+        throw new Error("Failed to perform delete operation");
+      }
+    });
+    await seedGame(db, {
+      path: "/games/ok",
+      title: "OK",
+      originalTitle: "성공",
+      source: "/lib",
+      thumbnail: "thumb-ok.webp",
+    });
+    await seedGame(db, {
+      path: "/games/fail",
+      title: "Fail",
+      originalTitle: "실패",
+      source: "/lib",
+      thumbnail: "thumb-fail.webp",
+    });
+
+    const result = await deleteGamesHandler({} as any, {
+      paths: ["/games/ok", "/games/fail"],
+    });
+
+    expect(result.deletedCount).toBe(1);
+    expect(result.failed.map((f) => f.path)).toEqual(["/games/fail"]);
+    const remaining = await db("games").pluck("path");
+    expect(remaining).toEqual(["/games/fail"]);
+    expect(deleteImage).toHaveBeenCalledWith("/absolute/thumb-ok.webp");
+    expect(deleteImage).not.toHaveBeenCalledWith("/absolute/thumb-fail.webp");
   });
 });

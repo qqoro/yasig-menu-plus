@@ -883,7 +883,11 @@ export interface IpcMainEventMap {
 
   // 중복 게임 관리
   duplicatesFound: { groups: DuplicateGroup[] };
-  gamesDeleted: { deletedCount: number };
+  gamesDeleted: {
+    deletedCount: number;
+    /** 휴지통 이동에 실패해 삭제하지 않은 게임 */
+    failed: { path: string; message: string }[];
+  };
 
   // 체인지로그 관련
   changelogResult: {
@@ -1031,6 +1035,8 @@ export interface DashboardStats {
 
 export interface LibraryStorageInfo {
   totalSize: number;
+  /** 용량을 아직 측정하지 않아 합계에 빠진 게임 수 */
+  unmeasuredCount: number;
   libraries: Array<{
     path: string;
     size: number;
