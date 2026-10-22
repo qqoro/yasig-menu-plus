@@ -186,7 +186,8 @@ export class AutoUpdater {
     }
 
     log.info("업데이트 설치를 위해 앱 재시작...");
-    autoUpdater.quitAndInstall();
+    // 설치 마법사 없이 이전 경로에 조용히 설치하고, 설치가 끝나면 앱을 다시 실행
+    autoUpdater.quitAndInstall(true, true);
   }
 
   /**
