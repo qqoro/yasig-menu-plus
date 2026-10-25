@@ -207,6 +207,9 @@ function createWindow() {
 
   // 브라우저 단축키 처리
   mainWindow.webContents.on("before-input-event", (event, input) => {
+    // keyUp은 무시: 다른 창(탐색기 등)을 Ctrl+W로 닫으면 포커스가 넘어온 뒤
+    // 떼는 입력만 이 창에 도착해 앱까지 닫히던 문제 방지
+    if (input.type !== "keyDown") return;
     const key = input.key.toLowerCase();
     // Ctrl + R: 페이지 새로고침
     if (key === "r" && (input.control || input.meta)) {
