@@ -65,6 +65,7 @@ vi.mock("fs/promises", async (importOriginal) => {
   return {
     ...actual,
     access: vi.fn(() => Promise.resolve()),
+    rm: vi.fn(() => Promise.resolve()),
     stat: vi.fn(() =>
       Promise.resolve({
         birthtime: new Date(),
@@ -634,5 +635,63 @@ describe("deleteGamesHandler — 휴지통 이동 실패", () => {
     expect(remaining).toEqual(["/games/fail"]);
     expect(deleteImage).toHaveBeenCalledWith("/absolute/thumb-ok.webp");
     expect(deleteImage).not.toHaveBeenCalledWith("/absolute/thumb-fail.webp");
+  });
+});
+
+// ============================================
+// deleteGamesHandler — 영구 삭제 (휴지통 없는 네트워크 드라이브용)
+// ============================================
+describe("deleteGamesHandler — 영구 삭제", () => {
+  beforeEach(async () => {
+    const { access, rm } = await import("fs/promises");
+    vi.mocked(access).mockResolvedValue(undefined);
+    vi.mocked(rm).mockReset();
+    vi.mocked(rm).mockResolvedValue(undefined);
+  });
+
+  it("permanent면 휴지통 대신 폴더를 직접 지우고 DB에서도 삭제한다", async () => {
+    const { rm } = await import("fs/promises");
+    await seedGame(db, {
+      path: "//nas/games/remote",
+      title: "Remote",
+      originalTitle: "원격 게임",
+      source: "//nas/games",
+    });
+
+    const result = await deleteGamesHandler({} as any, {
+      paths: ["//nas/games/remote"],
+      permanent: true,
+    });
+
+    expect(rm).toHaveBeenCalledWith("//nas/games/remote", { recursive: true });
+    expect(shell.trashItem).not.toHaveBeenCalled();
+    expect(result).toEqual({ deletedCount: 1, failed: [] });
+    expect(await db("games").where("path", "//nas/games/remote").first()).toBe(
+      undefined,
+    );
+  });
+
+  it("영구 삭제에 실패하면 DB를 남기고 실패 목록으로 알린다", async () => {
+    const { rm } = await import("fs/promises");
+    vi.mocked(rm).mockRejectedValueOnce(new Error("EBUSY: resource busy"));
+    await seedGame(db, {
+      path: "//nas/games/busy",
+      title: "Busy",
+      originalTitle: "사용 중",
+      source: "//nas/games",
+    });
+
+    const result = await deleteGamesHandler({} as any, {
+      paths: ["//nas/games/busy"],
+      permanent: true,
+    });
+
+    expect(result).toEqual({
+      deletedCount: 0,
+      failed: [{ path: "//nas/games/busy", message: "EBUSY: resource busy" }],
+    });
+    expect(await db("games").where("path", "//nas/games/busy").first()).toEqual(
+      expect.objectContaining({ path: "//nas/games/busy" }),
+    );
   });
 });

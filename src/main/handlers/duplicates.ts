@@ -7,7 +7,7 @@
  */
 
 import { shell } from "electron";
-import { stat, access } from "fs/promises";
+import { stat, access, rm } from "fs/promises";
 import type { IpcMainInvokeEvent } from "electron";
 import { db } from "../db/db-manager.js";
 import type {
@@ -334,12 +334,15 @@ export async function findDuplicatesHandler(
  *
  * 휴지통 이동을 먼저 하고 성공한 게임만 DB에서 지운다.
  * 순서가 반대면 이동에 실패했을 때 폴더는 남았는데 목록에서만 사라진다.
+ *
+ * permanent가 true면 휴지통 없이 영구 삭제한다.
+ * 네트워크 드라이브(SMB)에는 휴지통이 없어 trashItem이 실패하므로 그 대안으로 쓴다.
  */
 export async function deleteGamesHandler(
   _event: IpcMainInvokeEvent,
   payload: IpcRendererEventMap["deleteGames"],
 ): Promise<IpcMainEventMap["gamesDeleted"]> {
-  const { paths } = payload;
+  const { paths, permanent = false } = payload;
 
   if (paths.length === 0) {
     return { deletedCount: 0, failed: [] };
@@ -355,7 +358,11 @@ export async function deleteGamesHandler(
   for (const game of gamesToDelete) {
     try {
       if (await pathExists(game.path)) {
-        await shell.trashItem(game.path);
+        if (permanent) {
+          await rm(game.path, { recursive: true });
+        } else {
+          await shell.trashItem(game.path);
+        }
       }
       trashed.push(game);
     } catch (error) {

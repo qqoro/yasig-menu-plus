@@ -666,7 +666,8 @@ export interface IpcRendererEventMap {
 
   // 중복 게임 관리
   findDuplicates: undefined;
-  deleteGames: { paths: string[] };
+  // permanent: 휴지통을 거치지 않고 영구 삭제 (네트워크 드라이브 등 휴지통 이동 실패 시)
+  deleteGames: { paths: string[]; permanent?: boolean };
 
   // 체인지로그 관련
   getChangelog: {
