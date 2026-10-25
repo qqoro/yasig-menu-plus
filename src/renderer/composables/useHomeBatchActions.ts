@@ -2,6 +2,7 @@ import { ref } from "vue";
 import { toast } from "vue-sonner";
 import { createLogger } from "../lib/logger";
 import { useDeleteGames } from "./useDuplicates";
+import { usePermanentDelete } from "./usePermanentDelete";
 import type { GameItem } from "../types";
 import type { SearchState } from "./useSearch";
 import type { UseMultiSelectReturn } from "./useMultiSelect";
@@ -18,6 +19,7 @@ export function useHomeBatchActions({
   multiSelect,
 }: UseHomeBatchActionsOptions) {
   const deleteGamesMutation = useDeleteGames();
+  const { permanentDelete } = usePermanentDelete();
   const showBatchDeleteConfirm = ref(false);
 
   /**
@@ -65,7 +67,10 @@ export function useHomeBatchActions({
     if (paths.length === 0) return;
 
     try {
-      await deleteGamesMutation.mutateAsync(paths);
+      await deleteGamesMutation.mutateAsync({
+        paths,
+        permanent: permanentDelete.value,
+      });
       multiSelect.clearSelection();
     } catch (err) {
       log.error("배치 삭제 실패:", err);

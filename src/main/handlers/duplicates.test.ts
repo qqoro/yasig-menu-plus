@@ -706,6 +706,7 @@ describe("deleteGamesHandler — 휴지통 이동 실패", () => {
       failed: [
         {
           path: "/games/locked",
+          title: "Locked",
           message: "Failed to perform delete operation",
         },
       ],
@@ -806,7 +807,13 @@ describe("deleteGamesHandler — 영구 삭제", () => {
 
     expect(result).toEqual({
       deletedCount: 0,
-      failed: [{ path: "//nas/games/busy", message: "EBUSY: resource busy" }],
+      failed: [
+        {
+          path: "//nas/games/busy",
+          title: "Busy",
+          message: "EBUSY: resource busy",
+        },
+      ],
     });
     expect(await db("games").where("path", "//nas/games/busy").first()).toEqual(
       expect.objectContaining({ path: "//nas/games/busy" }),

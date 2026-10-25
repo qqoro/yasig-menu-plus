@@ -26,8 +26,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog";
+import PermanentDeleteCheckbox from "../components/PermanentDeleteCheckbox.vue";
 import { Switch } from "../components/ui/switch";
 import { useDeleteGames, useDuplicates } from "../composables/useDuplicates";
+import { usePermanentDelete } from "../composables/usePermanentDelete";
 import { useLibraryPaths } from "../composables/useSettings";
 import {
   DUPLICATE_CRITERIA,
@@ -73,6 +75,7 @@ const {
   refetch,
 } = useDuplicates(searchOptions);
 const deleteGamesMutation = useDeleteGames();
+const { permanentDelete } = usePermanentDelete();
 
 // 선택된 게임 경로들
 const selectedPaths = ref<Set<string>>(new Set());
@@ -127,7 +130,10 @@ async function confirmDelete() {
 
   isDeleting.value = true;
   try {
-    await deleteGamesMutation.mutateAsync([...selectedPaths.value]);
+    await deleteGamesMutation.mutateAsync({
+      paths: [...selectedPaths.value],
+      permanent: permanentDelete.value,
+    });
     selectedPaths.value.clear();
     showDeleteDialog.value = false;
   } finally {
@@ -443,16 +449,23 @@ const selectedGames = computed(() => {
         >
           <p class="text-destructive flex items-start gap-2 text-sm">
             <AlertTriangle class="mt-0.5 h-4 w-4 flex-shrink-0" />
-            <span>
+            <span v-if="permanentDelete">
+              <strong>주의사항:</strong><br />
+              • 게임 폴더와 내부 모든 파일이 <strong>영구 삭제</strong>됩니다.
+              복구할 수 없습니다.<br />
+              • 썸네일과 이미지도 함께 삭제됩니다. 플레이 기록은 보존됩니다.
+            </span>
+            <span v-else>
               <strong>주의사항:</strong><br />
               • 게임 폴더와 내부 모든 파일이 휴지통으로 이동합니다.<br />
-              • 이 작업은 되돌릴 수 없습니다 (휴지통 복구 제외).<br />
-              • 네트워크 드라이브처럼 휴지통이 없는 위치는 영구 삭제할지 다시
-              묻습니다.<br />
-              • 썸네일, 플레이 기록도 함께 삭제됩니다.
+              • 네트워크 드라이브처럼 휴지통이 없는 위치는 삭제되지 않고 따로
+              알려 드립니다.<br />
+              • 썸네일과 이미지도 함께 삭제됩니다. 플레이 기록은 보존됩니다.
             </span>
           </p>
         </div>
+
+        <PermanentDeleteCheckbox />
 
         <DialogFooter>
           <Button variant="outline" @click="showDeleteDialog = false">
@@ -464,7 +477,7 @@ const selectedGames = computed(() => {
             @click="confirmDelete"
           >
             <Loader2 v-if="isDeleting" class="mr-2 h-4 w-4 animate-spin" />
-            삭제
+            {{ permanentDelete ? "영구 삭제" : "삭제" }}
           </Button>
         </DialogFooter>
       </DialogContent>

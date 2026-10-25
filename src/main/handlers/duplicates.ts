@@ -367,7 +367,7 @@ export async function deleteGamesHandler(
 
   const gamesToDelete = await db("games")
     .whereIn("path", paths)
-    .select("path", "thumbnail");
+    .select("path", "thumbnail", "title");
 
   // 1. 실제 파일을 휴지통으로 이동 (복원 가능). 이미 없는 경로는 성공으로 본다
   const trashed: typeof gamesToDelete = [];
@@ -386,6 +386,7 @@ export async function deleteGamesHandler(
       log.error(`게임 폴더 삭제 실패: ${game.path}`, error);
       failed.push({
         path: game.path,
+        title: game.title,
         message: error instanceof Error ? error.message : String(error),
       });
     }

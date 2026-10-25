@@ -7,6 +7,7 @@ import { toast, Toaster } from "vue-sonner";
 import BotBlockDialog from "./components/BotBlockDialog.vue";
 import { Button } from "./components/ui/button";
 import ChangelogDialog from "./components/ChangelogDialog.vue";
+import DeleteFailureDialog from "./components/DeleteFailureDialog.vue";
 import HelpDialog from "./components/HelpDialog.vue";
 import { initializeTheme } from "./composables/useTheme";
 import { useViewedHelpCards } from "./composables/useHelpRedDot";
@@ -326,6 +327,9 @@ onUnmounted(() => {
       v-model:open="showBotBlockDialog"
       :game-title="botBlockGameTitle"
     />
+
+    <!-- 게임 삭제 실패 다이얼로그 (홈·중복 화면 공용) -->
+    <DeleteFailureDialog />
   </div>
 </template>
 

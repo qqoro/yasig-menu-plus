@@ -5,6 +5,7 @@ import { useAddExcludedExecutable } from "./useExcludedExecutables";
 import { useOpenOriginalSite } from "./useGameDetail";
 import { useOpenFolder, usePlayGame } from "./useGames";
 import { useDeleteGames } from "./useDuplicates";
+import { usePermanentDelete } from "./usePermanentDelete";
 import { usePlayGameWithCheat } from "./useCheat";
 import type { GameItem } from "../types";
 import type { SearchState } from "./useSearch";
@@ -21,6 +22,7 @@ export function useHomeActions({ searchState }: UseHomeActionsOptions) {
   const openFolderMutation = useOpenFolder();
   const openOriginalSite = useOpenOriginalSite();
   const deleteGamesMutation = useDeleteGames();
+  const { permanentDelete } = usePermanentDelete();
   const cheatPlayMutation = usePlayGameWithCheat();
 
   // 치트 모드 실행 중 여부
@@ -184,7 +186,10 @@ export function useHomeActions({ searchState }: UseHomeActionsOptions) {
     deleteTargetGame.value = null;
 
     try {
-      await deleteGamesMutation.mutateAsync([path]);
+      await deleteGamesMutation.mutateAsync({
+        paths: [path],
+        permanent: permanentDelete.value,
+      });
     } catch (err) {
       log.error("게임 삭제 실패:", err);
     }

@@ -16,6 +16,7 @@ import GameDetailDialog from "../components/GameDetailDialog.vue";
 import GameGridSection from "../components/GameGridSection.vue";
 import GameOverviewDialog from "../components/GameOverviewDialog.vue";
 import HomeToolbar from "../components/HomeToolbar.vue";
+import PermanentDeleteCheckbox from "../components/PermanentDeleteCheckbox.vue";
 import SearchBar from "../components/SearchBar.vue";
 import {
   AlertDialog,
@@ -49,6 +50,7 @@ import { useHomeActions } from "../composables/useHomeActions";
 import { useHomeBatchActions } from "../composables/useHomeBatchActions";
 import { useHomeKeyboard } from "../composables/useHomeKeyboard";
 import { useMultiSelect } from "../composables/useMultiSelect";
+import { usePermanentDelete } from "../composables/usePermanentDelete";
 import { useRandomSelect } from "../composables/useRandomSelect";
 import { useSearch } from "../composables/useSearch";
 import {
@@ -144,6 +146,7 @@ const games = computed(() => searchState.games.value);
 
 // 다중 선택 상태 관리
 const multiSelect = useMultiSelect(games);
+const { permanentDelete } = usePermanentDelete();
 const totalCount = computed(() => searchState.totalCount.value);
 const specialOnlyTotalCount = computed(
   () => searchState.specialOnlyTotalCount.value,
@@ -584,17 +587,22 @@ onMounted(() => {
               deleteTargetGame?.title ?? deleteTargetGame?.originalTitle
             }}</span>
             <br />
-            게임 폴더가 휴지통으로 이동되며, 썸네일과 이미지도 삭제됩니다.
+            {{
+              permanentDelete
+                ? "게임 폴더가 영구 삭제되어 복구할 수 없으며, 썸네일과 이미지도 삭제됩니다."
+                : "게임 폴더가 휴지통으로 이동되며, 썸네일과 이미지도 삭제됩니다."
+            }}
             플레이 기록은 보존됩니다.
           </AlertDialogDescription>
         </AlertDialogHeader>
+        <PermanentDeleteCheckbox />
         <AlertDialogFooter>
           <AlertDialogCancel>취소</AlertDialogCancel>
           <AlertDialogAction
             class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             @click="handleDeleteConfirm"
           >
-            삭제
+            {{ permanentDelete ? "영구 삭제" : "삭제" }}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -608,17 +616,22 @@ onMounted(() => {
             {{ multiSelect.selectedCount.value }}개의 게임을 삭제하시겠습니까?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            선택한 게임의 폴더가 휴지통으로 이동되며, 썸네일과 이미지도
-            삭제됩니다. 플레이 기록은 보존됩니다.
+            {{
+              permanentDelete
+                ? "선택한 게임의 폴더가 영구 삭제되어 복구할 수 없으며, 썸네일과 이미지도 삭제됩니다."
+                : "선택한 게임의 폴더가 휴지통으로 이동되며, 썸네일과 이미지도 삭제됩니다."
+            }}
+            플레이 기록은 보존됩니다.
           </AlertDialogDescription>
         </AlertDialogHeader>
+        <PermanentDeleteCheckbox />
         <AlertDialogFooter>
           <AlertDialogCancel>취소</AlertDialogCancel>
           <AlertDialogAction
             class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             @click="handleBatchDeleteConfirm"
           >
-            삭제
+            {{ permanentDelete ? "영구 삭제" : "삭제" }}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -892,8 +892,8 @@ export interface IpcMainEventMap {
   duplicatesFound: { groups: DuplicateGroup[] };
   gamesDeleted: {
     deletedCount: number;
-    /** 휴지통 이동에 실패해 삭제하지 않은 게임 */
-    failed: { path: string; message: string }[];
+    /** 휴지통 이동(또는 영구 삭제)에 실패해 삭제하지 않은 게임 */
+    failed: { path: string; title: string; message: string }[];
   };
 
   // 체인지로그 관련
