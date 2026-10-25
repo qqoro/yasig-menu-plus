@@ -456,6 +456,12 @@ export interface DuplicateGroup {
   games: GameItem[]; // 그룹 내 게임 목록
 }
 
+// 중복 검사 범위·기준 (생략 시 전체 라이브러리, 모든 기준)
+export interface DuplicateSearchOptions {
+  excludedSources?: string[]; // 검사에서 뺄 라이브러리 경로
+  criteria?: DuplicateGroup["type"][]; // 사용할 중복 기준
+}
+
 // 리네임 미리보기 아이템
 export interface RenamePreviewItem {
   path: string;
@@ -665,7 +671,7 @@ export interface IpcRendererEventMap {
   setAutoUpdateSettings: { settings: { checkOnStartup: boolean } };
 
   // 중복 게임 관리
-  findDuplicates: undefined;
+  findDuplicates: DuplicateSearchOptions;
   // permanent: 휴지통을 거치지 않고 영구 삭제 (네트워크 드라이브 등 휴지통 이동 실패 시)
   deleteGames: { paths: string[]; permanent?: boolean };
 

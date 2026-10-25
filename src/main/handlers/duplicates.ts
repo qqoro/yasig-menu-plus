@@ -12,6 +12,7 @@ import type { IpcMainInvokeEvent } from "electron";
 import { db } from "../db/db-manager.js";
 import type {
   DuplicateGroup,
+  DuplicateSearchOptions,
   GameItem,
   IpcMainEventMap,
   IpcRendererEventMap,
@@ -181,12 +182,28 @@ async function buildGameItems(
  * 1. provider + externalId 동일
  * 2. fingerprint 동일 (같은 실행파일 구성)
  * 3. originalTitle 정확히 일치
+ *
+ * 앞 기준에서 묶인 게임은 뒤 기준에서 제외한다.
+ * 기준을 끄면 그 기준으로 묶였을 게임이 다음 기준에서 검사된다.
+ * excludedSources에 든 라이브러리의 게임은 아예 비교 대상에서 뺀다.
  */
-export async function findDuplicates(): Promise<
-  IpcMainEventMap["duplicatesFound"]
-> {
+export async function findDuplicates(
+  options: DuplicateSearchOptions = {},
+): Promise<IpcMainEventMap["duplicatesFound"]> {
+  const { excludedSources = [], criteria } = options;
+  const enabled = new Set<DuplicateGroup["type"]>(
+    criteria ?? ["externalId", "fingerprint", "originalTitle"],
+  );
+  if (enabled.size === 0) {
+    return { groups: [] };
+  }
+
   // 모든 게임 조회 (숨김 포함)
-  const games = await leftJoinUserGameData(db("games"))
+  let query = leftJoinUserGameData(db("games"));
+  if (excludedSources.length > 0) {
+    query = query.whereNotIn("games.source", excludedSources);
+  }
+  const games = await query
     .select(
       "games.path",
       "games.title",
@@ -231,7 +248,7 @@ export async function findDuplicates(): Promise<
   // 1. provider + externalId 기준 그룹화
   const externalIdGroups = new Map<string, GameItem[]>();
   for (const game of gameItems) {
-    if (game.provider && game.externalId) {
+    if (enabled.has("externalId") && game.provider && game.externalId) {
       const key = `${game.provider}:${game.externalId}`;
       if (!externalIdGroups.has(key)) {
         externalIdGroups.set(key, []);
@@ -268,7 +285,7 @@ export async function findDuplicates(): Promise<
   const fingerprintGroups = new Map<string, GameItem[]>();
   for (const game of gameItems) {
     const fp = fingerprintByPath.get(game.path);
-    if (!processedPaths.has(game.path) && fp) {
+    if (enabled.has("fingerprint") && !processedPaths.has(game.path) && fp) {
       if (!fingerprintGroups.has(fp)) {
         fingerprintGroups.set(fp, []);
       }
@@ -292,7 +309,7 @@ export async function findDuplicates(): Promise<
   // 3. originalTitle 기준 그룹화 (이미 처리된 경로 제외)
   const titleGroups = new Map<string, GameItem[]>();
   for (const game of gameItems) {
-    if (!processedPaths.has(game.path)) {
+    if (enabled.has("originalTitle") && !processedPaths.has(game.path)) {
       const key = game.originalTitle;
       if (!titleGroups.has(key)) {
         titleGroups.set(key, []);
@@ -320,9 +337,9 @@ export async function findDuplicates(): Promise<
  */
 export async function findDuplicatesHandler(
   _event: IpcMainInvokeEvent,
-  _payload: IpcRendererEventMap["findDuplicates"],
+  payload: IpcRendererEventMap["findDuplicates"],
 ): Promise<IpcMainEventMap["duplicatesFound"]> {
-  return findDuplicates();
+  return findDuplicates(payload ?? {});
 }
 
 /**

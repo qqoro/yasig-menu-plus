@@ -365,6 +365,124 @@ describe("findDuplicatesHandler — 관계 데이터", () => {
 });
 
 // ============================================
+// findDuplicatesHandler — 검사 범위·기준 옵션
+// ============================================
+describe("findDuplicatesHandler — 검사 옵션", () => {
+  it("excludedSources의 라이브러리 게임은 비교 대상에서 빠진다", async () => {
+    await seedGame(db, {
+      path: "/lib-a/x",
+      title: "X",
+      originalTitle: "같은 폴더명",
+      source: "/lib-a",
+    });
+    await seedGame(db, {
+      path: "/lib-b/x",
+      title: "X",
+      originalTitle: "같은 폴더명",
+      source: "/lib-b",
+    });
+
+    const all = await findDuplicatesHandler({} as any, {});
+    expect(all.groups).toHaveLength(1);
+
+    const scoped = await findDuplicatesHandler({} as any, {
+      excludedSources: ["/lib-b"],
+    });
+    expect(scoped.groups).toHaveLength(0);
+  });
+
+  it("서로 다른 라이브러리끼리도 중복으로 묶인다", async () => {
+    await seedGame(db, {
+      path: "/lib-a/y",
+      title: "Y",
+      originalTitle: "Y",
+      source: "/lib-a",
+      fingerprint: "fp-same",
+    });
+    await seedGame(db, {
+      path: "/lib-b/y-copy",
+      title: "Y copy",
+      originalTitle: "Y 사본",
+      source: "/lib-b",
+      fingerprint: "fp-same",
+    });
+
+    const result = await findDuplicatesHandler({} as any, {
+      excludedSources: ["/lib-c"],
+    });
+
+    expect(result.groups).toHaveLength(1);
+    expect(result.groups[0].type).toBe("fingerprint");
+  });
+
+  it("criteria에 없는 기준으로는 묶지 않는다", async () => {
+    await seedGame(db, {
+      path: "/games/p",
+      title: "P",
+      originalTitle: "P",
+      source: "/lib",
+      provider: "dlsite",
+      externalId: "RJ000001",
+    });
+    await seedGame(db, {
+      path: "/games/q",
+      title: "Q",
+      originalTitle: "Q",
+      source: "/lib",
+      provider: "dlsite",
+      externalId: "RJ000001",
+    });
+
+    const result = await findDuplicatesHandler({} as any, {
+      criteria: ["fingerprint", "originalTitle"],
+    });
+
+    expect(result.groups).toHaveLength(0);
+  });
+
+  it("앞 기준을 끄면 그 게임들이 다음 기준으로 검사된다", async () => {
+    // 코드도 같고 폴더명도 같은 두 게임: 기본은 코드 그룹, 코드를 끄면 폴더명 그룹
+    for (const path of ["/games/r1", "/games/r2"]) {
+      await seedGame(db, {
+        path,
+        title: "R",
+        originalTitle: "같은 이름",
+        source: "/lib",
+        provider: "dlsite",
+        externalId: "RJ000002",
+      });
+    }
+
+    const byDefault = await findDuplicatesHandler({} as any, {});
+    expect(byDefault.groups.map((g) => g.type)).toEqual(["externalId"]);
+
+    const withoutCode = await findDuplicatesHandler({} as any, {
+      criteria: ["originalTitle"],
+    });
+    expect(withoutCode.groups.map((g) => g.type)).toEqual(["originalTitle"]);
+  });
+
+  it("기준을 모두 끄면 빈 결과", async () => {
+    await seedGame(db, {
+      path: "/games/s1",
+      title: "S",
+      originalTitle: "S",
+      source: "/lib",
+    });
+    await seedGame(db, {
+      path: "/games/s2",
+      title: "S",
+      originalTitle: "S",
+      source: "/lib",
+    });
+
+    const result = await findDuplicatesHandler({} as any, { criteria: [] });
+
+    expect(result.groups).toHaveLength(0);
+  });
+});
+
+// ============================================
 // deleteGamesHandler — 게임 삭제
 // ============================================
 describe("deleteGamesHandler — 게임 삭제", () => {

@@ -115,3 +115,11 @@ export interface DuplicateGroup {
   provider?: string | null; // externalId 타입인 경우 제공자
   games: GameItem[]; // 그룹 내 게임 목록
 }
+
+/**
+ * 중복 검사 범위·기준
+ */
+export interface DuplicateSearchOptions {
+  excludedSources?: string[]; // 검사에서 뺄 라이브러리 경로
+  criteria?: DuplicateGroup["type"][]; // 사용할 중복 기준
+}

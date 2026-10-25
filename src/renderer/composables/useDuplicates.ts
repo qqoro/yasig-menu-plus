@@ -5,22 +5,34 @@
  * - 선택한 게임 삭제
  */
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/vue-query";
+import type { Ref } from "vue";
 import { toast } from "vue-sonner";
-import type { DuplicateGroup } from "../types";
+import type { DuplicateGroup, DuplicateSearchOptions } from "../types";
 import { queryKeys } from "../queryKeys";
 
 /**
  * 중복 게임 그룹 조회 Query
  */
-export function useDuplicates() {
+export function useDuplicates(options: Ref<DuplicateSearchOptions>) {
   return useQuery({
-    queryKey: queryKeys.duplicates.all,
+    queryKey: queryKeys.duplicates.search(options),
     queryFn: async (): Promise<DuplicateGroup[]> => {
-      const result = await window.api.invoke("findDuplicates");
+      // reactive 프록시는 IPC로 복제되지 않으므로 평범한 객체로 풀어서 보냄
+      const result = await window.api.invoke("findDuplicates", {
+        excludedSources: [...(options.value.excludedSources ?? [])],
+        criteria: [...(options.value.criteria ?? [])],
+      });
       return (result as { groups: DuplicateGroup[] }).groups;
     },
     staleTime: 1000 * 60 * 5, // 5분
+    // 옵션을 바꾸는 동안 이전 결과를 유지해 화면이 로딩으로 깜빡이지 않게 함
+    placeholderData: keepPreviousData,
   });
 }
 

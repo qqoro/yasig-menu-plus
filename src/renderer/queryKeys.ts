@@ -4,7 +4,7 @@
  */
 
 import type { Ref } from "vue";
-import type { SearchQuery } from "./types";
+import type { DuplicateSearchOptions, SearchQuery } from "./types";
 
 export const queryKeys = {
   /**
@@ -150,6 +150,8 @@ export const queryKeys = {
    */
   duplicates: {
     all: ["duplicates"] as const,
+    search: (options: DuplicateSearchOptions | Ref<DuplicateSearchOptions>) =>
+      ["duplicates", options] as const,
   },
 
   /**
