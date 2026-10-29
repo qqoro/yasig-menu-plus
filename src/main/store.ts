@@ -29,6 +29,14 @@ export interface McpSettings {
 }
 
 export const MCP_DEFAULT_PORT = 38210;
+
+/**
+ * 태그 숨기기 설정 (스포일러 방지, 표시에서만 제외)
+ */
+export interface HiddenTagSettings {
+  hideAll: boolean; // 모든 태그 숨기기
+  tags: string[]; // 숨길 태그 이름 목록 (정확히 일치)
+}
 export const MCP_PORT_MIN = 1024;
 export const MCP_PORT_MAX = 65535;
 
@@ -92,6 +100,7 @@ export interface StoreSchema {
   viewedHelpCards?: string[]; // 사용자가 본 도움말 카드 ID 목록
   lastRenameTemplate?: string;
   mcpSettings?: McpSettings; // AI 연동(MCP 서버) 설정
+  hiddenTagSettings?: HiddenTagSettings; // 태그 숨기기 설정
 }
 
 /**
@@ -140,6 +149,7 @@ const DEFAULTS: StoreSchema = {
   viewedHelpCards: [],
   lastRenameTemplate: "[{externalId}] {title}",
   mcpSettings: { enabled: false, port: MCP_DEFAULT_PORT },
+  hiddenTagSettings: { hideAll: false, tags: [] },
 };
 
 /**
@@ -475,6 +485,7 @@ export function getAllSettings(): StoreSchema {
     viewedHelpCards: store.get("viewedHelpCards"),
     lastRenameTemplate: store.get("lastRenameTemplate"),
     mcpSettings: store.get("mcpSettings"),
+    hiddenTagSettings: store.get("hiddenTagSettings"),
   };
 }
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Plus, X } from "lucide-vue-next";
-import { ref } from "vue";
+import { ChevronRight, Plus, X } from "lucide-vue-next";
+import { computed, ref } from "vue";
 import { toast } from "vue-sonner";
 import {
   useAddCategory,
@@ -10,6 +10,7 @@ import {
   useRemoveMaker,
   useRemoveTag,
 } from "../../composables/useGameDetail";
+import { useHiddenTags } from "../../composables/useHiddenTags";
 import type { GameDetailItem } from "../../types";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -33,6 +34,13 @@ const addCategory = useAddCategory();
 const removeCategory = useRemoveCategory();
 const addTag = useAddTag();
 const removeTag = useRemoveTag();
+
+// 태그 숨기기: 숨긴 태그는 접힘 영역 안에서만 보여준다.
+// 접힘 버튼은 숨긴 태그가 없는 게임에도 똑같이 표시해, 버튼 유무로 스포일러가 새지 않게 한다.
+const { hideAll, visibleTags, hiddenTags } = useHiddenTags();
+const shownTags = computed(() => visibleTags(props.game?.tags));
+const concealedTags = computed(() => hiddenTags(props.game?.tags));
+const showHiddenTags = ref(false);
 
 // 제작사 추가
 async function handleAddMaker() {
@@ -161,6 +169,7 @@ function resetState() {
   newMaker.value = "";
   newCategory.value = "";
   newTag.value = "";
+  showHiddenTags.value = false;
 }
 
 defineExpose({ resetState });
@@ -234,7 +243,7 @@ defineExpose({ resetState });
     <label class="text-muted-foreground text-sm font-medium">태그</label>
     <div class="mt-1 flex flex-wrap gap-2">
       <span
-        v-for="tag in game?.tags"
+        v-for="tag in shownTags"
         :key="tag"
         class="bg-muted flex items-center gap-1 rounded-md px-2 py-1 text-sm"
       >
@@ -256,6 +265,49 @@ defineExpose({ resetState });
         <Button size="icon" @click="handleAddTag">
           <Plus :size="16" />
         </Button>
+      </div>
+    </div>
+
+    <!-- 숨긴 태그 (태그 숨기기 설정) -->
+    <div class="mt-2 flex flex-col gap-2">
+      <button
+        type="button"
+        class="text-muted-foreground hover:text-foreground flex w-fit items-center gap-1 text-xs transition-colors"
+        @click="showHiddenTags = !showHiddenTags"
+      >
+        <ChevronRight
+          :size="14"
+          class="transition-transform"
+          :class="{ 'rotate-90': showHiddenTags }"
+        />
+        {{ showHiddenTags ? "숨긴 태그 접기" : "숨긴 태그 보기" }}
+        <span v-if="hideAll" class="text-muted-foreground/70"
+          >· 모든 태그 숨김 켜짐</span
+        >
+      </button>
+      <div
+        v-if="showHiddenTags"
+        class="border-border flex flex-wrap gap-2 rounded-md border border-dashed p-3"
+      >
+        <span
+          v-for="tag in concealedTags"
+          :key="tag"
+          class="bg-muted/50 text-muted-foreground flex items-center gap-1 rounded-md px-2 py-1 text-sm"
+        >
+          #{{ tag }}
+          <button
+            @click="handleRemoveTag(tag)"
+            class="hover:text-destructive transition-colors"
+          >
+            <X :size="12" />
+          </button>
+        </span>
+        <span
+          v-if="concealedTags.length === 0"
+          class="text-muted-foreground text-xs"
+        >
+          이 게임에는 숨긴 태그가 없습니다
+        </span>
       </div>
     </div>
   </div>

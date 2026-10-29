@@ -86,6 +86,14 @@ In development only (`NODE_ENV === "development"`), `main.ts` opens the Chrome D
 
 `.mcp.json` registers a `chrome-devtools-mcp` server pointed at `--browserUrl=http://127.0.0.1:9222`, so the renderer can be inspected from an external tool. **The app must already be running (`pnpm dev`) before the MCP server starts** — there is nothing to attach to otherwise.
 
+## App verification (verify-app)
+
+- type: electron
+- dev: `pnpm dev`
+- debug port: opened by `main.ts` via `app.commandLine.appendSwitch("remote-debugging-port", "9222")`, dev-only (`NODE_ENV === "development"`)
+- A worktree has no `dev.sqlite3`; copy the main checkout's file in before launching, or the library is empty
+- `electron-window-state` persists the off-screen position to `%APPDATA%/Electron/window-state.json` — restore `x`/`y` after the run
+
 ## Project Structure
 
 ```text
@@ -380,6 +388,13 @@ When adding new events:
 1. Define enum and types in `events.ts`
 2. Implement handler in `src/main/handlers/`
 3. Call from `src/renderer/`
+
+**Never pass a Vue reactive value into `window.api.invoke` as-is.** IPC arguments go through the structured clone algorithm, and a reactive Proxy fails it with `An object could not be cloned.` (`DataCloneError`). The error surfaces only at runtime, inside the mutation/query, so type-check and lint never catch it. This keeps recurring:
+
+- Proxies hide in more places than `ref`/`reactive`: values read through a `computed`, props, Pinia state, and **vue-query `data`** (e.g. a field of `useAllSettings()` spread into an update payload).
+- `toRaw()` unwraps only the outer object; nested arrays and objects stay Proxies (see the `providers` comment in `useSearch.ts`). `structuredClone(proxy)` throws the same error, so it is not a fix either.
+- Build a plain payload at the call site: copy each nested array/object explicitly (`tags: [...current.tags]`, `{ ...toRaw(obj), list: toRaw(obj.list) }`).
+- When a composable sends user-editable state, add a test that asserts `expect(() => structuredClone(payload)).not.toThrow()` (pattern in `useRandomSelect.test.ts`).
 
 ### Work Verification
 

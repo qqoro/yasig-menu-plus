@@ -19,6 +19,7 @@ import {
 import { computed, ref } from "vue";
 import { useAllSettings } from "../composables/useAllSettings";
 import { useDetectRpgMaker } from "../composables/useCheat";
+import { useHiddenTags } from "../composables/useHiddenTags";
 import { formatPlayTime } from "../composables/usePlayTime";
 import { useTranslationSettings } from "../composables/useTranslationSettings";
 import type { ViewMode } from "../stores/uiStore";
@@ -122,6 +123,10 @@ const { data: translationSettings } = useTranslationSettings();
 
 // 통합 설정 조회
 const { data: settings } = useAllSettings();
+
+// 태그 숨기기 설정을 적용한 표시용 태그 (숨긴 태그는 흔적 없이 제외)
+const { visibleTags } = useHiddenTags();
+const displayTags = computed(() => visibleTags(props.game.tags));
 
 // 태그 전체 보기 상태
 const showAllTags = ref(false);
@@ -670,7 +675,7 @@ function handleMouseDown(event: MouseEvent): void {
 
         <!-- 태그 (클릭 가능) -->
         <div
-          v-if="game.tags && game.tags.length > 0"
+          v-if="displayTags.length > 0"
           class="flex items-center gap-1"
           :class="{ 'flex-wrap': showAllTags }"
         >
@@ -679,7 +684,7 @@ function handleMouseDown(event: MouseEvent): void {
             :class="showAllTags ? 'flex-wrap' : 'flex-nowrap overflow-hidden'"
           >
             <span
-              v-for="tag in game.tags"
+              v-for="tag in displayTags"
               :key="tag"
               class="shrink-0 cursor-pointer truncate rounded px-1.5 py-0.5 transition-colors"
               :class="
@@ -698,7 +703,7 @@ function handleMouseDown(event: MouseEvent): void {
           </div>
           <!-- 더보기/접기 버튼 -->
           <button
-            v-if="game.tags.length > 1"
+            v-if="displayTags.length > 1"
             @click.stop="showAllTags = !showAllTags"
             class="text-muted-foreground hover:text-foreground shrink-0 text-xs transition-colors"
             :title="showAllTags ? '태그 접기' : '모든 태그 보기'"

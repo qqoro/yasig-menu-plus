@@ -19,6 +19,7 @@ import { toast } from "vue-sonner";
 import { useSelectFile } from "../composables/useAllInOneRefresh";
 import { useDetectRpgMaker } from "../composables/useCheat";
 import { useGameDetail, useToggleFavorite } from "../composables/useGameDetail";
+import { useHiddenTags } from "../composables/useHiddenTags";
 import {
   useAddGameImageFromUrl,
   useAddGameImagesFromFiles,
@@ -336,6 +337,10 @@ const subTitle = computed(() => {
   if (displayTitle.value === g.translatedTitle) return null;
   return g.translatedTitle;
 });
+
+// 태그 숨기기 설정 적용 (숨긴 태그는 흔적 없이 제외, 전부 숨겨지면 행 자체를 숨김)
+const { visibleTags } = useHiddenTags();
+const displayTags = computed(() => visibleTags(game.value?.tags));
 
 // 원본 사이트 URL (provider + externalId 기반 — collectors의 getUrl과 동일 매핑)
 const siteUrl = computed(() => {
@@ -688,11 +693,11 @@ async function handleToggleFavorite() {
               </div>
             </div>
 
-            <div v-if="game?.tags?.length" class="flex gap-3">
+            <div v-if="displayTags.length" class="flex gap-3">
               <span class="w-16 shrink-0 text-white/50">태그</span>
               <div class="flex flex-wrap gap-1">
                 <span
-                  v-for="tag in game.tags"
+                  v-for="tag in displayTags"
                   :key="tag"
                   class="rounded bg-white/10 px-1.5 py-0.5 text-white/70"
                 >

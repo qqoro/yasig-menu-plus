@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import HiddenTagsCard from "@/components/settings/HiddenTagsCard.vue";
 import {
   useAllSettings,
   useUpdateSettings,
@@ -432,6 +433,9 @@ async function handleGetNewCookie(): Promise<void> {
           </div>
         </CardContent>
       </Card>
+
+      <!-- 태그 숨기기 (스포일러 방지) -->
+      <HiddenTagsCard />
     </div>
   </div>
 </template>

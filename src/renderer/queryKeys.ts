@@ -118,6 +118,9 @@ export const queryKeys = {
    */
   autocomplete: {
     all: ["autocomplete"] as const,
+    /** 태그 숨기기 설정의 태그 후보 (검색창 자동완성과 데이터 모양이 달라 키 분리) */
+    hiddenTagSuggestions: (query: string | Ref<string>) =>
+      ["autocomplete", "hiddenTagSuggestions", query] as const,
   },
 
   /**

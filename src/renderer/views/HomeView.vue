@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   CircleHelp,
+  EyeOff,
   ListChecks,
   Loader2,
   PanelLeftClose,
@@ -46,6 +47,7 @@ import {
   useSizeSortNotice,
 } from "../composables/useGames";
 import { useGridLayout } from "../composables/useGridLayout";
+import { useHiddenTags } from "../composables/useHiddenTags";
 import { useHomeActions } from "../composables/useHomeActions";
 import { useHomeBatchActions } from "../composables/useHomeBatchActions";
 import { useHomeKeyboard } from "../composables/useHomeKeyboard";
@@ -64,6 +66,9 @@ import { createLogger } from "../lib/logger";
 import type { SearchQuery } from "../types";
 
 const log = createLogger("HomeView");
+
+// 모든 태그 숨기기가 켜져 있으면 검색창 옆에 안내 배지 표시 (태그가 왜 안 보이는지 잊지 않도록)
+const { hideAll: hideAllTags } = useHiddenTags();
 
 // 라이브러리 경로 관리 (electron-store)
 const { data: libraryPaths } = useLibraryPaths();
@@ -436,6 +441,22 @@ onMounted(() => {
               placeholder="검색어를 입력하세요 (예: tag:RPG circle:name)"
               class="flex-1"
             />
+
+            <!-- 모든 태그 숨김 안내 — 클릭 시 설정의 태그 숨기기 카드로 이동 -->
+            <RouterLink
+              v-if="hideAllTags"
+              :to="{ path: '/settings', query: { focus: 'hidden-tags' } }"
+              class="shrink-0"
+            >
+              <Button
+                variant="outline"
+                class="text-muted-foreground"
+                title="설정에서 모든 태그 숨기기가 켜져 있습니다. 클릭하면 설정으로 이동합니다."
+              >
+                <EyeOff :size="16" />
+                태그 숨김 중
+              </Button>
+            </RouterLink>
 
             <!-- 보유 확인 — 작품 목록을 붙여넣어 여러 개를 한꺼번에 찾기 -->
             <RouterLink to="/list-check" class="shrink-0">

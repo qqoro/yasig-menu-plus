@@ -2,6 +2,7 @@
 import type { ListCheckPreviewInfo } from "@main/events";
 import { ImageOff, Loader2, Star, Tag } from "lucide-vue-next";
 import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { useHiddenTags } from "@/composables/useHiddenTags";
 import { useListCheckImage } from "@/composables/useListCheck";
 
 /** 미리보기 한 장 — 바로 표시 가능한 src 또는 받아와야 하는 원격 url */
@@ -121,7 +122,9 @@ const publishDate = computed(() => {
   return `${y}-${m}-${d}`;
 });
 
-const tags = computed(() => props.info?.tags ?? []);
+// 태그 숨기기 설정 적용 (개수 표시에도 숨긴 태그가 드러나지 않도록 걸러낸 목록만 사용)
+const { visibleTags } = useHiddenTags();
+const tags = computed(() => visibleTags(props.info?.tags));
 const makers = computed(() => props.info?.makers.join(", ") ?? "");
 </script>
 

@@ -4,6 +4,7 @@
 
 // Main 프로세스의 타입 재내보내기
 export type {
+  HiddenTagSettings,
   LibraryScanInfo,
   StoreSchema,
   TitleDisplayMode,
