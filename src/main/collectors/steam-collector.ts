@@ -1,4 +1,5 @@
 import SteamUser from "steam-user";
+import { extractSteamId } from "../lib/external-id.js";
 import { createLogger } from "../utils/logger.js";
 import { getSteamTagMap } from "./steam-tag-map.js";
 import { Collector, type CollectorResult } from "./registry.js";
@@ -125,18 +126,7 @@ interface SteamApiResponse {
 
 export const SteamCollector: Collector = {
   name: "Steam",
-  getId: async (path: string) => {
-    const id = /ST(\d{4,8})/gi.exec(path);
-    if (id?.[1]) {
-      return id[1];
-    }
-
-    if (!path.toLowerCase().includes("steam")) {
-      return;
-    }
-
-    return /\d{4,8}/g.exec(path)?.[0] ?? undefined;
-  },
+  getId: async (path: string) => extractSteamId(path),
 
   fetchInfo: async ({ id }) => {
     // steam-user로 메타데이터 수집

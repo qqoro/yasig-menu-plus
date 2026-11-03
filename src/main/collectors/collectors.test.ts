@@ -1,54 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { basename } from "path";
+import {
+  extractCienId as getCienId,
+  extractDlsiteId as getDlsiteId,
+  extractGetchuId as getGetchuId,
+  extractSteamId as getSteamId,
+} from "../lib/external-id.js";
 
 /**
- * 모든 Collector.getId 테스트
+ * 모든 Collector.getId 테스트 (컬렉터 getId가 위임하는 lib/external-id 추출기를 직접 검증)
  * 실행: pnpm test
  */
-
-// ============================================
-// DLSiteCollector 정규식
-// ============================================
-const dlsiteRegex = /[RBV]J\d{6,8}/i;
-
-function getDlsiteId(path: string): string | undefined {
-  return dlsiteRegex.exec(path)?.[0];
-}
-
-// ============================================
-// SteamCollector 정규식
-// ============================================
-function getSteamId(path: string): string | undefined {
-  const id = /ST(\d{4,8})/gi.exec(path);
-  if (id?.[1]) {
-    return id[1];
-  }
-
-  if (!path.toLowerCase().includes("steam")) {
-    return;
-  }
-
-  return /\d{4,8}/g.exec(path)?.[0] ?? undefined;
-}
-
-// ============================================
-// GetchuCollector 정규식
-// ============================================
-function getGetchuId(path: string): string | undefined {
-  const [, id] = /\b(?:GC|GETCHU)(\d{1,7})\d*\b/i.exec(path) ?? [];
-  return id;
-}
-
-// ============================================
-// CienCollector 정규식
-// ============================================
-function getCienId(path: string): string | undefined {
-  const id = /(?:CE|CIEN|CI-EN)(\d+-\d+|(creator)?\d+article\d+)/i
-    .exec(path)?.[1]
-    ?.replace("creator", "")
-    .replace("article", "-");
-  return id;
-}
 
 // ============================================
 // GoogleCollector 로직
@@ -100,8 +62,8 @@ describe("DLSiteCollector.getId", () => {
     ["[RJ123] 게임", undefined, "3자리 (미지원)"],
     ["[RJ12] 게임", undefined, "2자리 (미지원)"],
     ["[RJ1] 게임", undefined, "1자리 (미지원)"],
-    ["[RJ123456789] 게임", "RJ12345678", "9자리 (8자리까지만 매칭)"],
-    ["[RJ1234567890] 게임", "RJ12345678", "10자리 (8자리까지만 매칭)"],
+    ["[RJ123456789] 게임", undefined, "9자리 (미지원)"],
+    ["[RJ1234567890] 게임", undefined, "10자리 (미지원)"],
 
     // ===== 공백 관련 =====
     ["  [RJ123456] 게임", "RJ123456", "앞 공백"],
@@ -202,27 +164,28 @@ describe("SteamCollector.getId", () => {
     ["ST123", undefined, "3자리 (미지원)"],
     ["ST12", undefined, "2자리 (미지원)"],
     ["ST1", undefined, "1자리 (미지원)"],
-    ["ST123456789", "12345678", "9자리 (8자리까지만)"],
-    ["ST1234567890", "12345678", "10자리 (8자리까지만)"],
+    ["ST123456789", undefined, "9자리 (미지원)"],
+    ["ST1234567890", undefined, "10자리 (미지원)"],
 
-    // ===== steam 포함 경로 =====
-    ["C:/Steam/123456", "123456", "Steam 경로"],
-    ["C:/steamapps/123456", "123456", "steamapps 경로"],
-    ["C:/Games/Steam/게임이름/123456", "123456", "Steam 하위 경로"],
-    ["steam 123456", "123456", "steam + 숫자"],
-    ["STEAM 123456", "123456", "STEAM 대문자"],
-    ["Steam 123456", "123456", "Steam 대소문자"],
-    ["C:/steam/123456", "123456", "소문자 steam 경로"],
-    ["D:\\Steam\\Games\\123456", "123456", "Windows Steam 경로"],
-    ["/home/steam/games/123456", "123456", "Unix steam 경로"],
+    // ===== steam 접두사 =====
+    ["steam123456", "123456", "steam + 숫자"],
+    ["STEAM123456", "123456", "STEAM 대문자"],
+    ["Steam_123456", "123456", "Steam + 언더스코어"],
+    ["steam-123456 게임이름", "123456", "steam + 하이픈"],
+    ["[steam]123456", "123456", "steam + 대괄호"],
+
+    // ===== steam 키워드와 떨어진 숫자 (미지원) =====
+    ["C:/Steam/123456", undefined, "Steam 경로"],
+    ["C:/steamapps/123456", undefined, "steamapps 경로"],
+    ["C:/Games/Steam/게임이름/123456", undefined, "Steam 하위 경로"],
+    ["steam 123456", undefined, "steam + 공백 + 숫자"],
+    ["D:\\Steam\\Games\\123456", undefined, "Windows Steam 경로"],
+    ["steam/한글게임/123456", undefined, "steam + 한글 경로"],
 
     // ===== 언어별 테스트 =====
     ["[ST123456] 한글게임", "123456", "한글 + ST"],
     ["[ST123456] English Game", "123456", "영문 + ST"],
     ["[ST123456] 日本語ゲーム", "123456", "일본어 + ST"],
-    ["steam/한글게임/123456", "123456", "steam + 한글"],
-    ["steam/English Game/123456", "123456", "steam + 영문"],
-    ["steam/日本語ゲーム/123456", "123456", "steam + 일본어"],
 
     // ===== 특수문자 포함 =====
     ["[ST123456] 게임~이름!", "123456", "특수문자 포함"],
@@ -232,7 +195,7 @@ describe("SteamCollector.getId", () => {
     // ===== 공백 관련 =====
     ["  ST123456", "123456", "앞 공백"],
     ["ST123456  ", "123456", "뒤 공백"],
-    ["  steam 123456  ", "123456", "steam 앞뒤 공백"],
+    ["  steam123456  ", "123456", "steam 앞뒤 공백"],
 
     // ===== 미매칭 =====
     ["게임이름만", undefined, "steam 없고 ST 없음"],
@@ -278,8 +241,8 @@ describe("GetchuCollector.getId", () => {
     ["GC9999999", "9999999", "모두 9 (7자리)"],
 
     // ===== 자릿수 초과 =====
-    ["GC12345678", "1234567", "8자리 (7자리까지만)"],
-    ["GC123456789", "1234567", "9자리 (7자리까지만)"],
+    ["GC12345678", undefined, "8자리 (미지원)"],
+    ["GC123456789", undefined, "9자리 (미지원)"],
 
     // ===== GETCHU 접두사 =====
     ["GETCHU123456", "123456", "GETCHU + 숫자"],

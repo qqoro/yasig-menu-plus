@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import { parse } from "node-html-parser";
 import { Collector, type CollectorResult } from "./registry.js";
-import { extractRjCode } from "../lib/rj-code.js";
+import { extractDlsiteId } from "../lib/external-id.js";
 
 /**
  * info/ajax 응답에서 평균 평점(0-5)을 파싱한다.
@@ -256,10 +256,7 @@ async function fetchCircleName(makerId: string): Promise<string | null> {
 
 export const DLSiteCollector: Collector = {
   name: "DLSite",
-  getId: async (path) => {
-    const rjCode = extractRjCode(path);
-    return rjCode;
-  },
+  getId: async (path) => extractDlsiteId(path),
   fetchInfo: async ({ id }) => {
     const [productJson, ajaxJson] = await Promise.all([
       // 판매 중 작품의 전체 메타데이터 (제목/장르/카테고리/제작자/이미지/발매일)

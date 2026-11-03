@@ -1,6 +1,7 @@
 import dayjs from "dayjs";
 import { createRequire } from "module";
 import { parse } from "node-html-parser";
+import { extractGetchuId } from "../lib/external-id.js";
 import { Collector, type CollectorResult } from "./registry.js";
 
 const require = createRequire(import.meta.url);
@@ -8,10 +9,7 @@ const iconv = require("iconv-lite");
 
 export const GetchuCollector: Collector = {
   name: "Getchu",
-  getId: async (path) => {
-    const [, id] = /\b(?:GC|GETCHU)(\d{1,7})\d*\b/i.exec(path) ?? [];
-    return id;
-  },
+  getId: async (path) => extractGetchuId(path),
   fetchInfo: async ({ id }) => {
     const response = await fetch(`https://www.getchu.com/item/${id}/`, {
       headers: {

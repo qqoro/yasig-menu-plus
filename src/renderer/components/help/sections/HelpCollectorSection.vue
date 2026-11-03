@@ -8,30 +8,30 @@ const isNewCard = useIsNewCard();
 // 콜렉터 정보
 const collectors = [
   {
-    prefix: "ST",
+    prefix: "ST, steam",
     description: "Steam",
-    example: "ST Game Title",
+    example: "ST1234560 Game Title, steam_1234560",
   },
   {
     prefix: "RJ, BJ, VJ",
     description: "DLSite",
-    example: "RJ123456 Game Title",
+    example: "RJ01234567 Game Title, [RJ]01234567",
   },
   {
     prefix: "GC, GETCHU",
     description: "Getchu",
-    example: "GC1234 Game Title",
+    example: "GC1234567 Game Title, GETCHU-1234567",
   },
   {
     prefix: "CE, CIEN",
     description: "Ci-en",
-    example: "CE1234 Creator Title",
+    example: "CE123-456 Creator Title (크리에이터 번호-글 번호)",
   },
   {
     prefix: "v, vn",
     description: "VNDB",
     example: "v562 Game Title, vn4 Game Title",
-    note: "v는 숫자 2자리 이상, vn은 1자리부터 인식하며, 상위 폴더가 아닌 게임 폴더/파일 이름에서만 찾습니다. v1.02처럼 버전 표기로 보이는 것은 무시하고, 다른 사이트 접두어가 함께 있으면 그쪽을 우선합니다.",
+    note: "v는 숫자 2자리 이상, vn은 1자리부터 인식하며, 상위 폴더가 아닌 게임 폴더/파일 이름에서만 찾습니다. 접두어와 숫자는 붙여 써야 하고, v1.02처럼 버전 표기로 보이는 것은 무시하며, 다른 사이트 접두어가 함께 있으면 그쪽을 우선합니다.",
   },
 ];
 </script>
@@ -61,8 +61,10 @@ const collectors = [
       <CardContent>
         <p class="text-muted-foreground mb-3 text-sm">
           폴더명이나 파일명에 아래 접두어가 포함되면 해당 사이트에서 정보를
-          자동으로 수집합니다. 접두어는 폴더명의 시작 부분에 있는 것이 가장 잘
-          인식됩니다.
+          자동으로 수집합니다. 접두어와 숫자 사이에는 - _ [ ] ( ) 만 쓸 수 있고,
+          앞뒤에 영문이나 숫자가 붙어 있으면 인식하지 않습니다. 게임 폴더에
+          코드가 없으면 상위 폴더의 코드를 쓰며, 게임에 가까운 폴더의 코드를
+          우선합니다.
         </p>
         <div class="flex flex-col gap-3">
           <div

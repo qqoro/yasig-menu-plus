@@ -148,7 +148,7 @@ yasig-menu-plus/
 │   │   │   ├── fingerprint.ts     # SHA-256 hash for game identification
 │   │   │   ├── scan-logic.ts      # Folder scan & executable detection
 │   │   │   ├── search-prefix.ts   # Search filter parsing (tag:, circle:, etc.)
-│   │   │   ├── rj-code.ts         # RJ/ST/GC/CE code extraction from folder names
+│   │   │   ├── external-id.ts     # External work ID extraction (RJ/ST/GC/CE/VNDB codes, store URLs)
 │   │   │   ├── rename-template.ts # Rename template parsing ({title}, {externalId}, ...)
 │   │   │   ├── scan-diff.ts       # Diffing scan results against the DB
 │   │   │   └── normalize-path.ts  # Path normalization
@@ -227,10 +227,10 @@ Major tables:
 
 ```javascript
 // Builder methods - camelCase works (auto-converted)
-query.orderBy("createdAt", "desc")
+query.orderBy("createdAt", "desc");
 
 // Raw SQL - must use snake_case
-query.orderByRaw("created_at IS NULL, created_at DESC")
+query.orderByRaw("created_at IS NULL, created_at DESC");
 ```
 
 ### 4. Game Info Collection (Collectors)
@@ -240,10 +240,11 @@ Collectors in `src/main/collectors/` fetch game info from external sites:
 - **registry.ts**: Registers all collectors and runs by priority
 - Each collector searches by game title → returns `CollectorResult` (thumbnailUrl, images, title, publishDate, makers, categories, tags, externalId, provider)
 - Uses **puppeteer-core** + **chrome-launcher**
-- **ID prefix recognition** (`src/main/lib/rj-code.ts`): folder names with `RJ`/`BJ`/`VJ` (DLSite), `ST` (Steam), `GC`/`GETCHU` (Getchu), `CE`/`CIEN` (Ci-en) codes are matched directly to the corresponding collector
+- **External ID recognition** (`src/main/lib/external-id.ts`): the single source of ID rules for collector matching, the scan's non-game-content check, and list check. Codes: `RJ`/`BJ`/`VJ` (DLSite), `ST`/`steam` (Steam), `GC`/`GETCHU` (Getchu), `CE`/`CIEN`/`CI-EN` (Ci-en), `v`/`vn` (VNDB), plus store URLs (Steam, Getchu, Ci-en, VNDB). Only `-_[]()` may sit between prefix and digits, and a letter/digit touching either end rejects the match (`Latest12345`, `GC12ABCD`); VNDB keeps its own stricter rule (no separators, game folder name only). Collector `getId` functions just delegate here — change rules in this module, not in the collectors
+- **Path-based matching** (`extractExternalIdFromPath`): walks from the game folder up to its ancestors, so a game unpacked inside an `RJ…` folder still collects from the parent's code, and the nearest code wins. VNDB is tried last, on the game folder name only
 - **2-stage fallback strategy**:
-  1. Stage 1: Specific collectors run in parallel (DLSite, Steam, Getchu, Ci-en)
-  2. Stage 2: If all fail, GoogleCollector runs as fallback (can be disabled via `enableGoogleCollector`)
+  1. Stage 1: The path's external ID picks the collector (DLSite, Steam, Getchu, Ci-en, VNDB)
+  2. Stage 2: If none, GoogleCollector runs as fallback (can be disabled via `enableGoogleCollector`)
 
 ### 5. Build Process
 

@@ -1,5 +1,6 @@
 import { Page } from "puppeteer-core";
 import { db } from "../db/db-manager.js";
+import { extractExternalIdFromPath } from "../lib/external-id.js";
 import { createLogger } from "../utils/logger.js";
 import { getEnableGoogleCollector } from "../store.js";
 import { updateUserGameDataExternalKey } from "../services/user-game-data.js";
@@ -61,40 +62,21 @@ export interface Collector {
   getUrl?: (id: string) => string;
 }
 
-// 배열 순서 = 우선순위 (코드가 여럿 인식되면 앞쪽 컬렉터 사용)
-// VNDB는 v+숫자라 버전 표기와 겹칠 수 있어 맨 뒤
-export const collectors: Collector[] = [
-  DLSiteCollector,
-  SteamCollector,
-  GetchuCollector,
-  CienCollector,
-  VndbCollector,
-];
-
 // Fallback 컬렉터: 다른 컬렉터가 정보를 찾지 못했을 때만 사용
 export const fallbackCollector: Collector = GoogleCollector;
 
 /**
  * 게임 경로에 맞는 컬렉터를 찾습니다.
- * 1단계: 일반 컬렉터들 병렬 실행
- * 2단계: 모두 실패하면 GoogleCollector 실행
+ * 1단계: 경로의 외부 ID로 컬렉터 결정 (우선순위·탐색 범위는 extractExternalIdFromPath)
+ * 2단계: 못 찾으면 GoogleCollector 실행
  */
 export async function findCollector(path: string) {
-  // 1단계: 일반 컬렉터들 병렬 실행
-  const primaryResult = (
-    await Promise.all(
-      collectors.map(async (collector) => ({
-        collector,
-        id: await collector.getId(path),
-      })),
-    )
-  ).find((data) => !!data.id);
-
-  if (primaryResult) {
-    log.debug(
-      `컬렉터 매칭: ${primaryResult.collector.name} (id: ${primaryResult.id}) — ${path}`,
-    );
-    return primaryResult as { collector: Collector; id: string };
+  // 1단계: 게임 폴더부터 상위로 올라가며 외부 ID 탐색
+  const match = extractExternalIdFromPath(path);
+  if (match) {
+    const collector = PROVIDER_COLLECTORS[match.provider];
+    log.debug(`컬렉터 매칭: ${collector.name} (id: ${match.id}) — ${path}`);
+    return { collector, id: match.id };
   }
 
   // 2단계: 일반 컬렉터가 모두 실패하면 GoogleCollector 실행
@@ -282,7 +264,7 @@ export async function saveInfo(path: string, info: CollectorResult) {
 }
 
 /**
- * DB provider 값 → 컬렉터 매핑 (순서 = collectors 우선순위)
+ * DB provider 값 → 컬렉터 매핑 (순서 = EXTERNAL_ID_EXTRACTORS 우선순위)
  */
 export const PROVIDER_COLLECTORS: Record<string, Collector> = {
   dlsite: DLSiteCollector,

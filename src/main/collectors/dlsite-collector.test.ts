@@ -15,20 +15,6 @@ import {
  * 실행: pnpm test
  */
 
-// 현재 정규식
-const currentRegex = /[RBV]J\d{6,8}/i;
-
-// 개선된 정규식 (대괄호 우선)
-function getImprovedId(path: string): string | undefined {
-  // 1순위: 대괄호 안의 RJ 코드 추출
-  const bracketMatch = /\[([RBV]J\d{6,8})\]/i.exec(path);
-  if (bracketMatch) {
-    return bracketMatch[1];
-  }
-  // 2순위: 대괄호 없는 RJ 코드
-  return currentRegex.exec(path)?.[0];
-}
-
 // 모든 테스트 케이스 (입력, 기대값, 설명)
 const allTestCases: [string, string | undefined, string][] = [
   // ===== 기본 형식 =====
@@ -131,22 +117,12 @@ const allTestCases: [string, string | undefined, string][] = [
   ["[RJ12345] 게임이름", undefined, "5자리는 미지원 (6~8자리만)"],
   ["[XJ123456] 게임이름", undefined, "지원하지 않는 접두사"],
   ["RJ12345", undefined, "대괄호 없는 5자리"],
-  ["RJ123456789", "RJ12345678", "9자리는 앞 8자리만 매칭"],
+  ["RJ123456789", undefined, "9자리는 미지원"],
 ];
 
-describe("DLSiteCollector.getId - 현재 정규식", () => {
-  it.each(allTestCases)("%s → %s (%s)", (input, expected, _desc) => {
-    if (expected === undefined) {
-      expect(currentRegex.exec(input)?.[0]).toBeUndefined();
-    } else {
-      expect(currentRegex.exec(input)?.[0]).toBe(expected);
-    }
-  });
-});
-
-describe("DLSiteCollector.getId - 개선된 정규식", () => {
-  it.each(allTestCases)("%s → %s (%s)", (input, expected, _desc) => {
-    expect(getImprovedId(input)).toBe(expected);
+describe("DLSiteCollector.getId", () => {
+  it.each(allTestCases)("%s → %s (%s)", async (input, expected, _desc) => {
+    expect(await DLSiteCollector.getId(input)).toBe(expected);
   });
 });
 

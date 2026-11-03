@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { extractVndbId } from "../lib/external-id.js";
 import {
-  extractVndbId,
   parseVndbReleased,
   parseVndbVn,
   pickVndbTags,

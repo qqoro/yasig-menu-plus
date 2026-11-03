@@ -179,22 +179,13 @@ describe("selectBestExecutable — 실행 파일 우선순위 선택", () => {
   });
 
   it(".exe 파일이 최우선이어야 한다", () => {
-    const executables = [
-      "/game/shortcut.lnk",
-      "/game/game.exe",
-      "/game/link.url",
-    ];
+    const executables = ["/game/shortcut.lnk", "/game/game.exe"];
     expect(selectBestExecutable(executables)).toBe("/game/game.exe");
   });
 
   it(".exe가 없으면 .lnk가 우선이어야 한다", () => {
-    const executables = ["/game/link.url", "/game/shortcut.lnk"];
+    const executables = ["/game/other.bat", "/game/shortcut.lnk"];
     expect(selectBestExecutable(executables)).toBe("/game/shortcut.lnk");
-  });
-
-  it(".exe, .lnk가 없으면 .url이 선택되어야 한다", () => {
-    const executables = ["/game/other.bat", "/game/link.url"];
-    expect(selectBestExecutable(executables)).toBe("/game/link.url");
   });
 
   it("우선순위 확장자가 없으면 첫 번째 항목 반환해야 한다", () => {

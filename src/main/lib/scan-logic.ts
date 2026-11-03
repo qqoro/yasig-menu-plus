@@ -8,12 +8,14 @@
 import { existsSync, readdirSync, statSync } from "fs";
 import { join } from "path";
 import { COMPRESS_FILE_TYPE } from "../constants.js";
-import { hasRjCode } from "./rj-code.js";
+import { hasExternalId } from "./external-id.js";
 
 /**
  * 실행 가능한 파일 확장자
+ * 웹 바로가기(.url)는 제외 — DLsite 등 다운로드 폴더에 딸려 오는 사이트 링크가 실행 파일로 잡혀
+ * 음성/영상 폴더가 게임으로 등록되고 실행 시 사이트가 열림 (필요하면 실행 파일 수동 지정으로 선택)
  */
-export const EXECUTABLE_EXTENSIONS = [".exe", ".lnk", ".url"];
+export const EXECUTABLE_EXTENSIONS = [".exe", ".lnk"];
 
 /**
  * 스캔 제외 폴더명 (대소문자 무시)
@@ -107,7 +109,7 @@ export function scanSingleFolder(folderPath: string): {
         entry.name.toLowerCase().endsWith(ext),
       );
 
-      // 실행파일(.exe, .lnk, .url) 확인
+      // 실행파일(.exe, .lnk) 확인
       const isExecutableFile =
         entry.isFile() &&
         EXECUTABLE_EXTENSIONS.some((ext) =>
@@ -128,7 +130,7 @@ export function scanSingleFolder(folderPath: string): {
           });
         } else {
           // 실행파일 없으면 하위 폴더로 스캔 예약
-          // (RJ코드 폴더도 하위 스캔을 먼저 진행, scanFolderRecursive에서 후처리)
+          // (작품 코드 폴더도 하위 스캔을 먼저 진행, scanFolderRecursive에서 후처리)
           subFolders.push(fullPath);
         }
       } else if (isCompressFile) {
@@ -141,7 +143,7 @@ export function scanSingleFolder(folderPath: string): {
           mtimeMs: getMtimeMs(fullPath),
         });
       } else if (isExecutableFile) {
-        // 실행파일(.exe, .lnk, .url)도 게임 후보
+        // 실행파일(.exe, .lnk)도 게임 후보
         candidates.push({
           path: fullPath,
           name: entry.name,
@@ -169,8 +171,8 @@ export function scanFolderRecursive(
   enableNonGameContent = false,
 ): GameCandidate[] {
   const allCandidates: GameCandidate[] = [];
-  // RJ코드 폴더 후보: 하위 스캔 후 게임이 없으면 비게임 콘텐츠로 등록
-  const rjCodeFolders: string[] = [];
+  // 작품 코드 폴더 후보: 하위 스캔 후 게임이 없으면 비게임 콘텐츠로 등록
+  const codeFolders: string[] = [];
   const queue: Array<{ path: string; depth: number }> = [
     { path: startPath, depth: 0 },
   ];
@@ -201,36 +203,37 @@ export function scanFolderRecursive(
     // 게임 후보 수집
     allCandidates.push(...candidates);
 
-    // 하위 폴더를 큐에 추가 + RJ코드 폴더 기록
+    // 하위 폴더를 큐에 추가 + 작품 코드 폴더 기록
     for (const subFolder of subFolders) {
       queue.push({ path: subFolder, depth: depth + 1 });
 
       if (enableNonGameContent) {
+        // 상위 폴더 코드로 하위 폴더까지 등록되지 않도록 폴더명만 본다
         const folderName = subFolder.split(/[\\/]/).pop() || "";
-        if (hasRjCode(folderName)) {
-          rjCodeFolders.push(subFolder);
+        if (hasExternalId(folderName)) {
+          codeFolders.push(subFolder);
         }
       }
     }
   }
 
-  // 비게임 콘텐츠 후처리: 하위에 게임 후보가 없는 RJ코드 폴더만 등록
-  // 깊은 폴더부터 처리하여 중첩 RJ코드 폴더를 올바르게 판별
+  // 비게임 콘텐츠 후처리: 하위에 게임 후보가 없는 작품 코드 폴더만 등록
+  // 깊은 폴더부터 처리하여 중첩 코드 폴더를 올바르게 판별
   if (enableNonGameContent) {
-    rjCodeFolders.sort((a, b) => b.length - a.length);
-    for (const rjFolder of rjCodeFolders) {
+    codeFolders.sort((a, b) => b.length - a.length);
+    for (const codeFolder of codeFolders) {
       const hasChildCandidate = allCandidates.some(
         (c) =>
-          c.path.startsWith(rjFolder + "/") ||
-          c.path.startsWith(rjFolder + "\\"),
+          c.path.startsWith(codeFolder + "/") ||
+          c.path.startsWith(codeFolder + "\\"),
       );
       if (!hasChildCandidate) {
         allCandidates.push({
-          path: rjFolder,
-          name: rjFolder.split(/[\\/]/).pop() || "",
+          path: codeFolder,
+          name: codeFolder.split(/[\\/]/).pop() || "",
           isCompressFile: false,
           hasExecutable: false,
-          mtimeMs: getMtimeMs(rjFolder),
+          mtimeMs: getMtimeMs(codeFolder),
         });
       }
     }

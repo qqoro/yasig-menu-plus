@@ -1,17 +1,11 @@
 import dayjs from "dayjs";
 import { parse } from "node-html-parser";
+import { extractCienId } from "../lib/external-id.js";
 import { Collector, type CollectorResult } from "./registry.js";
 
 export const CienCollector: Collector = {
   name: "Ci-en",
-  getId: async (path) => {
-    const id = /(?:CE|CIEN|CI-EN)(\d+-\d+|(creator)?\d+article\d+)/i
-      .exec(path)?.[1]
-      // 정규식이 대소문자를 무시하므로 치환도 대소문자 무시 (CIENCREATOR1ARTICLE2 대응)
-      ?.replace(/creator/i, "")
-      .replace(/article/i, "-");
-    return id;
-  },
+  getId: async (path) => extractCienId(path),
   fetchInfo: async ({ id }) => {
     const [creatorId, articleId] = id
       .split("-")

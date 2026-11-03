@@ -98,8 +98,8 @@ export function selectBestExecutable(executables: string[]): string | null {
   if (executables.length === 0) return null;
   if (executables.length === 1) return executables[0];
 
-  // 우선순위: .exe > .lnk > .url
-  for (const ext of [".exe", ".lnk", ".url"]) {
+  // 우선순위: .exe > .lnk
+  for (const ext of [".exe", ".lnk"]) {
     const exactMatch = executables.find((e) => e.toLowerCase().endsWith(ext));
     if (exactMatch) return exactMatch;
   }

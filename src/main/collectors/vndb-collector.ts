@@ -1,4 +1,4 @@
-import { basename } from "path";
+import { extractVndbId } from "../lib/external-id.js";
 import { createLogger } from "../utils/logger.js";
 import { Collector, type CollectorResult } from "./registry.js";
 
@@ -46,20 +46,6 @@ export interface VndbVn {
   tags?: { name: string; rating: number; spoiler: number; lie: boolean }[];
   image: { url: string } | null;
   screenshots?: { url: string }[];
-}
-
-/**
- * 게임 폴더명에서 VNDB 코드(v562, vn562) 숫자 추출
- * - 상위 폴더는 보지 않음 (v 한 글자 코드라 경로 전체에서 찾으면 오인식이 잦음)
- * - 앞에 영문/숫자가 붙으면 제외 (Rev12, ver12)
- * - 뒤에 소수점+숫자가 오면 버전 표기로 보고 제외 (v1.02, v10.5)
- * - v는 1자리면 버전(v1)과 구별되지 않아 2자리부터, vn은 버전 표기와 겹치지 않아 1자리부터
- */
-export function extractVndbId(path: string): string | undefined {
-  const match = /(?<![a-z0-9])v(?:n(\d{1,6})|(\d{2,6}))(?!\d|\.\d)/i.exec(
-    basename(path),
-  );
-  return match?.[1] ?? match?.[2];
 }
 
 /** 언어 우선순위대로 제목 선택, 없으면 VNDB 대표 제목 */

@@ -267,8 +267,8 @@ async function handleGetNewCookie(): Promise<void> {
         <CardHeader class="pb-4">
           <CardTitle class="text-lg">비게임 콘텐츠</CardTitle>
           <CardDescription class="text-sm">
-            RJ코드 폴더를 비게임 콘텐츠(오디오/비디오)로 인식하고 외부
-            플레이어로 재생합니다.
+            실행 파일이 없는 작품 코드 폴더를 비게임 콘텐츠(오디오/비디오)로
+            인식하고 외부 플레이어로 재생합니다.
           </CardDescription>
         </CardHeader>
         <CardContent class="flex flex-col gap-4">
@@ -279,7 +279,8 @@ async function handleGetNewCookie(): Promise<void> {
                 >비게임 콘텐츠 인식</label
               >
               <p class="text-muted-foreground text-xs">
-                RJ코드 폴더를 비게임 콘텐츠로 인식합니다
+                폴더명에 정보 수집 가능한 작품 코드(RJ, ST, GC, CE, vn 등)가
+                있으면 인식합니다
               </p>
             </div>
             <Switch v-model="enableNonGameContent" />

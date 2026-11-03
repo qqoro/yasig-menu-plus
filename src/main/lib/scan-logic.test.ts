@@ -74,8 +74,8 @@ beforeEach(() => {
 // 상수 테스트
 // ============================================
 describe("상수", () => {
-  it("EXECUTABLE_EXTENSIONS가 정확히 [.exe, .lnk, .url] 포함", () => {
-    expect(EXECUTABLE_EXTENSIONS).toEqual([".exe", ".lnk", ".url"]);
+  it("EXECUTABLE_EXTENSIONS가 정확히 [.exe, .lnk] 포함 (웹 바로가기 .url 제외)", () => {
+    expect(EXECUTABLE_EXTENSIONS).toEqual([".exe", ".lnk"]);
   });
 
   it("EXCLUDED_FOLDER_NAMES가 주요 항목을 포함", () => {
@@ -116,10 +116,13 @@ describe("hasExecutableFile", () => {
     expect(hasExecutableFile("/games/mygame")).toBe(true);
   });
 
-  it("url 파일이 있는 폴더 → true", () => {
-    mockReaddirReturn([createDirent("website.url", { isFile: true })]);
+  it("웹 바로가기(url)만 있는 폴더 → false", () => {
+    mockReaddirReturn([
+      createDirent("website.url", { isFile: true }),
+      createDirent("track01.mp3", { isFile: true }),
+    ]);
 
-    expect(hasExecutableFile("/games/mygame")).toBe(true);
+    expect(hasExecutableFile("/games/mygame")).toBe(false);
   });
 
   it("exe 파일이 없는 폴더 (txt만) → false", () => {
@@ -386,9 +389,9 @@ describe("scanSingleFolder", () => {
 });
 
 // ============================================
-// 비게임 콘텐츠 (RJ코드) 인식 테스트
+// 비게임 콘텐츠 (작품 코드) 인식 테스트
 // ============================================
-describe("비게임 콘텐츠 (RJ코드) 인식", () => {
+describe("비게임 콘텐츠 (작품 코드) 인식", () => {
   it("scanSingleFolder: RJ코드 폴더도 하위 스캔 대상으로 추가", () => {
     mockExistsSync.mockReturnValue(true);
     vi.mocked(readdirSync).mockImplementation((path: any) => {
@@ -453,6 +456,63 @@ describe("비게임 콘텐츠 (RJ코드) 인식", () => {
     const result = scanFolderRecursive("/library", 5, true);
     expect(result).toHaveLength(2);
     expect(result.every((c) => !c.hasExecutable)).toBe(true);
+  });
+
+  it("다른 수집기 코드(Steam/Getchu/Ci-en/VNDB) 폴더도 인식", () => {
+    const names = [
+      "steam_1234560 음성",
+      "GC123456 음성",
+      "CE123-456 음성",
+      "vn4 음성",
+    ];
+    mockExistsSync.mockReturnValue(true);
+    vi.mocked(readdirSync).mockImplementation((path: any) => {
+      if (String(path) === "/library") {
+        return names.map((n) => createDirent(n, { isDirectory: true })) as any;
+      }
+      return [createDirent("track01.mp3", { isFile: true })] as any;
+    });
+
+    const result = scanFolderRecursive("/library", 5, true);
+    expect(result.map((c) => c.name).sort()).toEqual([...names].sort());
+    expect(result.every((c) => !c.hasExecutable)).toBe(true);
+  });
+
+  it("웹 바로가기(.url)가 있는 코드 폴더도 비게임 콘텐츠로 등록", () => {
+    mockExistsSync.mockReturnValue(true);
+    vi.mocked(readdirSync).mockImplementation((path: any) => {
+      if (String(path).endsWith("RJ01234567 음성")) {
+        return [
+          createDirent("DLsite.url", { isFile: true }),
+          createDirent("track01.mp3", { isFile: true }),
+        ] as any;
+      }
+      return [createDirent("RJ01234567 음성", { isDirectory: true })] as any;
+    });
+
+    const result = scanFolderRecursive("/library", 5, true);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      name: "RJ01234567 음성",
+      hasExecutable: false,
+    });
+  });
+
+  it("상위 폴더에만 코드가 있는 하위 폴더는 따로 등록하지 않음", () => {
+    mockExistsSync.mockReturnValue(true);
+    vi.mocked(readdirSync).mockImplementation((path: any) => {
+      const p = String(path);
+      if (p === "/library") {
+        return [createDirent("RJ01234567 음성", { isDirectory: true })] as any;
+      }
+      if (p.endsWith("RJ01234567 음성")) {
+        return [createDirent("mp3", { isDirectory: true })] as any;
+      }
+      return [createDirent("track01.mp3", { isFile: true })] as any;
+    });
+
+    const result = scanFolderRecursive("/library", 5, true);
+    expect(result.map((c) => c.name)).toEqual(["RJ01234567 음성"]);
   });
 
   it("실행파일이 있는 RJ코드 폴더는 hasExecutable=true", () => {
