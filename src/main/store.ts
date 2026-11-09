@@ -93,6 +93,7 @@ export interface StoreSchema {
   scanDepth?: number; // 재귀 스캔 최대 깊이 (기본값: 5)
   enableNonGameContent?: boolean; // 비게임 콘텐츠 인식 활성화 여부
   enableGoogleCollector?: boolean; // Google 콜렉터 활성화 여부 (기본값: true)
+  slowGoogleSearch?: boolean; // Google 검색 사이에 무작위로 대기 (기본값: false)
   mediaPlayerSettings?: {
     audioPlayerPath: string | null; // 오디오 플레이어 경로
     videoPlayerPath: string | null; // 비디오 플레이어 경로
@@ -142,6 +143,7 @@ const DEFAULTS: StoreSchema = {
   scanDepth: 5,
   enableNonGameContent: false,
   enableGoogleCollector: true, // 기본적으로 Google 콜렉터 활성화
+  slowGoogleSearch: false,
   mediaPlayerSettings: {
     audioPlayerPath: null,
     videoPlayerPath: null,
@@ -481,6 +483,7 @@ export function getAllSettings(): StoreSchema {
     scanDepth: store.get("scanDepth"),
     enableNonGameContent: store.get("enableNonGameContent"),
     enableGoogleCollector: store.get("enableGoogleCollector"),
+    slowGoogleSearch: store.get("slowGoogleSearch"),
     mediaPlayerSettings: store.get("mediaPlayerSettings"),
     viewedHelpCards: store.get("viewedHelpCards"),
     lastRenameTemplate: store.get("lastRenameTemplate"),
@@ -756,6 +759,14 @@ export function getEnableGoogleCollector(): boolean {
 export function setEnableGoogleCollector(enabled: boolean): void {
   const store = getStore();
   store.set("enableGoogleCollector", enabled);
+}
+
+/**
+ * Google 검색 사이에 무작위로 대기할지 여부 가져오기
+ */
+export function getSlowGoogleSearch(): boolean {
+  const store = getStore();
+  return store.get("slowGoogleSearch") ?? DEFAULTS.slowGoogleSearch!;
 }
 
 /**

@@ -57,6 +57,16 @@ export async function detectBotBlock(page: Page): Promise<BotBlockResult> {
   }
 }
 
+/** Google 이미지 검색 결과 페이지 주소 */
+export function buildGoogleSearchUrl(id: string): string {
+  const params = new URLSearchParams({ q: id, udm: "2" });
+  return "https://www.google.com/search?" + params;
+}
+
+/**
+ * fetchInfo에 넘기는 page는 이미 검색 결과 페이지를 연 상태여야 한다.
+ * 페이지 이동과 차단 감지는 호출자(searchGoogle)가 맡는다.
+ */
 export const GoogleCollector: Collector = {
   name: "Google",
 
@@ -64,7 +74,7 @@ export const GoogleCollector: Collector = {
     return basename(path);
   },
 
-  fetchInfo: async ({ id, page }) => {
+  fetchInfo: async ({ page }) => {
     if (!page) {
       return {
         title: null,
@@ -81,13 +91,6 @@ export const GoogleCollector: Collector = {
         provider: null,
       } satisfies CollectorResult;
     }
-
-    const params = new URLSearchParams({
-      q: id,
-      udm: "2",
-    });
-    const searchUrl = "https://www.google.com/search?" + params;
-    await page.goto(searchUrl, { waitUntil: "networkidle2" });
 
     try {
       await page.waitForSelector("#center_col img", { timeout: 5000 });

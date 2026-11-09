@@ -1,8 +1,16 @@
 import { Launcher } from "chrome-launcher";
 import type { IpcMainInvokeEvent } from "electron";
 import { app, BrowserWindow } from "electron";
-import puppeteer, { type Page } from "puppeteer-core";
-import { detectBotBlock } from "../collectors/google-collector.js";
+import puppeteer, {
+  type Browser,
+  type Page,
+  type Protocol,
+} from "puppeteer-core";
+import {
+  buildGoogleSearchUrl,
+  detectBotBlock,
+  GoogleCollector,
+} from "../collectors/google-collector.js";
 import {
   type Collector,
   findCollector,
@@ -12,9 +20,11 @@ import {
 import { db } from "../db/db-manager.js";
 import type { IpcMainEventMap, IpcRendererEventMap } from "../events.js";
 import {
+  getEnableGoogleCollector,
   getGoogleAbuseExemption,
   getGoogleCollectorIgnoreUntil,
   getGoogleCookie,
+  getSlowGoogleSearch,
   setGoogleAbuseExemption,
   setGoogleCollectorIgnoreUntil,
   setGoogleCookie,
@@ -59,6 +69,14 @@ function isGoogleCollectorIgnored(): boolean {
   return true;
 }
 
+/** navigator.webdriver 등 자동화 표시를 끄고 Chrome을 띄우는 공통 옵션 */
+const CHROME_ARGS = [
+  "--no-sandbox",
+  "--disable-setuid-sandbox",
+  "--disable-blink-features=AutomationControlled",
+];
+const IGNORED_CHROME_DEFAULT_ARGS = ["--enable-automation"];
+
 /**
  * Puppeteer browser 초기화 (Chrome 설치 경로 자동 검색)
  */
@@ -82,7 +100,8 @@ async function initBrowser() {
         const browser = await puppeteer.launch({
           headless: app.isPackaged,
           executablePath: chromePath,
-          args: ["--no-sandbox", "--disable-setuid-sandbox"],
+          args: CHROME_ARGS,
+          ignoreDefaultArgs: IGNORED_CHROME_DEFAULT_ARGS,
         });
         browserInstance = browser;
         return browser;
@@ -102,6 +121,90 @@ async function initBrowser() {
   }
 }
 
+/** navigator.userAgentData.getHighEntropyValues 결과 */
+interface BrowserClientHints {
+  architecture: string;
+  bitness: string;
+  brands: Protocol.Emulation.UserAgentBrandVersion[];
+  fullVersionList: Protocol.Emulation.UserAgentBrandVersion[];
+  mobile: boolean;
+  model: string;
+  platform: string;
+  platformVersion: string;
+  uaFullVersion: string;
+  wow64: boolean;
+}
+
+/** 실행 중인 Chrome의 Client Hints (버전이 바뀌지 않으므로 한 번만 읽는다) */
+let headlessClientHints: Protocol.Emulation.UserAgentMetadata | undefined;
+
+/**
+ * Chrome이 원래 보내는 Client Hints를 읽는다.
+ * userAgentData는 보안 컨텍스트에서만 노출되어, 외부 요청이 없는 chrome:// 페이지에서 읽는다.
+ */
+async function readClientHints(
+  browser: Browser,
+): Promise<Protocol.Emulation.UserAgentMetadata | undefined> {
+  if (headlessClientHints) return headlessClientHints;
+
+  const page = await browser.newPage();
+  try {
+    await page.goto("chrome://version");
+    const hints = await page.evaluate(() =>
+      (
+        navigator as Navigator & {
+          userAgentData: {
+            getHighEntropyValues(names: string[]): Promise<BrowserClientHints>;
+          };
+        }
+      ).userAgentData.getHighEntropyValues([
+        "architecture",
+        "bitness",
+        "fullVersionList",
+        "model",
+        "platformVersion",
+        "uaFullVersion",
+        "wow64",
+      ]),
+    );
+    headlessClientHints = {
+      brands: hints.brands,
+      fullVersionList: hints.fullVersionList,
+      fullVersion: hints.uaFullVersion,
+      platform: hints.platform,
+      platformVersion: hints.platformVersion,
+      architecture: hints.architecture,
+      model: hints.model,
+      mobile: hints.mobile,
+      bitness: hints.bitness,
+      wow64: hints.wow64,
+    };
+    return headlessClientHints;
+  } catch (error) {
+    log.warn("Client Hints를 읽지 못해 UA만 변경:", error);
+    return undefined;
+  } finally {
+    await page.close();
+  }
+}
+
+/**
+ * headless 브라우저의 새 페이지를 연다.
+ * 기본 UA에는 HeadlessChrome이 그대로 노출되어 일반 Chrome UA로 바꾼다.
+ * UA만 덮어쓰면 Sec-CH-UA가 사라지므로 원래 Client Hints를 함께 지정한다.
+ */
+async function newHeadlessPage(browser: Browser): Promise<Page> {
+  const page = await browser.newPage();
+  const userAgent = await browser.userAgent();
+  if (userAgent.includes("HeadlessChrome")) {
+    await page.setUserAgent({
+      userAgent: userAgent.replace("HeadlessChrome", "Chrome"),
+      userAgentMetadata: await readClientHints(browser),
+    });
+  }
+  return page;
+}
+
 /**
  * 봇 차단 해결용 non-headless 브라우저 실행
  */
@@ -119,11 +222,8 @@ async function launchVisibleBrowser(): Promise<
       const browser = await puppeteer.launch({
         headless: false, // 사용자에게 보이는 모드
         executablePath: chromePath,
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--window-size=800,600",
-        ],
+        args: [...CHROME_ARGS, "--window-size=800,600"],
+        ignoreDefaultArgs: IGNORED_CHROME_DEFAULT_ARGS,
       });
       visibleBrowserInstance = browser;
       return browser;
@@ -146,18 +246,22 @@ async function waitForBotBlockResolution(
   timeout: number = 120000, // 2분
 ): Promise<boolean> {
   return new Promise((resolve) => {
-    botBlockResolveCallback = resolve;
-
-    // 프론트엔드에 모달 표시 요청
-    mainWindow?.webContents.send("botBlockDetected", { gamePath, gameTitle });
-
     // 타임아웃 설정
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       if (botBlockResolveCallback) {
         botBlockResolveCallback(false);
         botBlockResolveCallback = null;
       }
     }, timeout);
+
+    // 해결 시 타이머를 지워야 남은 타이머가 다음 인증을 취소하지 않는다
+    botBlockResolveCallback = (resolved) => {
+      clearTimeout(timer);
+      resolve(resolved);
+    };
+
+    // 프론트엔드에 모달 표시 요청
+    mainWindow?.webContents.send("botBlockDetected", { gamePath, gameTitle });
   });
 }
 
@@ -250,7 +354,7 @@ export async function getNewCookie() {
   const browser = await initBrowser();
   if (!browser) return;
 
-  const page = await browser.newPage();
+  const page = await newHeadlessPage(browser);
   try {
     // ── 1단계: 검색결과 지역을 가나로 설정 (연령 인증 우회) ──
     await page.goto(
@@ -394,6 +498,132 @@ class ConcurrencyQueue {
  */
 const googleSerialQueue = new ConcurrencyQueue(1);
 
+/** "천천히 검색" 옵션을 켰을 때 Google 검색 사이의 무작위 간격 */
+const SLOW_SEARCH_MIN_GAP_MS = 3000;
+const SLOW_SEARCH_MAX_GAP_MS = 6000;
+
+let lastGoogleSearchAt = 0;
+
+/** 옵션이 켜져 있으면 직전 검색과의 간격을 확보한다. 첫 검색은 기다리지 않는다 */
+async function throttleGoogleSearch(): Promise<void> {
+  if (getSlowGoogleSearch()) {
+    const gap =
+      SLOW_SEARCH_MIN_GAP_MS +
+      Math.random() * (SLOW_SEARCH_MAX_GAP_MS - SLOW_SEARCH_MIN_GAP_MS);
+    const waitMs = lastGoogleSearchAt + gap - Date.now();
+    if (waitMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+  }
+  lastGoogleSearchAt = Date.now();
+}
+
+interface GoogleSearchArgs {
+  gamePath: string;
+  gameTitle: string | undefined;
+  id: string;
+}
+
+/** info가 없고 error도 없으면 검색을 건너뛰었거나 결과가 없는 경우 */
+interface GoogleSearchOutcome {
+  info?: CollectorResult;
+  error?: string;
+}
+
+/** 이미 검색 결과를 연 페이지에서 정보를 읽는다 */
+async function readGoogleResult(
+  page: Page,
+  { gamePath, id }: GoogleSearchArgs,
+): Promise<CollectorResult | undefined> {
+  const result = await GoogleCollector.fetchInfo({ path: gamePath, id, page });
+  return result && "thumbnailUrl" in result
+    ? (result as CollectorResult)
+    : undefined;
+}
+
+/** 보이는 Chrome에서 사용자가 CAPTCHA를 푼 뒤 그 창에서 결과를 읽는다 */
+async function collectAfterCaptcha(
+  args: GoogleSearchArgs,
+  searchUrl: string,
+): Promise<GoogleSearchOutcome> {
+  const visibleBrowser = await launchVisibleBrowser();
+  const visiblePage = await visibleBrowser.newPage();
+
+  try {
+    await applyGoogleCookies(visiblePage);
+    await visiblePage.goto(searchUrl, { waitUntil: "networkidle2" });
+
+    const resolved = await waitForBotBlockResolution(
+      BrowserWindow.getAllWindows()[0],
+      args.gamePath,
+      args.gameTitle ?? args.id,
+    );
+    if (!resolved) {
+      return { error: "CAPTCHA 해결 시간 초과 또는 취소됨" };
+    }
+
+    await persistGoogleCookiesFromPage(visiblePage);
+
+    // 사용자가 어느 화면에서 완료를 눌렀는지 알 수 없어 결과 페이지를 다시 연다
+    await visiblePage.goto(searchUrl, { waitUntil: "networkidle2" });
+    return { info: await readGoogleResult(visiblePage, args) };
+  } finally {
+    await visiblePage.close();
+    if (visibleBrowserInstance) {
+      await visibleBrowserInstance.close();
+      visibleBrowserInstance = null;
+    }
+  }
+}
+
+/**
+ * Google 검색의 단일 진입점. ID 없는 게임의 수집과 썸네일 보충이 함께 쓴다.
+ * 직렬 큐, 설정 확인, 쿠키, 요청 간격, 차단 감지와 인증을 모두 여기서 처리한다.
+ */
+async function searchGoogle(
+  args: GoogleSearchArgs,
+): Promise<GoogleSearchOutcome> {
+  return googleSerialQueue.add(async () => {
+    // 큐에서 기다리는 동안 "30분 무시"가 눌릴 수 있어 실행 직전에 확인한다
+    if (!getEnableGoogleCollector() || isGoogleCollectorIgnored()) {
+      log.debug("Google 검색 스킵 (비활성화 또는 봇 차단 무시 중)");
+      return {};
+    }
+
+    try {
+      if (!getGoogleCookie()) {
+        await getNewCookie();
+      }
+      await throttleGoogleSearch();
+
+      const searchUrl = buildGoogleSearchUrl(args.id);
+      const browser = await initBrowser();
+      const page = await newHeadlessPage(browser);
+
+      try {
+        await applyGoogleCookies(page);
+        await page.goto(searchUrl, { waitUntil: "networkidle2" });
+
+        const botBlockResult = await detectBotBlock(page);
+        if (!botBlockResult.blocked) {
+          return { info: await readGoogleResult(page, args) };
+        }
+
+        log.warn(`봇 차단 감지: ${botBlockResult.reason}`);
+        await page.close();
+        return await collectAfterCaptcha(args, searchUrl);
+      } finally {
+        if (!page.isClosed()) {
+          await page.close();
+        }
+      }
+    } catch (chromeError) {
+      log.error("Chrome 에러:", chromeError);
+      return { error: String(chromeError) };
+    }
+  });
+}
+
 /**
  * 단일 게임에 대한 primary 정보 수집 (saveInfo, fallback 미포함).
  * Google 콜렉터 분기는 내부적으로 googleSerialQueue 를 사용해 직렬화한다.
@@ -417,107 +647,18 @@ async function runPrimaryCollection(args: {
   let info: CollectorResult | undefined;
 
   if (collector.name === "Google") {
-    if (isGoogleCollectorIgnored()) {
-      log.debug("봇 차단 무시 중 - Google 컬렉터 스킵");
-      return {};
+    const outcome = await searchGoogle({ gamePath, gameTitle, id });
+    if (outcome.error) {
+      return {
+        earlyReturn: { gamePath, success: false, error: outcome.error },
+      };
     }
+    return { info: outcome.info };
+  }
 
-    const earlyReturn = await googleSerialQueue.add<
-      IpcMainEventMap["collectorDone"] | undefined
-    >(async () => {
-      try {
-        if (!getGoogleCookie()) {
-          await getNewCookie();
-        }
-
-        const browser = await initBrowser();
-        const page = await browser.newPage();
-
-        try {
-          await applyGoogleCookies(page);
-
-          const params = new URLSearchParams({ q: id, udm: "2" });
-          const searchUrl = "https://www.google.com/search?" + params;
-          await page.goto(searchUrl, { waitUntil: "networkidle2" });
-
-          const botBlockResult = await detectBotBlock(page);
-
-          if (botBlockResult.blocked) {
-            log.warn(`봇 차단 감지: ${botBlockResult.reason}`);
-
-            await page.close();
-
-            const visibleBrowser = await launchVisibleBrowser();
-            const visiblePage = await visibleBrowser.newPage();
-
-            try {
-              await applyGoogleCookies(visiblePage);
-              await visiblePage.goto(searchUrl, {
-                waitUntil: "networkidle2",
-              });
-
-              const mainWindow = BrowserWindow.getAllWindows()[0];
-              const resolved = await waitForBotBlockResolution(
-                mainWindow,
-                gamePath,
-                gameTitle ?? id,
-              );
-
-              if (!resolved) {
-                return {
-                  gamePath,
-                  success: false,
-                  error: "CAPTCHA 해결 시간 초과 또는 취소됨",
-                };
-              }
-
-              await persistGoogleCookiesFromPage(visiblePage);
-
-              const fetchResult = await collector.fetchInfo({
-                path: gamePath,
-                id,
-                page: visiblePage,
-              });
-              if (fetchResult && "thumbnailUrl" in fetchResult) {
-                info = fetchResult as CollectorResult;
-              }
-            } finally {
-              await visiblePage.close();
-              if (visibleBrowserInstance) {
-                await visibleBrowserInstance.close();
-                visibleBrowserInstance = null;
-              }
-            }
-          } else {
-            const fetchResult = await collector.fetchInfo({
-              path: gamePath,
-              id,
-              page,
-            });
-            if (fetchResult && "thumbnailUrl" in fetchResult) {
-              info = fetchResult as CollectorResult;
-            }
-          }
-        } finally {
-          if (page && !page.isClosed()) {
-            await page.close();
-          }
-        }
-        return undefined;
-      } catch (chromeError) {
-        log.error("Chrome 에러:", chromeError);
-        return { gamePath, success: false, error: String(chromeError) };
-      }
-    });
-
-    if (earlyReturn) {
-      return { earlyReturn };
-    }
-  } else {
-    const fetchResult = await collector.fetchInfo({ path: gamePath, id });
-    if (fetchResult && "thumbnailUrl" in fetchResult) {
-      info = fetchResult as CollectorResult;
-    }
+  const fetchResult = await collector.fetchInfo({ path: gamePath, id });
+  if (fetchResult && "thumbnailUrl" in fetchResult) {
+    info = fetchResult as CollectorResult;
   }
 
   return { info };
@@ -525,59 +666,33 @@ async function runPrimaryCollection(args: {
 
 /**
  * 비-Google primary 콜렉터로 썸네일을 못 받았을 때 Google 검색으로 썸네일만 보충.
- * googleSerialQueue 를 사용해 직렬화된다.
+ * 실패해도 코드로 받은 정보는 유지되도록 수집 실패로 전파하지 않는다.
  */
-async function runGoogleFallback(gamePath: string): Promise<void> {
-  await googleSerialQueue.add(async () => {
-    try {
-      const fallbackCollector = (
-        await import("../collectors/google-collector.js")
-      ).GoogleCollector;
-      const fallbackId = await fallbackCollector.getId(gamePath);
-      if (fallbackId) {
-        if (!getGoogleCookie()) {
-          await getNewCookie();
-        }
+async function runGoogleFallback(
+  gamePath: string,
+  gameTitle: string | undefined,
+): Promise<void> {
+  const id = await GoogleCollector.getId(gamePath);
+  if (!id) return;
 
-        const browser = await initBrowser();
-        const page = await browser.newPage();
+  const { info, error } = await searchGoogle({ gamePath, gameTitle, id });
+  if (error) {
+    log.warn(`Google 폴백 실패, 썸네일 없이 진행: ${gamePath}`, error);
+    return;
+  }
+  if (!info?.thumbnailUrl) return;
 
-        await applyGoogleCookies(page);
-
-        try {
-          const googleResult = await fallbackCollector.fetchInfo({
-            path: gamePath,
-            id: fallbackId,
-            page,
-          });
-          if (
-            googleResult &&
-            "thumbnailUrl" in googleResult &&
-            googleResult.thumbnailUrl
-          ) {
-            try {
-              const thumbnailPath = await downloadImage(
-                googleResult.thumbnailUrl,
-                gamePath,
-              );
-              await db("games")
-                .where("path", gamePath)
-                .update({ thumbnail: thumbnailPath });
-            } catch (error) {
-              log.warn(
-                `Google 썸네일 다운로드 실패, 썸네일 없이 진행: ${gamePath}`,
-                error,
-              );
-            }
-          }
-        } finally {
-          await page.close();
-        }
-      }
-    } catch (error) {
-      log.warn(`Google 폴백 실패, 썸네일 없이 진행: ${gamePath}`, error);
-    }
-  });
+  try {
+    const thumbnailPath = await downloadImage(info.thumbnailUrl, gamePath);
+    await db("games")
+      .where("path", gamePath)
+      .update({ thumbnail: thumbnailPath });
+  } catch (downloadError) {
+    log.warn(
+      `Google 썸네일 다운로드 실패, 썸네일 없이 진행: ${gamePath}`,
+      downloadError,
+    );
+  }
 }
 
 /**
@@ -626,12 +741,8 @@ export async function runCollectorHandler(
     await saveInfo(gamePath, primary.info);
 
     // 썸네일이 없으면 Google 콜렉터로 fallback 시도
-    if (
-      !primary.info.thumbnailUrl &&
-      collector.name !== "Google" &&
-      !isGoogleCollectorIgnored()
-    ) {
-      await runGoogleFallback(gamePath);
+    if (!primary.info.thumbnailUrl && collector.name !== "Google") {
+      await runGoogleFallback(gamePath, game?.title);
     }
 
     return { gamePath, success: true };
@@ -731,12 +842,8 @@ export async function runAllCollectorsHandler(
       }
 
       // Google fallback: googleSerialQueue 에 별도 enqueue (비-Google 슬롯 점유 X)
-      if (
-        !primary.info.thumbnailUrl &&
-        collector.name !== "Google" &&
-        !isGoogleCollectorIgnored()
-      ) {
-        await runGoogleFallback(game.path);
+      if (!primary.info.thumbnailUrl && collector.name !== "Google") {
+        await runGoogleFallback(game.path, game.title);
       }
 
       success++;

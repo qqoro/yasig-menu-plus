@@ -78,6 +78,14 @@ const enableGoogleCollector = computed({
   },
 });
 
+// Google 검색 천천히 하기 설정
+const slowGoogleSearch = computed({
+  get: () => settings.value?.slowGoogleSearch ?? false,
+  set: (value: boolean) => {
+    updateSettingsMutation.mutate({ slowGoogleSearch: value });
+  },
+});
+
 // 오디오 플레이어 선택
 async function selectAudioPlayer() {
   const result = await window.api.invoke("selectProgram");
@@ -389,10 +397,30 @@ async function handleGetNewCookie(): Promise<void> {
                 >Google 이미지 검색 사용</label
               >
               <p class="text-muted-foreground text-xs">
-                ID가 없는 게임의 썸네일을 Google 이미지 검색으로 찾습니다
+                ID가 없거나 썸네일을 받지 못한 게임의 썸네일을 Google 이미지
+                검색으로 찾습니다
               </p>
             </div>
             <Switch v-model="enableGoogleCollector" />
+          </div>
+
+          <!-- Google 검색 천천히 하기 (Google 콜렉터 활성화 시에만) -->
+          <div
+            class="flex items-center justify-between"
+            :class="{
+              'pointer-events-none opacity-50': !enableGoogleCollector,
+            }"
+          >
+            <div class="space-y-0.5">
+              <label class="text-sm leading-none font-medium"
+                >Google 검색 천천히 하기</label
+              >
+              <p class="text-muted-foreground text-xs">
+                봇 감지가 자주 뜨면 켜세요. 검색마다 3~6초씩 쉬어 수집이
+                느려집니다
+              </p>
+            </div>
+            <Switch v-model="slowGoogleSearch" />
           </div>
 
           <!-- 쿠키 설정 (Google 콜렉터 활성화 시에만) -->
