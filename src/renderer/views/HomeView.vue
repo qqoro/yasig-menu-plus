@@ -38,10 +38,11 @@ import {
   CardTitle,
 } from "../components/ui/card";
 import {
-  useAllInOneRefresh,
   useAllInOneRefreshMutation,
   useLastRefreshed,
 } from "../composables/useAllInOneRefresh";
+import { useJobStatus } from "../composables/useJobStatus";
+import { formatSyncProgress } from "../lib/job-label";
 import {
   useAutoScanListener,
   useSizeSortNotice,
@@ -91,14 +92,9 @@ useAutoScanListener();
 // 용량순 정렬 시 용량 미측정 게임 안내
 const { notifyUnmeasuredSize } = useSizeSortNotice();
 
-// 전체 동기화 composable
-const {
-  currentStep: allInOneStep,
-  stepLabel: allInOneStepLabel,
-  collectorProgress: allInOneCollectorProgress,
-  translationProgress: allInOneTranslationProgress,
-} = useAllInOneRefresh();
+// 전체 동기화 (진행 상태는 메인이 들고 있어 화면 이동·새로고침 후에도 유지)
 const allInOneRefreshMutation = useAllInOneRefreshMutation();
+const { status: jobStatus, isBusy: isJobBusy } = useJobStatus();
 
 // 마지막 갱신 시간
 const lastRefreshedAt = ref<Date | null>(null);
@@ -385,7 +381,10 @@ onMounted(() => {
       <HomeToolbar
         :zoom-level="uiStore.zoomLevel"
         :view-mode="uiStore.viewMode"
-        :is-syncing="allInOneRefreshMutation.isPending.value"
+        :is-syncing="
+          jobStatus.kind === 'sync' || allInOneRefreshMutation.isPending.value
+        "
+        :is-job-busy="isJobBusy"
         :is-searching="isSearching"
         :special-only-total-count="specialOnlyTotalCount"
         @zoom-in="handleIncreaseZoom"
@@ -483,31 +482,11 @@ onMounted(() => {
               </span>
 
               <!-- 진행 상태 -->
-              <template v-if="allInOneRefreshMutation.isPending.value">
+              <template v-if="jobStatus.kind === 'sync'">
                 <span class="text-muted-foreground">•</span>
                 <span class="flex items-center gap-1">
                   <Loader2 :size="12" class="animate-spin" />
-                  {{ allInOneStepLabel }}
-                  <template
-                    v-if="
-                      allInOneStep === 'collect' &&
-                      allInOneCollectorProgress.total > 0
-                    "
-                  >
-                    ({{ allInOneCollectorProgress.current }}/{{
-                      allInOneCollectorProgress.total
-                    }})
-                  </template>
-                  <template
-                    v-else-if="
-                      allInOneStep === 'translate' &&
-                      allInOneTranslationProgress.total > 0
-                    "
-                  >
-                    ({{ allInOneTranslationProgress.current }}/{{
-                      allInOneTranslationProgress.total
-                    }})
-                  </template>
+                  {{ formatSyncProgress(jobStatus) }}
                 </span>
               </template>
             </div>

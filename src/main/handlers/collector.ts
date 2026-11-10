@@ -1,6 +1,6 @@
 import { Launcher } from "chrome-launcher";
 import type { IpcMainInvokeEvent } from "electron";
-import { app, BrowserWindow } from "electron";
+import { app } from "electron";
 import puppeteer, {
   type Browser,
   type Page,
@@ -18,7 +18,18 @@ import {
   type CollectorResult,
 } from "../collectors/registry.js";
 import { db } from "../db/db-manager.js";
-import type { IpcMainEventMap, IpcRendererEventMap } from "../events.js";
+import type {
+  CollectAllResult,
+  IpcMainEventMap,
+  IpcRendererEventMap,
+  JobStartResult,
+} from "../events.js";
+import {
+  setPendingBotBlock,
+  startJob,
+  toStartResult,
+  type ProgressFn,
+} from "../services/job-registry.js";
 import {
   getEnableGoogleCollector,
   getGoogleAbuseExemption,
@@ -30,6 +41,7 @@ import {
   setGoogleCookie,
 } from "../store.js";
 import { downloadImage } from "../utils/downloader.js";
+import { wrapIpcHandler } from "../utils/ipc-wrapper.js";
 import { createLogger } from "../utils/logger.js";
 
 const log = createLogger("Collector");
@@ -240,13 +252,12 @@ async function launchVisibleBrowser(): Promise<
  * 사용자가 "해결 완료" 버튼을 누를 때까지 대기
  */
 async function waitForBotBlockResolution(
-  mainWindow: BrowserWindow | null,
   gamePath: string,
   gameTitle: string,
   timeout: number = 120000, // 2분
 ): Promise<boolean> {
   return new Promise((resolve) => {
-    // 타임아웃 설정
+    // 타임아웃 설정 (콜백을 거치므로 대기 상태도 함께 지워진다)
     const timer = setTimeout(() => {
       if (botBlockResolveCallback) {
         botBlockResolveCallback(false);
@@ -257,11 +268,12 @@ async function waitForBotBlockResolution(
     // 해결 시 타이머를 지워야 남은 타이머가 다음 인증을 취소하지 않는다
     botBlockResolveCallback = (resolved) => {
       clearTimeout(timer);
+      setPendingBotBlock(null);
       resolve(resolved);
     };
 
-    // 프론트엔드에 모달 표시 요청
-    mainWindow?.webContents.send("botBlockDetected", { gamePath, gameTitle });
+    // 렌더러는 이 스냅샷을 보고 대화상자를 연다 (새로고침 후에도 다시 열린다)
+    setPendingBotBlock({ gamePath, gameTitle });
   });
 }
 
@@ -554,7 +566,6 @@ async function collectAfterCaptcha(
     await visiblePage.goto(searchUrl, { waitUntil: "networkidle2" });
 
     const resolved = await waitForBotBlockResolution(
-      BrowserWindow.getAllWindows()[0],
       args.gamePath,
       args.gameTitle ?? args.id,
     );
@@ -753,7 +764,9 @@ export async function runCollectorHandler(
 }
 
 /**
- * 전체 게임 컬렉터 실행
+ * 전체 게임 컬렉터 실행 (본체)
+ *
+ * 진행 상황은 onProgress로만 알린다. 렌더러 전송은 작업 상태 저장소 담당
  *
  * 두 큐를 병렬로 운용:
  * - nonGoogleQueue (5): 비-Google primary 수집 + saveInfo
@@ -762,13 +775,10 @@ export async function runCollectorHandler(
  * Google 작업이 직렬 큐에서 대기하더라도 비-Google 큐 슬롯을 점유하지 않아
  * 비-Google 게임 처리가 막히지 않는다.
  */
-export async function runAllCollectorsHandler(
-  event: IpcMainInvokeEvent,
-  payload: IpcRendererEventMap["runAllCollectors"],
-): Promise<IpcMainEventMap["allCollectorsDone"]> {
-  const { force } = payload;
-  const mainWindow = BrowserWindow.fromWebContents(event.sender);
-
+export async function collectAllGames(
+  force: boolean,
+  onProgress?: ProgressFn,
+): Promise<CollectAllResult> {
   let query = db("games").select("path", "title");
   if (!force) {
     query = query.where("isLoadedInfo", 0);
@@ -782,12 +792,9 @@ export async function runAllCollectorsHandler(
 
   const updateProgress = (gameTitle: string) => {
     completed++;
-    mainWindow?.webContents.send("collectorProgress", {
-      current: completed,
-      total,
-      gameTitle,
-    });
+    onProgress?.({ current: completed, total, gameTitle });
   };
+  onProgress?.({ current: 0, total, gameTitle: "" });
 
   // 비-Google primary 작업용 큐. Google 작업은 모듈 레벨 googleSerialQueue 사용.
   const nonGoogleQueue = new ConcurrencyQueue(5);
@@ -857,5 +864,25 @@ export async function runAllCollectorsHandler(
 
   await Promise.all(promises);
 
-  return { total, success, failed };
+  return { total, success, failed, force };
 }
+
+/**
+ * 전체 게임 컬렉터 시작 핸들러
+ *
+ * 결과를 기다리지 않고 바로 응답한다. 결과는 jobFinished로 전달된다
+ */
+export const runAllCollectorsHandler = wrapIpcHandler(
+  "runAllCollectors",
+  async (
+    _event: IpcMainInvokeEvent,
+    payload: IpcRendererEventMap["runAllCollectors"],
+  ): Promise<JobStartResult> =>
+    toStartResult(
+      startJob("collect", (ctx) =>
+        collectAllGames(payload.force ?? false, (p) =>
+          ctx.update({ step: "collect", ...p }),
+        ),
+      ),
+    ),
+);

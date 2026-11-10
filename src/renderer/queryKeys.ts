@@ -174,6 +174,13 @@ export const queryKeys = {
   },
 
   /**
+   * 백그라운드 작업 상태 (동기화·수집·번역) 쿼리 키
+   */
+  jobStatus: {
+    all: ["jobStatus"] as const,
+  },
+
+  /**
    * 체인지로그 쿼리 키
    */
   changelog: (currentVersion: string, mode: "afterVersion" | "recent") =>

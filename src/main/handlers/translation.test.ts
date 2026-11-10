@@ -60,16 +60,16 @@ vi.mock("../utils/logger.js", () => ({
   logger: mockLog,
 }));
 
-// 실제 이벤트 값 대신 문자열 리터럴 사용 (const enum은 직접 import 불가)
-vi.mock("../events.js", () => ({
-  IpcMainSend: {
-    TranslationProgress: "translationProgress",
-  },
+// 시작 핸들러는 작업 상태 저장소를 거친다. 저장소 자체는 job-registry.test.ts가 검증
+const mockStartJob = vi.hoisted(() => vi.fn());
+vi.mock("../services/job-registry.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../services/job-registry.js")>()),
+  startJob: mockStartJob,
 }));
 
 // ========== 핸들러 import (모킹 이후) ==========
-import { BrowserWindow } from "electron";
 import {
+  translateAllTitles,
   translateAllTitlesHandler,
   translateTitleHandler,
 } from "./translation.js";
@@ -227,15 +227,11 @@ describe("translation 핸들러", () => {
     });
   });
 
-  // ========== translateAllTitlesHandler ==========
+  // ========== translateAllTitles (본체) ==========
 
-  describe("translateAllTitlesHandler", () => {
-    const mockEvent = { sender: {} } as any;
-
+  describe("translateAllTitles", () => {
     it("번역할 게임이 없으면 {total:0, success:0, failed:0} 반환", async () => {
-      const result = await translateAllTitlesHandler(mockEvent, {
-        force: false,
-      });
+      const result = await translateAllTitles(false);
 
       expect(result).toEqual({ total: 0, success: 0, failed: 0 });
     });
@@ -261,9 +257,7 @@ describe("translation 핸들러", () => {
         translatedTitle: null,
       });
 
-      const result = await translateAllTitlesHandler(mockEvent, {
-        force: false,
-      });
+      const result = await translateAllTitles(false);
 
       // 번역되지 않은 2개만 처리
       expect(result.total).toBe(2);
@@ -296,9 +290,7 @@ describe("translation 핸들러", () => {
         translatedTitle: null,
       });
 
-      const result = await translateAllTitlesHandler(mockEvent, {
-        force: true,
-      });
+      const result = await translateAllTitles(true);
 
       // 전체 2개 처리
       expect(result.total).toBe(2);
@@ -309,7 +301,7 @@ describe("translation 핸들러", () => {
       expect(mockTranslate).toHaveBeenCalledTimes(2);
     });
 
-    it("진행률 이벤트를 BrowserWindow에 전송", async () => {
+    it("진행률을 onProgress로 알린다 (시작 시 0/N, 이후 게임마다)", async () => {
       await seedGame(testDb, {
         path: "/games/progress-1",
         title: "ゲーム1",
@@ -320,30 +312,28 @@ describe("translation 핸들러", () => {
         title: "ゲーム2",
         translatedTitle: null,
       });
+      const onProgress = vi.fn();
 
-      await translateAllTitlesHandler(mockEvent, { force: false });
+      await translateAllTitles(false, onProgress);
 
-      // BrowserWindow.fromWebContents가 호출됨
-      expect(BrowserWindow.fromWebContents).toHaveBeenCalledWith(
-        mockEvent.sender,
-      );
-
-      // 진행률 이벤트 2번 전송 (각 게임마다)
-      expect(mockSend).toHaveBeenCalledTimes(2);
-
-      // 첫 번째 게임 진행률
-      expect(mockSend).toHaveBeenCalledWith("translationProgress", {
+      expect(onProgress).toHaveBeenCalledTimes(3);
+      expect(onProgress).toHaveBeenNthCalledWith(1, {
+        current: 0,
+        total: 2,
+        gameTitle: "",
+      });
+      expect(onProgress).toHaveBeenNthCalledWith(2, {
         current: 1,
         total: 2,
         gameTitle: expect.any(String),
       });
-
-      // 두 번째 게임 진행률
-      expect(mockSend).toHaveBeenCalledWith("translationProgress", {
+      expect(onProgress).toHaveBeenNthCalledWith(3, {
         current: 2,
         total: 2,
         gameTitle: expect.any(String),
       });
+      // 렌더러로 직접 보내지 않는다 (작업 상태 저장소가 전송 담당)
+      expect(mockSend).not.toHaveBeenCalled();
     });
 
     it("일부 번역 실패 시 failed 카운트 증가", async () => {
@@ -375,9 +365,7 @@ describe("translation 핸들러", () => {
           source: "google",
         });
 
-      const result = await translateAllTitlesHandler(mockEvent, {
-        force: false,
-      });
+      const result = await translateAllTitles(false);
 
       expect(result.total).toBe(3);
       expect(result.success).toBe(2);
@@ -390,19 +378,14 @@ describe("translation 핸들러", () => {
       expect(failedGame!.translatedTitle).toBeNull();
     });
 
-    it("BrowserWindow를 가져올 수 없으면 진행률 이벤트 없이 번역 진행", async () => {
-      // fromWebContents가 null을 반환하도록 설정
-      vi.mocked(BrowserWindow.fromWebContents).mockReturnValueOnce(null);
-
+    it("onProgress 없이도 번역 진행", async () => {
       await seedGame(testDb, {
         path: "/games/no-window",
         title: "ウィンドウなし",
         translatedTitle: null,
       });
 
-      const result = await translateAllTitlesHandler(mockEvent, {
-        force: false,
-      });
+      const result = await translateAllTitles(false);
 
       // 번역 자체는 성공
       expect(result.total).toBe(1);
@@ -427,9 +410,7 @@ describe("translation 핸들러", () => {
 
       mockTranslate.mockRejectedValue(new Error("서비스 다운"));
 
-      const result = await translateAllTitlesHandler(mockEvent, {
-        force: false,
-      });
+      const result = await translateAllTitles(false);
 
       expect(result.total).toBe(2);
       expect(result.success).toBe(0);
@@ -446,7 +427,7 @@ describe("translation 핸들러", () => {
 
       mockTranslate.mockRejectedValue(new Error("구글 번역 API 오류: 429"));
 
-      await translateAllTitlesHandler(mockEvent, { force: false });
+      await translateAllTitles(false);
 
       expect(mockLog.error).toHaveBeenCalledWith(
         expect.stringContaining("실패로그"),
@@ -467,9 +448,7 @@ describe("translation 핸들러", () => {
 
       // 1회차: 실패 → NULL 유지
       mockTranslate.mockRejectedValueOnce(new Error("구글 번역 API 오류: 429"));
-      const first = await translateAllTitlesHandler(mockEvent, {
-        force: false,
-      });
+      const first = await translateAllTitles(false);
       expect(first).toMatchObject({ total: 1, success: 0, failed: 1 });
       expect(
         (await testDb("games").where("path", "/games/retry-loop").first())!
@@ -481,9 +460,7 @@ describe("translation 핸들러", () => {
         translatedText: "재시도 성공",
         source: "google",
       });
-      const second = await translateAllTitlesHandler(mockEvent, {
-        force: false,
-      });
+      const second = await translateAllTitles(false);
       expect(second).toMatchObject({ total: 1, success: 1, failed: 0 });
       expect(
         (await testDb("games").where("path", "/games/retry-loop").first())!
@@ -491,9 +468,7 @@ describe("translation 핸들러", () => {
       ).toBe("재시도 성공");
 
       // 3회차: 번역이 채워졌으므로 더 이상 대상이 아니다
-      const third = await translateAllTitlesHandler(mockEvent, {
-        force: false,
-      });
+      const third = await translateAllTitles(false);
       expect(third.total).toBe(0);
     });
 
@@ -508,14 +483,45 @@ describe("translation 핸들러", () => {
 
       mockTranslate.mockRejectedValue(new Error("서비스 다운"));
 
-      const result = await translateAllTitlesHandler(mockEvent, {
-        force: false,
-      });
+      const result = await translateAllTitles(false);
 
       // 연속 실패해도 중단하지 않고 전부 시도
       expect(result.total).toBe(6);
       expect(result.failed).toBe(6);
       expect(mockTranslate).toHaveBeenCalledTimes(6);
+    });
+  });
+
+  // ========== translateAllTitlesHandler (시작 핸들러) ==========
+
+  describe("translateAllTitlesHandler", () => {
+    const mockEvent = { sender: {} } as any;
+
+    it("작업을 시작하면 결과를 기다리지 않고 {started:true} 반환", async () => {
+      mockStartJob.mockReturnValueOnce({
+        started: true,
+        done: Promise.resolve(),
+      });
+
+      const result = await translateAllTitlesHandler(mockEvent, {
+        force: true,
+      });
+
+      expect(result).toEqual({ started: true });
+      expect(mockStartJob).toHaveBeenCalledWith(
+        "translate",
+        expect.any(Function),
+      );
+    });
+
+    it("다른 작업이 실행 중이면 busy 반환", async () => {
+      mockStartJob.mockReturnValueOnce({ started: false, reason: "busy" });
+
+      const result = await translateAllTitlesHandler(mockEvent, {
+        force: false,
+      });
+
+      expect(result).toEqual({ started: false, reason: "busy" });
     });
   });
 });

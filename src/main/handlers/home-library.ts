@@ -12,6 +12,7 @@ import { access, stat } from "fs/promises";
 import { db } from "../db/db-manager.js";
 import type { IpcMainEventMap, IpcRendererEventMap } from "../events.js";
 import { normalizePath } from "../lib/normalize-path.js";
+import { isJobRunning } from "../services/job-registry.js";
 import {
   addLibraryPath as addLibraryPathToStore,
   getAllLibraryScanHistory,
@@ -228,6 +229,8 @@ export interface AutoScanResult {
  * 동시 실행을 방지하여 중복 스캔/알림 방지
  */
 export async function autoScanLibraries(): Promise<AutoScanResult> {
+  // 동기화·수집·번역 중에는 게임 목록이 바뀌지 않도록 건너뛴다
+  if (isJobRunning()) return { addedCount: 0, deletedCount: 0 };
   // 이미 스캔 중이면 스킵
   if (isAutoScanning) return { addedCount: 0, deletedCount: 0 };
   isAutoScanning = true;

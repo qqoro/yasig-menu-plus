@@ -105,7 +105,9 @@ import {
   onMcpStatusChange,
   stopMcpServer,
 } from "./mcp/server.js";
-import { broadcast } from "./mcp/notify.js";
+import { broadcast } from "./utils/broadcast.js";
+import { getJobStatusHandler } from "./services/job-registry.js";
+import { runFullSyncHandler } from "./handlers/sync.js";
 
 initLogging();
 const mainLog = createLogger("Main");
@@ -443,6 +445,8 @@ function registerIpcHandlers() {
   // ========== 마지막 갱신 시간 관련 ==========
   ipcMain.handle(IpcRendererSend.LastRefreshedSet, setLastRefreshedHandler);
   ipcMain.handle(IpcRendererSend.LastRefreshedGet, getLastRefreshedHandler);
+  ipcMain.handle(IpcRendererSend.GetJobStatus, getJobStatusHandler);
+  ipcMain.handle(IpcRendererSend.RunFullSync, runFullSyncHandler);
 
   // ========== 라이브러리 스캔 기록 관련 ==========
   ipcMain.handle(

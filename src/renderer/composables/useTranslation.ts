@@ -5,9 +5,9 @@
  */
 
 import { useMutation, useQueryClient } from "@tanstack/vue-query";
-import { computed, onMounted, ref } from "vue";
 import { toast } from "vue-sonner";
 import { queryKeys } from "../queryKeys";
+import { JOB_BUSY_MESSAGE } from "./useAllInOneRefresh";
 
 // 단일 게임 번역 뮤테이션
 export function useTranslateTitleMutation() {
@@ -32,20 +32,17 @@ export function useTranslateTitleMutation() {
   });
 }
 
-// 전체 게임 번역 뮤테이션
+// 전체 게임 번역 시작 뮤테이션
+// 메인이 번역을 진행하고 바로 응답한다. 진행 상태는 useJobStatus,
+// 완료 알림과 캐시 무효화는 useJobEvents가 맡는다.
 export function useTranslateAllTitlesMutation() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: async (params: { force?: boolean }) => {
-      return await window.api.invoke("translateAllTitles", params);
-    },
-    onSuccess: (data: any) => {
-      toast.success("전체 번역 완료", {
-        description: `성공: ${data.success}, 실패: ${data.failed}`,
+      const result = await window.api.invoke("translateAllTitles", {
+        force: params.force,
       });
-      // 전체 번역으로 games 무효화
-      queryClient.invalidateQueries({ queryKey: queryKeys.games.all });
+      if (!result.started) toast.warning(JOB_BUSY_MESSAGE);
+      return result;
     },
     onError: (error) => {
       toast.error("전체 번역에 실패했습니다.", {
@@ -53,39 +50,4 @@ export function useTranslateAllTitlesMutation() {
       });
     },
   });
-}
-
-// 번역 진행률 상태 (SettingsView에서 UI 표시용)
-// 실제 이벤트 리스너는 App.vue에서 전역으로 처리됨
-export function useTranslationProgress() {
-  const current = ref(0);
-  const total = ref(0);
-  const gameTitle = ref("");
-  const isInProgress = computed(
-    () => current.value > 0 && current.value <= total.value,
-  );
-
-  onMounted(() => {
-    window.api.on(
-      "translationProgress",
-      (data: { current: number; total: number; gameTitle: string }) => {
-        current.value = data.current;
-        total.value = data.total;
-        gameTitle.value = data.gameTitle;
-      },
-    );
-
-    window.api.on("allTranslationsDone", () => {
-      current.value = 0;
-      total.value = 0;
-      gameTitle.value = "";
-    });
-  });
-
-  return {
-    current,
-    total,
-    gameTitle,
-    isInProgress,
-  };
 }

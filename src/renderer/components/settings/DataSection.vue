@@ -30,13 +30,11 @@ import {
 } from "@/composables/useAllSettings";
 import { useCleanThumbnails } from "@/composables/useCleanThumbnails";
 import { useConvertImagesToWebp } from "@/composables/useConvertImagesToWebp";
-import { useCollector, useRunAllCollectors } from "@/composables/useCollector";
+import { useRunAllCollectors } from "@/composables/useCollector";
+import { useJobStatus } from "@/composables/useJobStatus";
 import { useMigrateThumbnails } from "@/composables/useMigrateThumbnails";
 import { useSelectFolder } from "@/composables/useAllInOneRefresh";
-import {
-  useTranslateAllTitlesMutation,
-  useTranslationProgress,
-} from "@/composables/useTranslation";
+import { useTranslateAllTitlesMutation } from "@/composables/useTranslation";
 import {
   useSetTranslationSettings,
   useTranslationSettings,
@@ -47,8 +45,13 @@ import { formatBytes } from "@/utils/format";
 
 const log = createLogger("DataSection");
 
+// 백그라운드 작업 상태 (수집·번역·동기화는 한 번에 하나만 돈다)
+const { status: jobStatus, isBusy: isJobBusy } = useJobStatus();
+const isCollecting = computed(() => jobStatus.value.kind === "collect");
+const isTranslating = computed(() => jobStatus.value.kind === "translate");
+const isSyncing = computed(() => jobStatus.value.kind === "sync");
+
 // 컬렉터 관련
-const { progress } = useCollector();
 const runAllCollectorsMutation = useRunAllCollectors();
 
 // 번역 설정
@@ -115,7 +118,6 @@ function getTitleDisplayModeLabel(mode: TitleDisplayMode): string {
 
 // 번역 관련
 const translateAllMutation = useTranslateAllTitlesMutation();
-const { current, total, gameTitle, isInProgress } = useTranslationProgress();
 
 // 통합 설정
 const { data: settings } = useAllSettings();
@@ -151,16 +153,11 @@ const openDataFolderMutation = useOpenDataFolder();
 const exportListOpen = ref(false);
 
 /**
- * 정보 수집 핸들러
+ * 정보 수집 핸들러 (완료 알림은 useJobEvents가 띄운다)
  */
 async function handleCollect(force: boolean): Promise<void> {
   try {
     await runAllCollectorsMutation.mutateAsync(force);
-    toast.success(
-      force
-        ? "모든 게임 정보 재수집이 완료되었습니다."
-        : "미수집 게임 정보 수집이 완료되었습니다.",
-    );
   } catch (err) {
     log.error("정보 수집 실행 실패:", err);
     toast.error(
@@ -263,62 +260,47 @@ async function handleOpenDataFolder(): Promise<void> {
         <CardContent class="space-y-4">
           <!-- 진행 상태 -->
           <div
-            v-if="runAllCollectorsMutation.isPending.value"
+            v-if="isCollecting"
             class="bg-muted/50 flex items-center gap-2 rounded-md p-3"
           >
             <Loader2 :size="16" class="text-muted-foreground animate-spin" />
             <span class="text-muted-foreground text-sm">
-              수집 중... ({{ progress.current }}/{{ progress.total }})
+              수집 중... ({{ jobStatus.current }}/{{ jobStatus.total }})
             </span>
           </div>
           <p
-            v-if="
-              runAllCollectorsMutation.isPending.value && progress.gameTitle
-            "
+            v-if="isCollecting && jobStatus.gameTitle"
             class="text-muted-foreground ml-1 text-xs"
           >
-            {{ progress.gameTitle }}
+            {{ jobStatus.gameTitle }}
           </p>
 
           <!-- 수집 버튼 그리드 -->
           <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Button
               @click="() => handleCollect(false)"
-              :disabled="runAllCollectorsMutation.isPending.value"
+              :disabled="isJobBusy || runAllCollectorsMutation.isPending.value"
               variant="secondary"
               class="w-full"
             >
-              <Loader2
-                v-if="runAllCollectorsMutation.isPending.value"
-                :size="18"
-                class="animate-spin"
-              />
+              <Loader2 v-if="isCollecting" :size="18" class="animate-spin" />
               <RefreshCw v-else :size="18" />
-              {{
-                runAllCollectorsMutation.isPending.value
-                  ? "수집 중..."
-                  : "미수집 게임 수집"
-              }}
+              {{ isCollecting ? "수집 중..." : "미수집 게임 수집" }}
             </Button>
             <Button
               @click="() => handleCollect(true)"
-              :disabled="runAllCollectorsMutation.isPending.value"
+              :disabled="isJobBusy || runAllCollectorsMutation.isPending.value"
               variant="default"
               class="w-full"
             >
-              <Loader2
-                v-if="runAllCollectorsMutation.isPending.value"
-                :size="18"
-                class="animate-spin"
-              />
+              <Loader2 v-if="isCollecting" :size="18" class="animate-spin" />
               <RefreshCw v-else :size="18" />
-              {{
-                runAllCollectorsMutation.isPending.value
-                  ? "수집 중..."
-                  : "강제 전체 재수집"
-              }}
+              {{ isCollecting ? "수집 중..." : "강제 전체 재수집" }}
             </Button>
           </div>
+          <p v-if="isSyncing" class="text-muted-foreground ml-1 text-xs">
+            전체 동기화 진행 중
+          </p>
         </CardContent>
       </Card>
 
@@ -384,60 +366,47 @@ async function handleOpenDataFolder(): Promise<void> {
 
           <!-- 진행 상태 -->
           <div
-            v-if="isInProgress"
+            v-if="isTranslating"
             class="bg-muted/50 flex items-center gap-2 rounded-md p-3"
           >
             <Loader2 :size="16" class="text-muted-foreground animate-spin" />
             <span class="text-muted-foreground text-sm">
-              번역 중... ({{ current }}/{{ total }})
+              번역 중... ({{ jobStatus.current }}/{{ jobStatus.total }})
             </span>
           </div>
           <p
-            v-if="isInProgress && gameTitle"
+            v-if="isTranslating && jobStatus.gameTitle"
             class="text-muted-foreground ml-1 text-xs"
           >
-            {{ gameTitle }}
+            {{ jobStatus.gameTitle }}
           </p>
 
           <!-- 번역 버튼 그리드 -->
           <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Button
               @click="() => handleTranslate(false)"
-              :disabled="translateAllMutation.isPending.value || isInProgress"
+              :disabled="isJobBusy || translateAllMutation.isPending.value"
               variant="secondary"
               class="w-full"
             >
-              <Loader2
-                v-if="translateAllMutation.isPending.value || isInProgress"
-                :size="18"
-                class="animate-spin"
-              />
+              <Loader2 v-if="isTranslating" :size="18" class="animate-spin" />
               <Languages v-else :size="18" />
-              {{
-                isInProgress || translateAllMutation.isPending.value
-                  ? "번역 중..."
-                  : "미번역 게임 번역"
-              }}
+              {{ isTranslating ? "번역 중..." : "미번역 게임 번역" }}
             </Button>
             <Button
               @click="() => handleTranslate(true)"
-              :disabled="translateAllMutation.isPending.value || isInProgress"
+              :disabled="isJobBusy || translateAllMutation.isPending.value"
               variant="default"
               class="w-full"
             >
-              <Loader2
-                v-if="translateAllMutation.isPending.value || isInProgress"
-                :size="18"
-                class="animate-spin"
-              />
+              <Loader2 v-if="isTranslating" :size="18" class="animate-spin" />
               <Languages v-else :size="18" />
-              {{
-                isInProgress || translateAllMutation.isPending.value
-                  ? "번역 중..."
-                  : "강제 전체 재번역"
-              }}
+              {{ isTranslating ? "번역 중..." : "강제 전체 재번역" }}
             </Button>
           </div>
+          <p v-if="isSyncing" class="text-muted-foreground ml-1 text-xs">
+            전체 동기화 진행 중
+          </p>
         </CardContent>
       </Card>
 

@@ -32,7 +32,7 @@ const harness = vi.hoisted(() => ({
   headlessBrowser: null as any,
   visibleBrowser: null as any,
   launchOptions: [] as any[],
-  mainWindow: { webContents: { send: vi.fn() } },
+  mainWindow: { isDestroyed: () => false, webContents: { send: vi.fn() } },
   findCollector: vi.fn(),
   saveInfo: vi.fn(),
   downloadImage: vi.fn(),
@@ -212,10 +212,22 @@ async function until(check: () => boolean) {
   throw new Error("조건이 충족되지 않음");
 }
 
-const captchaPromptCount = () =>
-  harness.mainWindow.webContents.send.mock.calls.filter(
-    ([channel]) => channel === "botBlockDetected",
-  ).length;
+/**
+ * 인증 대화상자를 띄운 횟수
+ * 렌더러는 작업 상태 스냅샷의 pendingBotBlock이 비어 있다가 채워질 때 대화상자를 연다
+ */
+const captchaPromptCount = () => {
+  let count = 0;
+  let pending = false;
+  for (const [channel, payload] of harness.mainWindow.webContents.send.mock
+    .calls) {
+    if (channel !== "jobStatusChanged") continue;
+    const next = payload.pendingBotBlock !== null;
+    if (next && !pending) count++;
+    pending = next;
+  }
+  return count;
+};
 
 describe("Google 검색 흐름", () => {
   let handlers: typeof import("./collector.js");
@@ -345,6 +357,45 @@ describe("Google 검색 흐름", () => {
     });
   });
 
+  describe("봇 인증 대기 상태 (새로고침 후 대화상자 복원용)", () => {
+    it("대기 중에는 스냅샷에 남고, 해결하면 지워진다", async () => {
+      const registry = await import("../services/job-registry.js");
+      await seedGame(testDb, { path: "/games/alpha", title: "테스트 게임 A" });
+      useThumbnailFallback();
+      headlessBlocked = true;
+
+      const running = handlers.runCollectorHandler(event, {
+        gamePath: "/games/alpha",
+      });
+      await until(() => captchaPromptCount() === 1);
+      expect(registry.getJobStatus().pendingBotBlock).toEqual({
+        gamePath: "/games/alpha",
+        gameTitle: "테스트 게임 A",
+      });
+
+      await handlers.resolveBotBlockHandler(event, { resolved: true });
+      await running;
+      expect(registry.getJobStatus().pendingBotBlock).toBeNull();
+    });
+
+    it("2분 시간 초과로 끝나도 지워진다", async () => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+      const registry = await import("../services/job-registry.js");
+      useGooglePrimary("alpha-folder");
+      headlessBlocked = true;
+
+      const running = handlers.runCollectorHandler(event, {
+        gamePath: "/games/alpha",
+      });
+      await until(() => captchaPromptCount() === 1);
+      expect(registry.getJobStatus().pendingBotBlock).not.toBeNull();
+
+      await vi.advanceTimersByTimeAsync(120_000);
+      await running;
+      expect(registry.getJobStatus().pendingBotBlock).toBeNull();
+    });
+  });
+
   describe("썸네일 보충", () => {
     it("차단되면 인증 창을 띄우고 인증 후 썸네일을 저장한다", async () => {
       await seedGame(testDb, { path: "/games/alpha", title: "테스트 게임 A" });
@@ -356,8 +407,18 @@ describe("Google 검색 흐름", () => {
       });
       await until(() => captchaPromptCount() === 1);
       expect(harness.mainWindow.webContents.send).toHaveBeenCalledWith(
+        "jobStatusChanged",
+        expect.objectContaining({
+          pendingBotBlock: {
+            gamePath: "/games/alpha",
+            gameTitle: "테스트 게임 A",
+          },
+        }),
+      );
+      // 별도 감지 이벤트는 보내지 않는다 (스냅샷이 유일한 경로)
+      expect(harness.mainWindow.webContents.send).not.toHaveBeenCalledWith(
         "botBlockDetected",
-        { gamePath: "/games/alpha", gameTitle: "테스트 게임 A" },
+        expect.anything(),
       );
       await handlers.resolveBotBlockHandler(event, { resolved: true });
       await running;

@@ -15,6 +15,7 @@ import { ALL_CARD_IDS } from "./lib/helpCardRegistry";
 import { createLogger } from "./lib/logger";
 import { useWindow } from "./composables/useWindow";
 import { useExternalChangeListener } from "./composables/useExternalChangeListener";
+import { useJobEvents } from "./composables/useJobEvents";
 import { queryKeys } from "./queryKeys";
 import { useQueryClient } from "@tanstack/vue-query";
 import { useUIStore } from "./stores/uiStore";
@@ -65,6 +66,19 @@ const changelogMode = ref<"afterVersion" | "recent">("afterVersion");
 // 봇 차단 다이얼로그 상태
 const showBotBlockDialog = ref(false);
 const botBlockGameTitle = ref("");
+
+// 백그라운드 작업 이벤트 (진행·완료 토스트, 봇 인증 대기)
+// 봇 인증 대기는 메인 상태에 남아 있어 새로고침 후에도 대화상자가 다시 열린다
+useJobEvents({
+  onBotBlock: (block) => {
+    botBlockGameTitle.value = block.gameTitle;
+    showBotBlockDialog.value = true;
+  },
+  // 시간 초과로 대기가 끝나면 "해결 완료"가 더는 의미 없으므로 닫는다
+  onBotBlockCleared: () => {
+    showBotBlockDialog.value = false;
+  },
+});
 
 // 게임 세션 종료 이벤트 - 캐시 무효화
 function onGameSessionEnded(data: {
@@ -222,15 +236,6 @@ onMounted(async () => {
       description: data.error,
     });
   });
-
-  // 봇 차단 감지 이벤트
-  window.api.on(
-    "botBlockDetected",
-    (data: { gamePath: string; gameTitle: string }) => {
-      botBlockGameTitle.value = data.gameTitle;
-      showBotBlockDialog.value = true;
-    },
-  );
 
   window.api.on("gameSessionEnded", onGameSessionEnded);
 });

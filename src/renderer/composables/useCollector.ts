@@ -4,26 +4,9 @@
  */
 
 import { useMutation, useQueryClient } from "@tanstack/vue-query";
-import { ref } from "vue";
-import { createLogger } from "../lib/logger";
+import { toast } from "vue-sonner";
 import { queryKeys } from "../queryKeys";
-
-const log = createLogger("Collector");
-
-// 컬렉터 실행 상태
-export interface CollectorProgress {
-  current: number;
-  total: number;
-  gameTitle: string;
-}
-
-const isRunning = ref(false);
-const progress = ref<CollectorProgress>({
-  current: 0,
-  total: 0,
-  gameTitle: "",
-});
-const error = ref<string | null>(null);
+import { JOB_BUSY_MESSAGE } from "./useAllInOneRefresh";
 
 /**
  * 단일 게임 컬렉터 실행 Mutation
@@ -71,52 +54,19 @@ export function useRunCollector() {
 }
 
 /**
- * 전체 게임 컬렉터 실행 Mutation (Vue Query 기반)
+ * 전체 게임 컬렉터 시작 Mutation
+ *
+ * 메인이 수집을 진행하고 바로 응답한다. 진행 상태는 useJobStatus,
+ * 완료 알림과 캐시 무효화는 useJobEvents가 맡는다.
  */
 export function useRunAllCollectors() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (force: boolean = false) => {
       const result = await window.api.invoke("runAllCollectors", { force });
-      return result as { total: number; success: number; failed: number };
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.games.all });
+      if (!result.started) toast.warning(JOB_BUSY_MESSAGE);
+      return result;
     },
   });
-}
-
-/**
- * 전체 게임 컬렉터 실행 (진행 상태 추적 포함)
- * 리스너를 직접 관리해야 하는 특수한 경우
- */
-export async function runAllCollectorsWithProgress(
-  force = false,
-  onProgress?: (progress: CollectorProgress) => void,
-): Promise<{ total: number; success: number; failed: number }> {
-  isRunning.value = true;
-  error.value = null;
-  progress.value = { current: 0, total: 0, gameTitle: "" };
-
-  const progressListener = (data: CollectorProgress) => {
-    progress.value = data;
-    onProgress?.(data);
-  };
-
-  window.api.on("collectorProgress", progressListener);
-
-  try {
-    const result = await window.api.invoke("runAllCollectors", { force });
-    return result as { total: number; success: number; failed: number };
-  } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : "알 수 없는 오류";
-    error.value = errorMessage;
-    log.error("전체 컬렉터 실행 오류:", err);
-    throw err;
-  } finally {
-    window.api.removeListener("collectorProgress", progressListener);
-    isRunning.value = false;
-  }
 }
 
 /**
@@ -179,16 +129,4 @@ export function useGetNewCookie() {
       return result as string | undefined;
     },
   });
-}
-
-/**
- * 컬렉터 Composable 반환
- */
-export function useCollector() {
-  return {
-    isRunning,
-    progress,
-    error,
-    runAllCollectorsWithProgress,
-  };
 }

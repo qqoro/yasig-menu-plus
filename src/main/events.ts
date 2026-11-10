@@ -133,6 +133,10 @@ export const enum IpcRendererSend {
   GetTranslationSettings = "getTranslationSettings", // 번역 설정 조회
   SetTranslationSettings = "setTranslationSettings", // 번역 설정 저장
 
+  // 백그라운드 작업 상태
+  GetJobStatus = "getJobStatus", // 현재 작업 상태 스냅샷 조회
+  RunFullSync = "runFullSync", // 전체 동기화 시작 (스캔 → 수집 → 번역)
+
   // 마지막 갱신 시간 관련
   LastRefreshedSet = "lastRefreshedSet", // 마지막 갱신 시간 저장
   LastRefreshedGet = "lastRefreshedGet", // 마지막 갱신 시간 조회
@@ -224,10 +228,8 @@ export const enum IpcMainSend {
   SelectProgram = "selectProgram",
 
   // 컬렉터 관련
-  CollectorProgress = "collectorProgress", // { current, total, gameTitle }
   CollectorDone = "collectorDone", // { gamePath, success, error? }
   AllCollectorsDone = "allCollectorsDone", // { total, success, failed }
-  BotBlockDetected = "botBlockDetected", // 봇 차단 감지 (CAPTCHA)
 
   // 썸네일
   ThumbnailDone = "thumbnailDone", // { gamePath, thumbnailPath }
@@ -257,7 +259,6 @@ export const enum IpcMainSend {
   ThumbnailHidden = "thumbnailHidden", // 썸네일 숨김 완료
 
   // 번역 관련
-  TranslationProgress = "translationProgress", // 번역 진행률
   TranslationDone = "translationDone", // 번역 완료 (단일)
   AllTranslationsDone = "allTranslationsDone", // 전체 번역 완료
 
@@ -309,6 +310,10 @@ export const enum IpcMainSend {
   // AI 연동(MCP 서버)
   ExternalDataChanged = "externalDataChanged", // MCP 툴이 데이터를 바꿈 (캐시 무효화용)
   McpStatusChanged = "mcpStatusChanged", // MCP 서버 상태 변경
+
+  // 백그라운드 작업 상태
+  JobStatusChanged = "jobStatusChanged", // 작업 상태 스냅샷 (변경될 때마다 전체)
+  JobFinished = "jobFinished", // 작업 종료 (결과 또는 오류)
 }
 
 /**
@@ -326,10 +331,8 @@ export type IpcMainSendChannel =
   | "selectFolder"
   | "selectFile"
   | "selectProgram"
-  | "collectorProgress"
   | "collectorDone"
   | "allCollectorsDone"
-  | "botBlockDetected"
   | "thumbnailDone"
   | "searchedGames"
   | "gameToggled"
@@ -347,7 +350,6 @@ export type IpcMainSendChannel =
   | "thumbnailHidden"
   | "unusedThumbnailsCleaned"
   | "gameImagesLoaded"
-  | "translationProgress"
   | "translationDone"
   | "allTranslationsDone"
   | "lastRefreshedLoaded"
@@ -381,9 +383,53 @@ export type IpcMainSendChannel =
   | "renamePreviewed"
   | "renameExecuted"
   | "mcpStatusChanged"
-  | "externalDataChanged";
+  | "externalDataChanged"
+  | "jobStatusChanged"
+  | "jobFinished";
 
 // ========== 이벤트 페이로드 타입 ==========
+
+// 백그라운드 작업 (전체 동기화 / 전체 수집 / 전체 번역)
+export type JobKind = "sync" | "collect" | "translate";
+export type JobStep = "scan" | "collect" | "translate";
+export interface PendingBotBlock {
+  gamePath: string;
+  gameTitle: string;
+}
+export interface JobStatus {
+  kind: JobKind | null; // null = 대기
+  step: JobStep | null; // 동기화는 현재 단계, 수집/번역은 자기 자신
+  stepIndex: number; // 동기화 전용 1..3, 그 외 0
+  stepCount: number; // 동기화 3, 그 외 0
+  current: number;
+  total: number;
+  gameTitle: string;
+  pendingBotBlock: PendingBotBlock | null; // CAPTCHA 해결 대기 중
+}
+export type JobStartResult =
+  { started: true } | { started: false; reason: "busy" };
+export interface CollectAllResult {
+  total: number;
+  success: number;
+  failed: number;
+  force: boolean;
+}
+export interface TranslateAllResult {
+  total: number;
+  success: number;
+  failed: number;
+}
+type StepOutcome<T> = ({ ok: true } & T) | { ok: false; error: string };
+export interface SyncResult {
+  scan: StepOutcome<{ deletedCount: number }>;
+  collect: StepOutcome<{ success: number; failed: number }>;
+  translate: StepOutcome<{ success: number; failed: number }>;
+}
+export type JobFinishedPayload =
+  | { kind: "sync"; ok: true; result: SyncResult }
+  | { kind: "collect"; ok: true; result: CollectAllResult }
+  | { kind: "translate"; ok: true; result: TranslateAllResult }
+  | { kind: JobKind; ok: false; error: string };
 
 // AI 연동(MCP 서버) 상태
 export interface McpStatus {
@@ -647,6 +693,10 @@ export interface IpcRendererEventMap {
     };
   };
 
+  // 백그라운드 작업 상태
+  getJobStatus: undefined;
+  runFullSync: { sourcePaths: string[] };
+
   // 마지막 갱신 시간 관련
   lastRefreshedSet: { timestamp: string };
   lastRefreshedGet: undefined;
@@ -741,7 +791,6 @@ export interface IpcMainEventMap {
   windowUnmaximized: undefined;
 
   // 컬렉터 관련
-  collectorProgress: { current: number; total: number; gameTitle: string };
   collectorDone: {
     gamePath: string;
     success: boolean;
@@ -749,7 +798,6 @@ export interface IpcMainEventMap {
     alreadyCollected?: boolean;
   };
   allCollectorsDone: { total: number; success: number; failed: number };
-  botBlockDetected: { gamePath: string; gameTitle: string }; // 봇 차단 감지
 
   // 썸네일 관련
   thumbnailDone: { gamePath: string; thumbnailPath: string };
@@ -832,7 +880,6 @@ export interface IpcMainEventMap {
   offlineLibraryPaths: { paths: string[] };
 
   // 번역 관련
-  translationProgress: { current: number; total: number; gameTitle: string };
   translationDone: { path: string; translatedTitle: string; source: string };
   allTranslationsDone: { total: number; success: number; failed: number };
   translationSettings: {
@@ -861,6 +908,10 @@ export interface IpcMainEventMap {
   mcpStatus: McpStatus;
   mcpStatusChanged: McpStatus;
   externalDataChanged: ExternalDataChangedPayload;
+
+  // 백그라운드 작업 상태
+  jobStatusChanged: JobStatus;
+  jobFinished: JobFinishedPayload;
 
   // 플레이 타임 관련
   playTimeLoaded: { path: string; totalPlayTime: number };

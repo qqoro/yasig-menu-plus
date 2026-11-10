@@ -16,7 +16,8 @@ import { Button } from "./ui/button";
 interface Props {
   zoomLevel: number;
   viewMode: ViewMode;
-  isSyncing: boolean;
+  isSyncing: boolean; // 전체 동기화 진행 중 (아이콘 회전, 랜덤 비활성)
+  isJobBusy: boolean; // 수집·번역 등 다른 작업 진행 중 (동기화 시작만 막는다)
   isSearching: boolean;
   specialOnlyTotalCount: number;
 }
@@ -78,7 +79,7 @@ defineEmits<Emits>();
       <!-- 전체 동기화 버튼 -->
       <Button
         @click="$emit('sync')"
-        :disabled="isSyncing || isSearching"
+        :disabled="isSyncing || isJobBusy || isSearching"
         variant="default"
         size="sm"
         title="폴더 스캔 + 정보 수집 + 번역"

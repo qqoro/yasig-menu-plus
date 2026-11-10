@@ -1,198 +1,33 @@
 /**
  * 일괄 새로고침 Composable
- * Vue Query 기반 폴더 스캔 → 정보 수집 → 번역 순차 실행
+ *
+ * 전체 동기화(폴더 스캔 → 정보 수집 → 번역)는 메인 프로세스가 진행한다.
+ * 여기서는 시작만 요청하고, 진행 상태는 useJobStatus, 완료 알림은
+ * useJobEvents가 맡는다.
  */
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
-import { computed, ref } from "vue";
+import { useMutation, useQuery } from "@tanstack/vue-query";
 import { toast } from "vue-sonner";
-import { createLogger } from "../lib/logger";
 import { queryKeys } from "../queryKeys";
 
-const log = createLogger("AllInOneRefresh");
-
-type RefreshStep = "scan" | "collect" | "translate" | "done";
-
-const SYNC_TOAST_ID = "sync-progress";
-
-// 진행 상태 (전역 공유)
-const currentStep = ref<RefreshStep | null>(null);
-const collectorProgress = ref({ current: 0, total: 0, gameTitle: "" });
-const translationProgress = ref({ current: 0, total: 0, gameTitle: "" });
-
-export function useAllInOneRefresh() {
-  const stepLabel = computed(() => {
-    switch (currentStep.value) {
-      case "scan":
-        return "폴더 스캔 중";
-      case "collect":
-        return "정보 수집 중";
-      case "translate":
-        return "번역 중";
-      default:
-        return "";
-    }
-  });
-
-  return {
-    currentStep,
-    stepLabel,
-    collectorProgress,
-    translationProgress,
-  };
-}
+export const JOB_BUSY_MESSAGE = "이미 다른 작업이 진행 중입니다.";
 
 /**
- * 전체 동기화 Mutation (스캔 → 수집 → 번역)
+ * 전체 동기화 시작 Mutation (스캔 → 수집 → 번역)
  */
 export function useAllInOneRefreshMutation() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: async (libraryPaths: string[]) => {
-      const results = {
-        scan: { success: false, deletedCount: 0 },
-        collect: { success: 0, failed: 0 },
-        translate: { success: 0, failed: 0 },
-      };
-
-      // 1단계: 폴더 스캔
-      currentStep.value = "scan";
-      toast.info("동기화 중...", {
-        id: SYNC_TOAST_ID,
-        description: "폴더 스캔 중",
-        duration: Infinity,
+      const result = await window.api.invoke("runFullSync", {
+        sourcePaths: [...libraryPaths],
       });
-      try {
-        const paths = [...libraryPaths];
-        const scanResult = await window.api.invoke("refreshList", {
-          sourcePaths: paths,
-        });
-
-        const now = new Date();
-        await window.api.invoke("lastRefreshedSet", {
-          timestamp: now.toISOString(),
-        });
-
-        // 캐시 무효화로 lastRefreshed 쿼리 갱신
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.lastRefreshed.all,
-        });
-
-        results.scan.success = true;
-        results.scan.deletedCount =
-          (scanResult as { deletedCount: number }).deletedCount ?? 0;
-
-        if (results.scan.deletedCount > 0) {
-          toast.info(`${results.scan.deletedCount}개의 게임이 삭제되었습니다.`);
-        }
-      } catch (err) {
-        log.error(err);
-        toast.error("폴더 스캔 실패", {
-          description: err instanceof Error ? err.message : "알 수 없는 오류",
-        });
-      }
-
-      // 2단계: 정보 수집
-      currentStep.value = "collect";
-      toast.info("동기화 중...", {
-        id: SYNC_TOAST_ID,
-        description: "정보 수집 중",
-        duration: Infinity,
-      });
-      const progressListener = (data: {
-        current: number;
-        total: number;
-        gameTitle: string;
-      }) => {
-        collectorProgress.value = data;
-        toast.info("동기화 중...", {
-          id: SYNC_TOAST_ID,
-          description: `정보 수집 중 (${data.current}/${data.total})`,
-          duration: Infinity,
-        });
-      };
-      window.api.on("collectorProgress", progressListener);
-      try {
-        const collectResult = await window.api.invoke("runAllCollectors", {
-          force: false,
-        });
-        results.collect = collectResult as { success: number; failed: number };
-      } catch (err) {
-        toast.error("정보 수집 실패", {
-          description: err instanceof Error ? err.message : "알 수 없는 오류",
-        });
-      } finally {
-        window.api.removeListener("collectorProgress", progressListener);
-      }
-
-      // 3단계: 번역
-      currentStep.value = "translate";
-      toast.info("동기화 중...", {
-        id: SYNC_TOAST_ID,
-        description: "번역 중",
-        duration: Infinity,
-      });
-      const translateListener = (data: {
-        current: number;
-        total: number;
-        gameTitle: string;
-      }) => {
-        translationProgress.value = data;
-        toast.info("동기화 중...", {
-          id: SYNC_TOAST_ID,
-          description: `번역 중 (${data.current}/${data.total})`,
-          duration: Infinity,
-        });
-      };
-      window.api.on("translationProgress", translateListener);
-      try {
-        const translateResult = await window.api.invoke("translateAllTitles", {
-          force: false,
-        });
-        results.translate = translateResult as {
-          success: number;
-          failed: number;
-        };
-      } catch (err) {
-        toast.error("번역 실패", {
-          description: err instanceof Error ? err.message : "알 수 없는 오류",
-        });
-      } finally {
-        window.api.removeListener("translationProgress", translateListener);
-      }
-
-      // 결과 요약
-      const parts: string[] = [];
-      if (results.collect.success > 0 || results.collect.failed > 0) {
-        parts.push(
-          `수집: ${results.collect.success}/${results.collect.success + results.collect.failed}`,
-        );
-      }
-      if (results.translate.success > 0 || results.translate.failed > 0) {
-        parts.push(
-          `번역: ${results.translate.success}/${results.translate.success + results.translate.failed}`,
-        );
-      }
-      toast.dismiss(SYNC_TOAST_ID);
-
-      if (parts.length > 0) {
-        toast.success("전체 동기화 완료", {
-          description: parts.join(", "),
-          duration: 3000,
-        });
-      } else {
-        toast.success("동기화 완료", { duration: 3000 });
-      }
-
-      return results;
+      if (!result.started) toast.warning(JOB_BUSY_MESSAGE);
+      return result;
     },
-    onSuccess: () => {
-      // 전체 동기화 완료 후 모든 캐시 무효화
-      queryClient.invalidateQueries();
-    },
-    onSettled: () => {
-      currentStep.value = null;
+    onError: (err) => {
+      toast.error("동기화를 시작하지 못했습니다.", {
+        description: err instanceof Error ? err.message : "알 수 없는 오류",
+      });
     },
   });
 }

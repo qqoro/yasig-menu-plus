@@ -5,15 +5,21 @@
  */
 
 import type { IpcMainInvokeEvent } from "electron";
-import { BrowserWindow } from "electron";
 import { db } from "../db/db-manager.js";
-import {
+import type {
   IpcMainEventMap,
-  IpcMainSend,
   IpcRendererEventMap,
+  JobStartResult,
+  TranslateAllResult,
 } from "../events.js";
+import {
+  startJob,
+  toStartResult,
+  type ProgressFn,
+} from "../services/job-registry.js";
 import { TranslationManager } from "../services/translation-manager.js";
 import { getTranslationSettings, setTranslationSettings } from "../store.js";
+import { wrapIpcHandler } from "../utils/ipc-wrapper.js";
 import { createLogger } from "../utils/logger.js";
 
 const log = createLogger("Translation");
@@ -69,14 +75,14 @@ export async function translateTitleHandler(
 }
 
 /**
- * 전체 게임 제목 번역 핸들러
+ * 전체 게임 제목 번역 (본체)
+ *
+ * 진행 상황은 onProgress로만 알린다. 렌더러 전송은 작업 상태 저장소 담당
  */
-export async function translateAllTitlesHandler(
-  event: IpcMainInvokeEvent,
-  payload: IpcRendererEventMap["translateAllTitles"],
-): Promise<IpcMainEventMap["allTranslationsDone"]> {
-  const { force } = payload;
-
+export async function translateAllTitles(
+  force: boolean,
+  onProgress?: ProgressFn,
+): Promise<TranslateAllResult> {
   // 번역할 게임 목록 조회
   let query = db("games").select("path", "title", "translatedTitle");
 
@@ -95,7 +101,7 @@ export async function translateAllTitlesHandler(
   let success = 0;
   let failed = 0;
   const manager = getTranslationManager();
-  const win = BrowserWindow.fromWebContents(event.sender);
+  onProgress?.({ current: 0, total, gameTitle: "" });
 
   log.info(`전체 번역 시작: ${total}개`);
 
@@ -104,14 +110,8 @@ export async function translateAllTitlesHandler(
     const game = games[i];
 
     try {
-      // 진행률 이벤트 전송
-      if (win) {
-        win.webContents.send(IpcMainSend.TranslationProgress, {
-          current: i + 1,
-          total,
-          gameTitle: game.title,
-        });
-      }
+      // 지금 번역 중인 게임 알림
+      onProgress?.({ current: i + 1, total, gameTitle: game.title });
 
       const result = await manager.translate(game.title);
 
@@ -135,6 +135,26 @@ export async function translateAllTitlesHandler(
 
   return { total, success, failed };
 }
+
+/**
+ * 전체 게임 제목 번역 시작 핸들러
+ *
+ * 결과를 기다리지 않고 바로 응답한다. 결과는 jobFinished로 전달된다
+ */
+export const translateAllTitlesHandler = wrapIpcHandler(
+  "translateAllTitles",
+  async (
+    _event: IpcMainInvokeEvent,
+    payload: IpcRendererEventMap["translateAllTitles"],
+  ): Promise<JobStartResult> =>
+    toStartResult(
+      startJob("translate", (ctx) =>
+        translateAllTitles(payload.force ?? false, (p) =>
+          ctx.update({ step: "translate", ...p }),
+        ),
+      ),
+    ),
+);
 
 /**
  * 번역 설정 조회 핸들러

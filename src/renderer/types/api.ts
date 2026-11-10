@@ -9,6 +9,7 @@
 // 상대 경로로 main 프로세스의 타입 import
 import type {
   IpcMainEventMap,
+  JobStartResult,
   IpcMainSend,
   IpcMainSendChannel,
   IpcRendererEventMap,
@@ -38,7 +39,7 @@ type IpcInvokeReturn = {
   selectFile: IpcMainEventMap["selectFile"];
   selectProgram: IpcMainEventMap["selectProgram"];
   runCollector: IpcMainEventMap["collectorDone"];
-  runAllCollectors: IpcMainEventMap["allCollectorsDone"];
+  runAllCollectors: JobStartResult;
   getNewCookie: string | undefined;
   resolveBotBlock: void; // 봇 차단 해결 완료/취소
   downloadThumbnail: IpcMainEventMap["thumbnailDone"];
@@ -77,9 +78,11 @@ type IpcInvokeReturn = {
   toggleLibraryPathOffline: IpcMainEventMap["libraryPathOfflineToggled"];
   getOfflineLibraryPaths: IpcMainEventMap["offlineLibraryPaths"];
   translateTitle: IpcMainEventMap["translationDone"];
-  translateAllTitles: IpcMainEventMap["allTranslationsDone"];
+  translateAllTitles: JobStartResult;
   getTranslationSettings: IpcMainEventMap["translationSettings"];
   setTranslationSettings: void;
+  getJobStatus: IpcMainEventMap["jobStatusChanged"];
+  runFullSync: JobStartResult;
   lastRefreshedSet: void;
   lastRefreshedGet: IpcMainEventMap["lastRefreshedLoaded"];
   getLibraryScanHistory: IpcMainEventMap["libraryScanHistory"];
@@ -224,6 +227,7 @@ export interface ElectronApi {
 // events.ts 타입 재내보내기
 export type {
   IpcMainEventMap,
+  JobStartResult,
   IpcMainSend,
   IpcRendererEventMap,
   IpcRendererSend,
