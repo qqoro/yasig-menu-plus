@@ -1,5 +1,6 @@
 import { extractVndbId } from "../lib/external-id.js";
 import { createLogger } from "../utils/logger.js";
+import { politeFetch } from "../utils/polite-fetch.js";
 import { Collector, type CollectorResult } from "./registry.js";
 
 const log = createLogger("VndbCollector");
@@ -28,11 +29,6 @@ const TITLE_LANG_PRIORITY = ["ko", "ja", "en"];
 /** 태그 점수(0-3) 하한 — 투표가 약한 태그 제외 */
 const MIN_TAG_RATING = 1;
 const MAX_TAGS = 20;
-
-/** 5분 200회 제한 → 요청 사이 1.5초 간격 */
-const MIN_REQUEST_INTERVAL_MS = 1_500;
-const MAX_RETRIES = 3;
-const DEFAULT_RETRY_DELAY_MS = 5_000;
 
 export interface VndbVn {
   id: string;
@@ -93,47 +89,23 @@ export function parseVndbVn(vn: VndbVn, id: string): CollectorResult {
   };
 }
 
-let nextRequestAt = 0;
-
-/** 요청 간격 확보 — 일괄 수집·목록 미리보기에서 동시에 불려도 순서대로 간격을 둔다 */
-async function waitForRequestSlot() {
-  const now = Date.now();
-  const wait = Math.max(0, nextRequestAt - now);
-  nextRequestAt = Math.max(now, nextRequestAt) + MIN_REQUEST_INTERVAL_MS;
-  if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-}
-
+/** 요청 한도(5분 200회)와 429 재시도는 politeFetch가 처리한다 */
 async function queryVn(id: string): Promise<VndbVn | undefined> {
-  for (let attempt = 0; ; attempt++) {
-    await waitForRequestSlot();
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        filters: ["id", "=", `v${id}`],
-        fields: VN_FIELDS,
-      }),
-    });
+  const res = await politeFetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      filters: ["id", "=", `v${id}`],
+      fields: VN_FIELDS,
+    }),
+  });
 
-    // 요청 한도 초과: Retry-After(초)만큼, 없으면 점점 길게 기다렸다 재시도
-    if (res.status === 429 && attempt < MAX_RETRIES) {
-      const retryAfter = Number(res.headers.get("Retry-After"));
-      const delay =
-        retryAfter > 0
-          ? retryAfter * 1000
-          : DEFAULT_RETRY_DELAY_MS * (attempt + 1);
-      log.warn(`요청 한도 초과, ${delay}ms 후 재시도: v${id}`);
-      await new Promise((resolve) => setTimeout(resolve, delay));
-      continue;
-    }
-
-    if (!res.ok) {
-      throw new Error(`VNDB 응답 오류 ${res.status}: v${id}`);
-    }
-
-    const json = (await res.json()) as { results?: VndbVn[] };
-    return json.results?.[0];
+  if (!res.ok) {
+    throw new Error(`VNDB 응답 오류 ${res.status}: v${id}`);
   }
+
+  const json = (await res.json()) as { results?: VndbVn[] };
+  return json.results?.[0];
 }
 
 export const VndbCollector: Collector = {

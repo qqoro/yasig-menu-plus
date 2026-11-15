@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 import { parse } from "node-html-parser";
 import { Collector, type CollectorResult } from "./registry.js";
 import { extractDlsiteId } from "../lib/external-id.js";
+import { politeFetch } from "../utils/polite-fetch.js";
 
 /**
  * info/ajax 응답에서 평균 평점(0-5)을 파싱한다.
@@ -234,7 +235,7 @@ async function probeSampleImages(mainImageUrl: string): Promise<string[]> {
   for (let i = 1; i <= MAX_SAMPLE_IMAGES; i++) {
     const url = deriveSampleImageUrl(mainImageUrl, i);
     if (!url) break;
-    const exists = await fetch(url, { method: "HEAD" })
+    const exists = await politeFetch(url, { method: "HEAD" })
       .then((res) => res.ok)
       .catch(() => false);
     if (!exists) break;
@@ -245,7 +246,7 @@ async function probeSampleImages(mainImageUrl: string): Promise<string[]> {
 
 /** maker_id로 서클 프로필 페이지에서 서클명을 조회. 실패해도 치명적이지 않음 */
 async function fetchCircleName(makerId: string): Promise<string | null> {
-  return fetch(
+  return politeFetch(
     `https://www.dlsite.com/maniax/circle/profile/=/maker_id/${makerId}.html`,
     { headers: { cookie: "locale=ko-kr" } },
   )
@@ -260,11 +261,11 @@ export const DLSiteCollector: Collector = {
   fetchInfo: async ({ id }) => {
     const [productJson, ajaxJson] = await Promise.all([
       // 판매 중 작품의 전체 메타데이터 (제목/장르/카테고리/제작자/이미지/발매일)
-      fetch(
+      politeFetch(
         `https://www.dlsite.com/maniax/api/=/product.json?workno=${id}&locale=ko_KR`,
       ).then((res) => res.json()),
       // 평점/리뷰 수/판매 수 + 판매 중단 작품 폴백 정보. 실패해도 치명적이지 않음.
-      fetch(
+      politeFetch(
         `https://www.dlsite.com/maniax/product/info/ajax?product_id=${id}`,
         { headers: { cookie: "locale=ko-kr" } },
       )

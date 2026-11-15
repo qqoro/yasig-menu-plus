@@ -10,6 +10,15 @@ import {
   parseDlsiteReviewCount,
 } from "./dlsite-collector.js";
 
+vi.mock("../utils/logger.js", () => ({
+  createLogger: () => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  }),
+}));
+
 /**
  * DLSiteCollector.getId 테스트
  * 실행: pnpm test

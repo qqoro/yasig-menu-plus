@@ -2,6 +2,7 @@ import { parse } from "node-html-parser";
 import { extractItchId } from "../lib/external-id.js";
 import { createLogger } from "../utils/logger.js";
 import { Collector, type CollectorResult } from "./registry.js";
+import { politeFetch } from "../utils/polite-fetch.js";
 
 const log = createLogger("ItchCollector");
 
@@ -95,7 +96,7 @@ export function parseItchPage(html: string): ItchPageInfo {
 /** 작품 페이지 정보 (실패해도 data.json만으로 수집할 수 있게 빈 값 반환) */
 async function fetchPageInfo(url: string): Promise<ItchPageInfo> {
   try {
-    const res = await fetch(url);
+    const res = await politeFetch(url);
     if (!res.ok) throw new Error(`응답 오류 ${res.status}`);
     return parseItchPage(await res.text());
   } catch (error) {
@@ -116,7 +117,7 @@ export const ItchCollector: Collector = {
   fetchInfo: async ({ id }) => {
     const storeUrl = toStoreUrl(id);
 
-    const res = await fetch(`${storeUrl}/data.json`);
+    const res = await politeFetch(`${storeUrl}/data.json`);
     if (res.status === 404) {
       log.warn(`itch.io에 없는 작품: ${storeUrl}`);
       return undefined;

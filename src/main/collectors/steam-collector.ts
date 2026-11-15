@@ -3,6 +3,7 @@ import { extractSteamId } from "../lib/external-id.js";
 import { createLogger } from "../utils/logger.js";
 import { getSteamTagMap } from "./steam-tag-map.js";
 import { Collector, type CollectorResult } from "./registry.js";
+import { politeFetch } from "../utils/polite-fetch.js";
 
 const log = createLogger("SteamCollector");
 
@@ -180,7 +181,7 @@ export const SteamCollector: Collector = {
     let images: string[] = [];
 
     try {
-      const res = await fetch(
+      const res = await politeFetch(
         `https://store.steampowered.com/api/appdetails?appids=${id}&cc=us&l=korean`,
       );
       const steam = (await res.json()) as SteamApiResponse | null;
@@ -204,7 +205,7 @@ export const SteamCollector: Collector = {
     let rating: number | null = null;
     let reviewCount: number | null = null;
     try {
-      const reviewRes = await fetch(
+      const reviewRes = await politeFetch(
         `https://store.steampowered.com/appreviews/${id}?json=1&language=all&purchase_type=all&num_per_page=0`,
       );
       const reviewJson = (await reviewRes.json()) as {

@@ -3,6 +3,7 @@ import { createRequire } from "module";
 import { parse } from "node-html-parser";
 import { extractGetchuId } from "../lib/external-id.js";
 import { Collector, type CollectorResult } from "./registry.js";
+import { politeFetch } from "../utils/polite-fetch.js";
 
 const require = createRequire(import.meta.url);
 const iconv = require("iconv-lite");
@@ -11,7 +12,7 @@ export const GetchuCollector: Collector = {
   name: "Getchu",
   getId: async (path) => extractGetchuId(path),
   fetchInfo: async ({ id }) => {
-    const response = await fetch(`https://www.getchu.com/item/${id}/`, {
+    const response = await politeFetch(`https://www.getchu.com/item/${id}/`, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",

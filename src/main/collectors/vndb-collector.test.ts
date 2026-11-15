@@ -273,7 +273,7 @@ describe("VndbCollector", () => {
     expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 
-  it("연달아 조회하면 요청 사이에 간격을 둔다", async () => {
+  it("연달아 조회해도 한도 안이면 바로 보낸다", async () => {
     fetchMock.mockImplementation(async () =>
       jsonResponse({ results: [SAMPLE_VN] }),
     );
@@ -281,9 +281,6 @@ describe("VndbCollector", () => {
     const first = VndbCollector.fetchInfo({ path: "v562", id: "562" });
     const second = VndbCollector.fetchInfo({ path: "v562", id: "562" });
     await vi.advanceTimersByTimeAsync(0);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-
-    await vi.advanceTimersByTimeAsync(1_500);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     await Promise.all([first, second]);
   });

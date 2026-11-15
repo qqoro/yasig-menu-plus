@@ -1,4 +1,5 @@
 import { createLogger } from "../utils/logger.js";
+import { politeFetch } from "../utils/polite-fetch.js";
 
 const log = createLogger("SteamTagMap");
 
@@ -28,7 +29,7 @@ export function parsePopularTags(json: unknown): Map<number, string> {
 export async function getSteamTagMap(): Promise<Map<number, string>> {
   if (cachedTagMap) return cachedTagMap;
   try {
-    const res = await fetch(POPULAR_TAGS_URL);
+    const res = await politeFetch(POPULAR_TAGS_URL);
     const json = await res.json();
     cachedTagMap = parsePopularTags(json);
   } catch (error) {

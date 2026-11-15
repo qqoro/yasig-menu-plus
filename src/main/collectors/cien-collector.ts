@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 import { parse } from "node-html-parser";
 import { extractCienId } from "../lib/external-id.js";
 import { Collector, type CollectorResult } from "./registry.js";
+import { politeFetch } from "../utils/polite-fetch.js";
 
 export const CienCollector: Collector = {
   name: "Ci-en",
@@ -10,7 +11,7 @@ export const CienCollector: Collector = {
     const [creatorId, articleId] = id
       .split("-")
       .map((s) => s.replace(/^0+/, ""));
-    const html = await fetch(
+    const html = await politeFetch(
       `https://ci-en.net/creator/${creatorId}/article/${articleId}`,
     ).then((res) => res.text());
 
