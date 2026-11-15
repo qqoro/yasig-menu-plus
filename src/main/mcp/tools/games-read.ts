@@ -68,7 +68,7 @@ export const searchGamesInput = {
       providers: z
         .array(z.string())
         .optional()
-        .describe("dlsite / steam / getchu / cien / vndb. Empty = all"),
+        .describe("dlsite / steam / getchu / cien / itch / vndb. Empty = all"),
     })
     .optional(),
   sortBy: z.enum(SORT_BY).optional(),

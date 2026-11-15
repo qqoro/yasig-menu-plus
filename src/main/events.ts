@@ -486,6 +486,7 @@ export interface GameItem {
 // 게임 상세 정보
 export interface GameDetailItem extends GameItem {
   memo: string | null; // 메모
+  siteUrl: string | null; // 원본 사이트 주소 (수집기 getUrl 기준, 없으면 null)
 }
 
 // 게임 이미지
@@ -547,7 +548,7 @@ export interface SearchQuery {
     showNotCompressed?: boolean;
     showWithExternalId?: boolean;
     showWithoutExternalId?: boolean;
-    /** 제공자 다중 선택 (dlsite/steam/getchu/cien/vndb) — 빈 배열이면 전체 */
+    /** 제공자 다중 선택 (dlsite/steam/getchu/cien/itch/vndb) — 빈 배열이면 전체 */
     providers?: string[];
   };
   sortBy?:

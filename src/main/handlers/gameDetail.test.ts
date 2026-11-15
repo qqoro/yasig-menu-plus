@@ -342,3 +342,32 @@ describe("getGameDetail — Boolean 변환", () => {
     expect(typeof result!.isClear).toBe("boolean");
   });
 });
+
+// ============================================
+// 원본 사이트 주소 — 수집기의 getUrl과 같은 규칙
+// ============================================
+describe("getGameDetail — siteUrl", () => {
+  it.each([
+    ["cien", "123-456", "https://ci-en.net/creator/123/article/456"],
+    ["itch", "maker.some-game", "https://maker.itch.io/some-game"],
+  ])("%s 게임은 원본 사이트 주소를 반환", async (provider, externalId, url) => {
+    await seedGame(db, {
+      path: `/games/${provider}`,
+      provider,
+      externalId,
+      fingerprint: `fp-site-${provider}`,
+    });
+
+    const result = await getGameDetail(`/games/${provider}`);
+
+    expect(result!.siteUrl).toBe(url);
+  });
+
+  it("외부 ID가 없으면 null", async () => {
+    await seedGame(db, { path: "/games/no-site", fingerprint: "fp-no-site" });
+
+    const result = await getGameDetail("/games/no-site");
+
+    expect(result!.siteUrl).toBeNull();
+  });
+});

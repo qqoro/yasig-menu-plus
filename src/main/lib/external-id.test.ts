@@ -5,6 +5,7 @@ import {
   extractExternalId,
   extractExternalIdFromPath,
   extractGetchuId,
+  extractItchId,
   extractSteamId,
   extractVndbId,
   hasExternalId,
@@ -128,6 +129,39 @@ describe("extractCienId", () => {
   });
 });
 
+describe("extractItchId", () => {
+  it.each([
+    ["ITCH-maker.some-game", "maker.some-game", "하이픈 구분"],
+    ["ITCHmaker.some-game", "maker.some-game", "구분자 없음"],
+    ["[ITCH]maker.some-game 제목", "maker.some-game", "대괄호"],
+    ["ITCH_maker.some-game", "maker.some-game", "언더스코어"],
+    ["ITCH-Maker.Some-Game", "maker.some-game", "대소문자 → 소문자"],
+    ["ITCH-maker.some-game.zip", "maker.some-game", "확장자"],
+    ["ITCH-maker.some-game v1.2", "maker.some-game", "버전 표기"],
+    ["ITCH-maker.some-game-", "maker.some-game", "끝 하이픈 제외"],
+    ["ITCH-my-studio.some-game", "my-studio.some-game", "제작자 하이픈"],
+    // itch.io 주소에는 _ 가 없음 (밑줄은 - 로 바뀜) — _ 뒤는 버전 등으로 보고 끊음
+    ["ITCH-maker.some-game_v2", "maker.some-game", "언더스코어 뒤 버전"],
+    ["https://maker.itch.io/some-game", "maker.some-game", "상점 URL"],
+    [
+      "https://maker.itch.io/some-game/data.json",
+      "maker.some-game",
+      "URL 하위 경로",
+    ],
+  ])("%s → %s (%s)", (input, expected) => {
+    expect(extractItchId(input)).toBe(expected);
+  });
+
+  it.each([
+    ["xITCH-maker.some-game", "앞에 영문"],
+    ["ITCH-maker", "슬러그 없음"],
+    ["ITCH-.some-game", "제작자 없음"],
+    ["Switch.game", "단어 안의 itch"],
+  ])("%s → 인식 안 함 (%s)", (input) => {
+    expect(extractItchId(input)).toBeUndefined();
+  });
+});
+
 describe("extractVndbId", () => {
   it.each([
     ["v562 Sample Title", "562", "v"],
@@ -171,6 +205,7 @@ describe("hasExternalId", () => {
     ["GC123456", true],
     ["CE123-456", true],
     ["vn4 샘플", true],
+    ["ITCH-maker.some-game", true],
     ["샘플 음성", false],
     ["Test2024", false],
   ])("%s → %s", (input, expected) => {
@@ -206,6 +241,19 @@ describe("extractExternalIdFromPath", () => {
       id: "562",
     });
     expect(extractExternalIdFromPath("D:\\v562\\Sample")).toBeUndefined();
+  });
+
+  it("itch 코드는 상위 폴더에서도 찾음", () => {
+    expect(
+      extractExternalIdFromPath("D:\\Games\\ITCH-maker.some-game\\Game"),
+    ).toEqual({ provider: "itch", id: "maker.some-game" });
+  });
+
+  it("itch 코드가 VNDB 코드보다 우선", () => {
+    expect(extractExternalIdFromPath("D:/ITCH-maker.some-game v562")).toEqual({
+      provider: "itch",
+      id: "maker.some-game",
+    });
   });
 
   it("경로 중간의 단어 속 접두어는 무시 (SteamLibrary, Test2024)", () => {

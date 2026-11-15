@@ -3,6 +3,7 @@
  */
 
 import { ipcMain } from "electron";
+import { getCollectorUrl } from "../collectors/registry.js";
 import { db } from "../db/db-manager.js";
 import type { GameDetailItem } from "../events.js";
 import { IpcRendererSend } from "../events.js";
@@ -107,6 +108,7 @@ export async function getGameDetail(
     isClear: Boolean(game.isClear),
     provider: game.provider,
     externalId: game.externalId,
+    siteUrl: getCollectorUrl(game.provider, game.externalId),
     lastPlayedAt: toDate(game.lastPlayedAt),
     createdAt: toDate(game.createdAt),
     updatedAt: toDate(game.updatedAt),

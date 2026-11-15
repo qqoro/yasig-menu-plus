@@ -473,6 +473,7 @@ describe("getAutocompleteSuggestionsHandler", () => {
         "steam",
         "getchu",
         "cien",
+        "itch",
         "vndb",
       ]);
     });

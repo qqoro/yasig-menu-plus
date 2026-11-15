@@ -31,12 +31,16 @@ const log = createLogger("ListCheck");
 
 /**
  * 폴더명 코드 인식과 같은 규칙의 추출기 (컬렉터 우선순위 순)
- * 소문자 RJ코드는 DLsite 작품 페이지가 404이므로 대문자로 통일
+ * 소문자 RJ코드는 DLsite 작품 페이지가 404이므로 DLsite만 대문자로 통일
+ * (itch는 소문자 제작자.슬러그가 원래 형태라 그대로 둠)
  */
 function getCodeExtractors(): CodeExtractor[] {
   return Object.entries(PROVIDER_COLLECTORS).map(([provider, collector]) => ({
     provider,
-    getId: async (text) => (await collector.getId(text))?.toUpperCase(),
+    getId: async (text) => {
+      const id = await collector.getId(text);
+      return provider === "dlsite" ? id?.toUpperCase() : id;
+    },
   }));
 }
 

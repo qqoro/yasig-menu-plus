@@ -74,6 +74,7 @@ describe("toGameDetailSummary", () => {
     const detail: GameDetailItem = {
       ...baseGame,
       memo: "note",
+      siteUrl: null,
       createdAt: new Date("2024-01-01T00:00:00.000Z"),
       updatedAt: null,
       externalRating: 4.5,

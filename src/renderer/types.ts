@@ -51,6 +51,8 @@ export interface GameItem {
  */
 export interface GameDetailItem extends GameItem {
   memo: string | null;
+  /** 원본 사이트 주소 (메인의 수집기 getUrl 기준, 없으면 null) */
+  siteUrl: string | null;
 }
 
 /**
@@ -87,7 +89,7 @@ export interface SearchQuery {
     showNotCompressed?: boolean;
     showWithExternalId?: boolean;
     showWithoutExternalId?: boolean;
-    /** 제공자 다중 선택 (dlsite/steam/getchu/cien/vndb) — 빈 배열이면 전체 */
+    /** 제공자 다중 선택 (dlsite/steam/getchu/cien/itch/vndb) — 빈 배열이면 전체 */
     providers?: string[];
   };
   sortBy?:

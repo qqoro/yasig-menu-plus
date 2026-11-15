@@ -10,6 +10,7 @@ import { CienCollector } from "./cien-collector.js";
 import { DLSiteCollector } from "./dlsite-collector.js";
 import { GetchuCollector } from "./getchu-collector.js";
 import { GoogleCollector } from "./google-collector.js";
+import { ItchCollector } from "./itch-collector.js";
 import { SteamCollector } from "./steam-collector.js";
 import { VndbCollector } from "./vndb-collector.js";
 
@@ -271,6 +272,7 @@ export const PROVIDER_COLLECTORS: Record<string, Collector> = {
   steam: SteamCollector,
   getchu: GetchuCollector,
   cien: CienCollector,
+  itch: ItchCollector,
   vndb: VndbCollector,
 };
 

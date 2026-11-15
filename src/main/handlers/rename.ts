@@ -150,6 +150,8 @@ const PROVIDER_ID_PREFIX: Record<string, string> = {
   steam: "ST",
   getchu: "GC",
   cien: "CE",
+  // 뒤가 영문이라 붙여 쓰면 경계가 안 보여 - 를 넣음 (다시 스캔해도 같은 ID로 인식)
+  itch: "ITCH-",
   vndb: "v",
 };
 

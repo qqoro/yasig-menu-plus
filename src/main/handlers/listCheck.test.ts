@@ -50,7 +50,22 @@ vi.mock("../collectors/registry.js", () => {
     fetchInfo: vi.fn(),
     getUrl: (id: string) => `https://store.steampowered.com/app/${id}/`,
   };
-  const PROVIDER_COLLECTORS = { dlsite, steam };
+  // itch는 소문자 제작자.슬러그 (대소문자 처리 검증용)
+  const itch = {
+    name: "itch.io",
+    getId: async (t: string) =>
+      /ITCH-([a-z0-9-]+)\.([a-z0-9-]+)/i
+        .exec(t)
+        ?.slice(1)
+        .join(".")
+        .toLowerCase(),
+    fetchInfo: vi.fn(),
+    getUrl: (id: string) => {
+      const [creator, slug] = id.split(".");
+      return `https://${creator}.itch.io/${slug}`;
+    },
+  };
+  const PROVIDER_COLLECTORS = { dlsite, steam, itch };
   return {
     PROVIDER_COLLECTORS,
     getCollectorUrl: (provider: string | null, id: string | null) =>
@@ -173,6 +188,17 @@ describe("checkGameList", () => {
       externalId: "RJ01366886",
       code: "RJ01366886",
       url: "https://www.dlsite.com/maniax/work/=/product_id/RJ01366886.html",
+    });
+  });
+
+  it("itch 코드는 대문자로 바꾸지 않고 소문자 코드·URL로 돌려준다", async () => {
+    const { rows } = await checkGameList("ITCH-Maker.Some-Game");
+
+    expect(rows[0]).toMatchObject({
+      provider: "itch",
+      externalId: "maker.some-game",
+      code: "ITCH-maker.some-game",
+      url: "https://maker.itch.io/some-game",
     });
   });
 });

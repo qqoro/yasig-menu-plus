@@ -3,9 +3,11 @@ import type { GameItem } from "../events.js";
 import {
   buildTsvRows,
   exportColumnLabels,
+  formatExternalCode,
   formatPlayTime,
   rowsToTsv,
 } from "./export-format.js";
+import { extractItchId } from "./external-id.js";
 
 /**
  * export-format 포맷터 테스트
@@ -109,6 +111,15 @@ describe("externalId 프리픽스", () => {
       ["GC123456"],
       ["CE1234-567"],
     ]);
+  });
+
+  it("itch는 ITCH- 프리픽스가 붙고, 다시 인식하면 같은 ID", () => {
+    expect(formatExternalCode("itch", "maker.some-game")).toBe(
+      "ITCH-maker.some-game",
+    );
+    expect(extractItchId(formatExternalCode("itch", "maker.some-game"))).toBe(
+      "maker.some-game",
+    );
   });
 
   it("dlsite는 저장된 코드가 그대로 나간다 (RJ/BJ/VJ 계열 유지)", () => {

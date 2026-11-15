@@ -28,6 +28,12 @@ const collectors = [
     example: "CE123-456 Creator Title (크리에이터 번호-글 번호)",
   },
   {
+    prefix: "ITCH",
+    description: "itch.io",
+    example: "ITCH-maker.some-game Game Title, [ITCH]maker.some-game",
+    note: "제작자.슬러그 형식 — 상점 주소 maker.itch.io/some-game의 두 부분을 .으로 이어 씁니다.",
+  },
+  {
     prefix: "v, vn",
     description: "VNDB",
     example: "v562 Game Title, vn4 Game Title",

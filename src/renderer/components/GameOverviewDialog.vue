@@ -342,24 +342,8 @@ const subTitle = computed(() => {
 const { visibleTags } = useHiddenTags();
 const displayTags = computed(() => visibleTags(game.value?.tags));
 
-// 원본 사이트 URL (provider + externalId 기반 — collectors의 getUrl과 동일 매핑)
-const siteUrl = computed(() => {
-  const g = game.value;
-  if (!g?.provider || !g?.externalId) return null;
-  const id = g.externalId;
-  switch (g.provider.toLowerCase()) {
-    case "dlsite":
-      return `https://www.dlsite.com/maniax/work/=/product_id/${id}.html`;
-    case "steam":
-      return `https://store.steampowered.com/app/${id}/`;
-    case "getchu":
-      return `https://www.getchu.com/item/${id}/`;
-    case "vndb":
-      return `https://vndb.org/v${id}`;
-    default:
-      return null;
-  }
-});
+// 원본 사이트 URL (메인이 수집기 getUrl로 만들어 줌 — 사이트 규칙을 여기서 따로 두지 않음)
+const siteUrl = computed(() => game.value?.siteUrl ?? null);
 
 // 원본 사이트를 외부 브라우저로 열기
 function openSite() {

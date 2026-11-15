@@ -1,5 +1,5 @@
 /**
- * 외부 작품 ID 추출 (DLsite / Steam / Getchu / Ci-en / VNDB)
+ * 외부 작품 ID 추출 (DLsite / Steam / Getchu / Ci-en / itch.io / VNDB)
  *
  * 컬렉터 매칭, 스캔의 비게임 콘텐츠 판별, 목록 대조가 같은 규칙을 쓰도록 한곳에 모은 순수 모듈.
  * Worker Thread에서도 import하므로 fs/DB/Electron 의존성을 두지 않는다.
@@ -12,7 +12,7 @@
  */
 
 export type ExternalIdProvider =
-  "dlsite" | "steam" | "getchu" | "cien" | "vndb";
+  "dlsite" | "steam" | "getchu" | "cien" | "itch" | "vndb";
 
 export interface ExternalIdMatch {
   provider: ExternalIdProvider;
@@ -48,6 +48,26 @@ const CIEN_CODE = new RegExp(
   "i",
 );
 const CIEN_URL = /ci-en\.(?:net|dlsite\.com)\/creator\/(\d+)\/article\/(\d+)/i;
+
+/**
+ * itch.io 제작자명·슬러그 한 부분
+ * - 서브도메인·슬러그에는 _ 가 없음 (밑줄은 - 로 바뀜) → _ 뒤(버전 표기 등)에서 끊김
+ * - 끝에 - 가 오지 않음
+ */
+const ITCH_NAME = String.raw`[a-z0-9](?:[a-z0-9-]*[a-z0-9])?`;
+/**
+ * itch.io 코드 (ITCH-제작자.슬러그)
+ * - 상점 주소 제작자.itch.io/슬러그의 두 부분을 .으로 이음 (폴더명에 / 를 쓸 수 없음)
+ * - 서브도메인·슬러그에는 . 이 들어갈 수 없어 경계가 모호하지 않음
+ */
+const ITCH_CODE = new RegExp(
+  String.raw`${LEAD}ITCH${SEP}(${ITCH_NAME})\.(${ITCH_NAME})${TRAIL}`,
+  "i",
+);
+const ITCH_URL = new RegExp(
+  String.raw`(${ITCH_NAME})\.itch\.io\/(${ITCH_NAME})`,
+  "i",
+);
 
 /**
  * VNDB 코드 (v562, vn562)
@@ -93,6 +113,12 @@ export function extractCienId(text: string): string | undefined {
   );
 }
 
+/** itch.io 작품 ID ("제작자.슬러그" 소문자로 반환) */
+export function extractItchId(text: string): string | undefined {
+  const match = ITCH_URL.exec(text) ?? ITCH_CODE.exec(text);
+  return match ? `${match[1]}.${match[2]}`.toLowerCase() : undefined;
+}
+
 /**
  * VNDB 숫자 ID
  * 상점 URL이 아니면 마지막 경로 구간(게임 폴더명)에서만 찾음 — v 한 글자 코드라 상위 폴더까지 보면 오인식이 잦음
@@ -114,6 +140,7 @@ export const EXTERNAL_ID_EXTRACTORS: ReadonlyArray<{
   { provider: "steam", extract: extractSteamId },
   { provider: "getchu", extract: extractGetchuId },
   { provider: "cien", extract: extractCienId },
+  { provider: "itch", extract: extractItchId },
   { provider: "vndb", extract: extractVndbId },
 ];
 
