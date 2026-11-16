@@ -16,6 +16,7 @@ import { createLogger } from "./lib/logger";
 import { useWindow } from "./composables/useWindow";
 import { useExternalChangeListener } from "./composables/useExternalChangeListener";
 import { useJobEvents } from "./composables/useJobEvents";
+import { useRunningGamesListener } from "./composables/useRunningGames";
 import { queryKeys } from "./queryKeys";
 import { useQueryClient } from "@tanstack/vue-query";
 import { useUIStore } from "./stores/uiStore";
@@ -66,6 +67,9 @@ const changelogMode = ref<"afterVersion" | "recent">("afterVersion");
 // 봇 차단 다이얼로그 상태
 const showBotBlockDialog = ref(false);
 const botBlockGameTitle = ref("");
+
+// 실행 중인 게임 목록 (카드·상세 화면의 "실행 중" 표시)
+useRunningGamesListener();
 
 // 백그라운드 작업 이벤트 (진행·완료 토스트, 봇 인증 대기)
 // 봇 인증 대기는 메인 상태에 남아 있어 새로고침 후에도 대화상자가 다시 열린다

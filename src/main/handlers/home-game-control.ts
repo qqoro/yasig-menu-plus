@@ -96,11 +96,24 @@ function isAudioFile(filePath: string): boolean {
  * playGameHandler와 playGameWithCheatHandler에서 공유하는 게임 실행 로직.
  * isCheatMode가 true인 경우 ProcessMonitor 세션에 치트 모드 플래그가 전달됩니다.
  */
+/**
+ * 실행 중인 게임이면 거부
+ * @throws {Error} 플레이 타임을 추적 중인(실행 중인) 게임인 경우
+ */
+export function assertNotRunning(path: string): void {
+  if (processMonitor.hasActiveSession(path)) {
+    throw new Error("이미 실행 중인 게임입니다.");
+  }
+}
+
 export async function executeGameLaunch(
   path: string,
   isCheatMode = false,
 ): Promise<IpcMainEventMap["gamePlayed"]> {
   log.info(`게임 실행 요청: ${path}${isCheatMode ? " (치트 모드)" : ""}`);
+
+  // 이미 실행 중이면 거부 (그대로 두면 아래 셸 실행으로 넘어가 두 번째 인스턴스가 뜬다)
+  assertNotRunning(path);
 
   // 오프라인 경로 안내: 경로가 존재하지 않고 오프라인 경로인 경우 친화적 메시지
   if (!(await pathExists(path))) {

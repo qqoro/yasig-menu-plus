@@ -73,8 +73,13 @@ vi.mock("../store.js", () => ({
 vi.mock("../workers/run-scan-worker.js", () => ({
   runScanWorker: vi.fn(),
 }));
+const hasActiveSessionMock = vi.hoisted(() => vi.fn(() => false));
 vi.mock("../services/ProcessMonitor.js", () => ({
-  processMonitor: { isExeFile: vi.fn(), startSession: vi.fn() },
+  processMonitor: {
+    isExeFile: vi.fn(),
+    startSession: vi.fn(),
+    hasActiveSession: hasActiveSessionMock,
+  },
 }));
 vi.mock("../lib/fingerprint.js", () => ({
   computeFingerprint: vi.fn(() => "mock-fp"),
@@ -124,6 +129,8 @@ vi.mock("../db/db-manager.js", () => ({
 
 // 모킹 후 import (vi.mock 호이스팅)
 import {
+  assertNotRunning,
+  executeGameLaunch,
   toggleGameHandler,
   batchToggleGamesHandler,
   setExecutablePathHandler,
@@ -149,6 +156,34 @@ afterAll(async () => {
 beforeEach(async () => {
   await truncateAll(db);
   vi.clearAllMocks();
+  hasActiveSessionMock.mockReturnValue(false);
+});
+
+// ============================================
+// 실행 중인 게임 중복 실행 방지
+// ============================================
+
+describe("assertNotRunning / executeGameLaunch — 중복 실행 방지", () => {
+  it("실행 중이 아니면 통과한다", () => {
+    expect(() => assertNotRunning("/games/a")).not.toThrow();
+  });
+
+  it("실행 중이면 거부한다", () => {
+    hasActiveSessionMock.mockReturnValue(true);
+    expect(() => assertNotRunning("/games/a")).toThrow(
+      "이미 실행 중인 게임입니다.",
+    );
+  });
+
+  it("실행 중인 게임은 셸 실행으로 넘어가지 않고 거부한다", async () => {
+    hasActiveSessionMock.mockReturnValue(true);
+    await seedGame(db, { path: "/games/a" });
+
+    await expect(executeGameLaunch("/games/a")).rejects.toThrow(
+      "이미 실행 중인 게임입니다.",
+    );
+    expect(shell.openPath).not.toHaveBeenCalled();
+  });
 });
 
 // ============================================

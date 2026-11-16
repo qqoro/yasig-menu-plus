@@ -15,6 +15,7 @@ import FilterPanelComponent from "../components/FilterPanel.vue";
 import HelpDialog from "../components/HelpDialog.vue";
 import GameDetailDialog from "../components/GameDetailDialog.vue";
 import GameGridSection from "../components/GameGridSection.vue";
+import { useRunningGames } from "../composables/useRunningGames";
 import GameOverviewDialog from "../components/GameOverviewDialog.vue";
 import HomeToolbar from "../components/HomeToolbar.vue";
 import PermanentDeleteCheckbox from "../components/PermanentDeleteCheckbox.vue";
@@ -102,8 +103,8 @@ const lastRefreshedAt = ref<Date | null>(null);
 // 도움말 다이얼로그
 const showHelpDialog = ref(false);
 
-// 현재 실행 중인 게임 경로
-const playingGamePath = computed(() => null as string | null);
+// 실행 중인 게임 (메인 프로세스가 알려 주는 목록)
+const { isRunning } = useRunningGames();
 
 // useSearch composable로 검색 상태 관리
 const searchState = useSearch(() => activeLibraryPaths.value);
@@ -512,7 +513,7 @@ onMounted(() => {
             :is-fetching-next-page="searchState.isFetchingNextPage.value"
             :is-selection-mode="multiSelect.isSelectionMode.value"
             :selected-count="multiSelect.selectedCount.value"
-            :playing-game-path="playingGamePath"
+            :is-playing="isRunning"
             :is-playing-cheat="isPlayingCheat"
             :is-selected="multiSelect.isSelected"
             :is-active-tag="searchState.hasTag"

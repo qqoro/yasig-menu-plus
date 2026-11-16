@@ -29,6 +29,7 @@ interface Props {
   game: GameItem;
   isSelectionMode?: boolean;
   selectedCount?: number;
+  isPlaying?: boolean;
   isPlayingCheat?: boolean;
 }
 
@@ -51,6 +52,7 @@ interface Emits {
 const props = withDefaults(defineProps<Props>(), {
   isSelectionMode: false,
   selectedCount: 0,
+  isPlaying: false,
   isPlayingCheat: false,
 });
 const emit = defineEmits<Emits>();
@@ -107,15 +109,22 @@ const isRpgMaker = computed(
 
       <!-- 단일 선택 모드 (기존 메뉴) -->
       <template v-else>
-        <ContextMenuItem @select="emit('play', game)">
-          <Play :size="14" />
-          {{ game.hasExecutable === false ? "재생" : "실행" }}
+        <ContextMenuItem @select="emit('play', game)" :disabled="isPlaying">
+          <Loader2 v-if="isPlaying" :size="14" class="animate-spin" />
+          <Play v-else :size="14" />
+          {{
+            isPlaying
+              ? "실행 중..."
+              : game.hasExecutable === false
+                ? "재생"
+                : "실행"
+          }}
         </ContextMenuItem>
         <!-- 치트 모드 실행 (RPG Maker 게임만) -->
         <ContextMenuItem
           v-if="isRpgMaker"
           @select="emit('play-cheat', game)"
-          :disabled="isPlayingCheat"
+          :disabled="isPlaying || isPlayingCheat"
         >
           <Loader2 v-if="isPlayingCheat" :size="14" class="animate-spin" />
           <Zap v-else :size="14" />

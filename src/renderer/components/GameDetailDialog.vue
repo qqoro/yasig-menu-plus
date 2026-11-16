@@ -20,6 +20,7 @@ import {
 } from "../composables/useGameDetail";
 import { usePlayGame } from "../composables/useGames";
 import { usePlayTime, usePlayTimeListener } from "../composables/usePlayTime";
+import { useRunningGames } from "../composables/useRunningGames";
 import { createLogger } from "../lib/logger";
 import GameDetailExecutable from "./game-detail/GameDetailExecutable.vue";
 import GameDetailMemo from "./game-detail/GameDetailMemo.vue";
@@ -88,6 +89,12 @@ const isRpgMaker = computed(
 // 치트 모드 실행
 const cheatPlayMutation = usePlayGameWithCheat();
 const isPlayingCheat = computed(() => cheatPlayMutation.isPending.value);
+
+// 실행 요청 중이거나 이미 실행 중이면 실행 버튼을 막는다
+const { isRunning } = useRunningGames();
+const isPlaying = computed(
+  () => playGameMutation.isPending.value || isRunning(gamePathRef.value),
+);
 
 // 플레이 타임 이벤트 리스너
 usePlayTimeListener(gamePathRef);
@@ -282,7 +289,7 @@ async function handleRunCollector() {
         <CheatPlayButton
           :game-path="gamePath ?? ''"
           :is-rpg-maker="isRpgMaker"
-          :is-playing="playGameMutation.isPending.value"
+          :is-playing="isPlaying"
           :is-playing-cheat="isPlayingCheat"
           @play="handlePlay"
           @play-cheat="handlePlayCheat"

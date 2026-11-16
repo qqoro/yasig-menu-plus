@@ -128,6 +128,7 @@ type IpcInvokeReturn = {
   getTranslationSettings: IpcMainEventMap["translationSettings"];
   setTranslationSettings: void;
   getJobStatus: IpcMainEventMap["jobStatusChanged"];
+  getRunningGames: IpcMainEventMap["runningGamesChanged"];
   runFullSync: JobStartResult;
   lastRefreshedSet: void;
   lastRefreshedGet: IpcMainEventMap["lastRefreshedLoaded"];

@@ -9,7 +9,7 @@ import { ipcMain } from "electron";
 import { IpcRendererSend } from "../events.js";
 import { cheatInjector } from "../services/cheat-injector.js";
 import { wrapIpcHandler } from "../utils/ipc-wrapper.js";
-import { executeGameLaunch } from "./home-game-control.js";
+import { assertNotRunning, executeGameLaunch } from "./home-game-control.js";
 
 /**
  * RPG Maker 게임 감지 핸들러
@@ -32,6 +32,9 @@ const playGameWithCheatHandler = wrapIpcHandler(
   "playGameWithCheat",
   async (_event, payload: { path: string }) => {
     const { path } = payload;
+
+    // 실행 중인 게임에 주입하면 실행이 거부된 뒤 복원할 세션이 없어 파일이 수정된 채 남는다
+    assertNotRunning(path);
 
     // RPG Maker 게임 감지
     const detection = await cheatInjector.detect(path);

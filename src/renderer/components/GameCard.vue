@@ -361,7 +361,8 @@ function handleMouseDown(event: MouseEvent): void {
   <Card
     class="hover:border-primary/50 -py-6 flex flex-col gap-3 overflow-hidden transition-colors"
     :class="{
-      'pointer-events-none opacity-75': isPlaying,
+      // 우클릭 메뉴 트리거(reka-ui)가 인라인으로 pointer-events: auto를 넣으므로 important로 덮는다
+      'pointer-events-none! opacity-75': isPlaying,
       'opacity-75 hover:opacity-100': game.isOffline && !isPlaying,
       'ring-primary border-primary ring-2': isSelected,
       'cursor-pointer': isSelectionMode,

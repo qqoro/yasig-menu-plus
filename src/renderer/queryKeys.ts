@@ -181,6 +181,13 @@ export const queryKeys = {
   },
 
   /**
+   * 실행 중인 게임 목록 쿼리 키 (이벤트로 갱신)
+   */
+  runningGames: {
+    all: ["runningGames"] as const,
+  },
+
+  /**
    * 체인지로그 쿼리 키
    */
   changelog: (currentVersion: string, mode: "afterVersion" | "recent") =>

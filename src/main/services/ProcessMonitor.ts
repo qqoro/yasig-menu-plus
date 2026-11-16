@@ -8,6 +8,9 @@
 import { ChildProcess, spawn } from "child_process";
 import type { BrowserWindow } from "electron";
 import { db } from "../db/db-manager.js";
+import type { RunningGame } from "../events.js";
+import { broadcast } from "../utils/broadcast.js";
+import { wrapIpcHandler } from "../utils/ipc-wrapper.js";
 import { createLogger } from "../utils/logger.js";
 import { getOrCreateUserGameData } from "./user-game-data.js";
 
@@ -92,6 +95,7 @@ export class ProcessMonitor {
     };
 
     this.activeSessions.set(gamePath, session);
+    this.broadcastRunningGames();
 
     // 종료 이벤트 리스너
     gameProcess.on("close", async (code) => {
@@ -117,6 +121,8 @@ export class ProcessMonitor {
 
     // 세션 제거 (먼저 제거하여 중복 호출 방지)
     this.activeSessions.delete(gamePath);
+    // 플레이 시간 기록과 무관하게 바로 알린다 (60초 미만 실행도 "실행 중" 표시는 풀려야 함)
+    this.broadcastRunningGames();
 
     // 플레이 시간 계산
     const endedAt = new Date();
@@ -220,6 +226,25 @@ export class ProcessMonitor {
   }
 
   /**
+   * 실행 중인 게임 목록 스냅샷
+   */
+  getRunningGames(): RunningGame[] {
+    return [...this.activeSessions.values()].map((session) => ({
+      path: session.gamePath,
+      isCheatMode: session.isCheatMode ?? false,
+    }));
+  }
+
+  /**
+   * 실행 중인 게임 목록을 모든 창에 알림
+   *
+   * 렌더러가 새로고침돼도 받도록 mainWindow가 아닌 broadcast로 보낸다.
+   */
+  private broadcastRunningGames(): void {
+    broadcast("runningGamesChanged", this.getRunningGames());
+  }
+
+  /**
    * 이벤트 전송 헬퍼
    */
   private sendEvent(channel: string, data: unknown): void {
@@ -231,3 +256,8 @@ export class ProcessMonitor {
 
 // 싱글톤 인스턴스
 export const processMonitor = new ProcessMonitor();
+
+export const getRunningGamesHandler = wrapIpcHandler(
+  "getRunningGames",
+  async (): Promise<RunningGame[]> => processMonitor.getRunningGames(),
+);

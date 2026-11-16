@@ -61,6 +61,12 @@ vi.mock("child_process", () => ({
   spawn: (...args: unknown[]) => spawnMock(...args),
 }));
 
+// broadcast 모킹: 실행 중 목록 알림을 기록
+const broadcastMock = vi.hoisted(() => vi.fn());
+vi.mock("../utils/broadcast.js", () => ({
+  broadcast: broadcastMock,
+}));
+
 // getOrCreateUserGameData 모킹
 const getOrCreateUserGameDataMock = vi.fn();
 vi.mock("./user-game-data.js", () => ({
@@ -584,5 +590,79 @@ describe("endAllSessions", () => {
     // DB: playSessions에 3건 기록되었는지 확인
     const allSessions = await db("playSessions").select("*");
     expect(allSessions).toHaveLength(3);
+  });
+});
+
+// ============================================
+// 실행 중인 게임 목록 테스트
+// ============================================
+
+describe("getRunningGames / runningGamesChanged", () => {
+  let monitor: ProcessMonitor;
+
+  beforeEach(async () => {
+    await truncateAll(db);
+    monitor = new ProcessMonitor();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  async function seed(gamePath: string, fp: string): Promise<void> {
+    await seedGame(db, { path: gamePath, fingerprint: fp });
+    const ugd = await seedUserGameData(db, gamePath, { fingerprint: fp });
+    getOrCreateUserGameDataMock.mockResolvedValue(ugd.id);
+  }
+
+  it("실행 중인 게임이 없으면 빈 목록", () => {
+    expect(monitor.getRunningGames()).toEqual([]);
+  });
+
+  it("동시에 실행한 게임을 모두 치트 여부와 함께 돌려준다", async () => {
+    await seed("/games/run-a", "fp-run-a");
+    await seed("/games/run-b", "fp-run-b");
+    spawnMock.mockImplementation(() => createMockProcess());
+
+    await monitor.startSession("/games/run-a", "C:/Games/A.exe");
+    await monitor.startSession("/games/run-b", "C:/Games/B.exe", true);
+
+    expect(monitor.getRunningGames()).toEqual([
+      { path: "/games/run-a", isCheatMode: false },
+      { path: "/games/run-b", isCheatMode: true },
+    ]);
+  });
+
+  it("시작할 때 전체 목록을 broadcast한다", async () => {
+    await seed("/games/run-a", "fp-run-a");
+    spawnMock.mockReturnValue(createMockProcess());
+
+    await monitor.startSession("/games/run-a", "C:/Games/A.exe");
+
+    expect(broadcastMock).toHaveBeenLastCalledWith("runningGamesChanged", [
+      { path: "/games/run-a", isCheatMode: false },
+    ]);
+  });
+
+  it(".exe가 아니라 추적하지 않는 실행은 broadcast하지 않는다", async () => {
+    await monitor.startSession("/games/run-a", "C:/Games/A.lnk");
+    expect(broadcastMock).not.toHaveBeenCalled();
+  });
+
+  it("60초 미만으로 끝나도 종료 시 빈 목록을 broadcast한다", async () => {
+    await seed("/games/run-a", "fp-run-a");
+    const proc = createMockProcess();
+    spawnMock.mockReturnValue(proc);
+
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+    await monitor.startSession("/games/run-a", "C:/Games/A.exe");
+    vi.setSystemTime(new Date("2026-01-01T00:00:10Z"));
+    await monitor.endSession("/games/run-a");
+
+    expect(broadcastMock).toHaveBeenLastCalledWith("runningGamesChanged", []);
+    expect(monitor.getRunningGames()).toEqual([]);
   });
 });

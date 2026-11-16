@@ -90,7 +90,10 @@ import {
   getOfflineLibraryPathsHandler,
   toggleLibraryPathOfflineHandler,
 } from "./handlers/libraryPathOffline.js";
-import { processMonitor } from "./services/ProcessMonitor.js";
+import {
+  getRunningGamesHandler,
+  processMonitor,
+} from "./services/ProcessMonitor.js";
 import { cheatInjector } from "./services/cheat-injector.js";
 import { autoUpdaterService } from "./services/AutoUpdater.js";
 import {
@@ -447,6 +450,7 @@ function registerIpcHandlers() {
   ipcMain.handle(IpcRendererSend.LastRefreshedGet, getLastRefreshedHandler);
   ipcMain.handle(IpcRendererSend.GetJobStatus, getJobStatusHandler);
   ipcMain.handle(IpcRendererSend.RunFullSync, runFullSyncHandler);
+  ipcMain.handle(IpcRendererSend.GetRunningGames, getRunningGamesHandler);
 
   // ========== 라이브러리 스캔 기록 관련 ==========
   ipcMain.handle(

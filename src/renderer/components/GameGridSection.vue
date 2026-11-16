@@ -19,7 +19,7 @@ interface Props {
   isFetchingNextPage: boolean;
   isSelectionMode: boolean;
   selectedCount: number;
-  playingGamePath: string | null;
+  isPlaying: (path: string) => boolean;
   isPlayingCheat: boolean;
   isSelected: (path: string) => boolean;
   isActiveTag: (tag: string) => boolean;
@@ -128,6 +128,7 @@ onUnmounted(() => {
           :game="game"
           :is-selection-mode="isSelectionMode"
           :selected-count="selectedCount"
+          :is-playing="isPlaying(game.path)"
           :is-playing-cheat="isPlayingCheat"
           @play="emit('play', $event)"
           @play-cheat="emit('playCheat', $event)"
@@ -147,7 +148,7 @@ onUnmounted(() => {
             :game="game"
             :view-mode="viewMode"
             :sort-by="sortBy"
-            :is-playing="playingGamePath === game.path"
+            :is-playing="isPlaying(game.path)"
             :is-playing-cheat="isPlayingCheat"
             :is-selected="isSelected(game.path)"
             :is-selection-mode="isSelectionMode"

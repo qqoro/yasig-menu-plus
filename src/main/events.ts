@@ -137,6 +137,9 @@ export const enum IpcRendererSend {
   GetJobStatus = "getJobStatus", // 현재 작업 상태 스냅샷 조회
   RunFullSync = "runFullSync", // 전체 동기화 시작 (스캔 → 수집 → 번역)
 
+  // 실행 중인 게임
+  GetRunningGames = "getRunningGames", // 실행 중인 게임 목록 스냅샷 조회
+
   // 마지막 갱신 시간 관련
   LastRefreshedSet = "lastRefreshedSet", // 마지막 갱신 시간 저장
   LastRefreshedGet = "lastRefreshedGet", // 마지막 갱신 시간 조회
@@ -280,6 +283,7 @@ export const enum IpcMainSend {
   PlayTimeLoaded = "playTimeLoaded", // 플레이 타임 로드 완료
   PlaySessionsLoaded = "playSessionsLoaded", // 플레이 세션 로드 완료
   GameSessionEnded = "gameSessionEnded", // 게임 세션 종료
+  RunningGamesChanged = "runningGamesChanged", // 실행 중인 게임 목록 (변경될 때마다 전체)
   CheatInjectionRestored = "cheatInjectionRestored", // 치트 주입 복원 완료
 
   // 자동 업데이트 관련
@@ -361,6 +365,7 @@ export type IpcMainSendChannel =
   | "playTimeLoaded"
   | "playSessionsLoaded"
   | "gameSessionEnded"
+  | "runningGamesChanged"
   | "cheatInjectionRestored"
   | "updateChecking"
   | "updateAvailable"
@@ -405,6 +410,11 @@ export interface JobStatus {
   total: number;
   gameTitle: string;
   pendingBotBlock: PendingBotBlock | null; // CAPTCHA 해결 대기 중
+}
+/** 실행 중인 게임 (플레이 타임을 추적하는 .exe 실행만 해당) */
+export interface RunningGame {
+  path: string;
+  isCheatMode: boolean;
 }
 export type JobStartResult =
   { started: true } | { started: false; reason: "busy" };
@@ -698,6 +708,9 @@ export interface IpcRendererEventMap {
   getJobStatus: undefined;
   runFullSync: { sourcePaths: string[] };
 
+  // 실행 중인 게임
+  getRunningGames: undefined;
+
   // 마지막 갱신 시간 관련
   lastRefreshedSet: { timestamp: string };
   lastRefreshedGet: undefined;
@@ -923,6 +936,7 @@ export interface IpcMainEventMap {
     totalPlayTime: number;
     wasCheatMode?: boolean;
   };
+  runningGamesChanged: RunningGame[];
 
   // 자동 업데이트 관련
   updateChecking: undefined;
