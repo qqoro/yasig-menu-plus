@@ -45,8 +45,13 @@ const playGameWithCheatHandler = wrapIpcHandler(
     // 치트 플러그인 주입
     await cheatInjector.inject(path, detection);
 
-    // 게임 실행 (치트 모드)
-    return executeGameLaunch(path, true);
+    try {
+      // 실행 실패 시 종료를 감지할 세션이 없으므로 여기서 복원
+      return await executeGameLaunch(path, true);
+    } catch (error) {
+      await cheatInjector.restore(path);
+      throw error;
+    }
   },
 );
 

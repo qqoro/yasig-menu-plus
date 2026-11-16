@@ -5,9 +5,9 @@
  * - MV/MZ 둘 다 지원
  * - https://github.com/paramonos/RPG-Maker-MV-MZ-Cheat-UI-Plugin
  *
- * 주입 방식: main.js를 백업 후 덮어쓰고 cheat/, css/ 폴더 복사
- * - MV: www/js/main.js 백업, mv/ 내용물을 www/에 복사
- * - MZ: js/main.js 백업, mz/ 내용물을 게임 루트에 복사
+ * 원본 main.js에 공식 로더만 추가하고 v2 번들을 복사
+ * - MV: www/js/main.js 수정, mv/ 내용물을 www/에 복사
+ * - MZ: js/main.js 수정, mz/ 내용물을 게임 루트에 복사
  */
 
 import {
@@ -19,6 +19,7 @@ import {
   stat,
   readdir,
   access,
+  rename,
 } from "node:fs/promises";
 import { join } from "node:path";
 import { app } from "electron";
@@ -73,6 +74,7 @@ interface InjectionRecord {
   mainJsPath: string;
   mainJsBackupPath: string;
   injectedDirs: string[]; // 복사한 디렉토리 경로들
+  replacedPaths?: string[]; // 기존 항목을 .cheat-backup으로 옮긴 경로
   timestamp: string;
 }
 
@@ -132,61 +134,119 @@ class CheatInjector {
     gamePath: string,
     detection: RpgMakerDetectionResult,
   ): Promise<void> {
-    if (!detection.isRpgMaker || !detection.mainJsPath || !detection.gameRoot) {
+    if (
+      !detection.isRpgMaker ||
+      !detection.version ||
+      !detection.mainJsPath ||
+      !detection.gameRoot
+    ) {
       throw new Error("RPG Maker 게임이 아닙니다.");
     }
 
     const { version, mainJsPath, gameRoot } = detection;
     const backupPath = mainJsPath + BACKUP_SUFFIX;
 
-    // 이미 백업이 있으면 (이전 주입이 미복원됨) 먼저 복원
-    if (await pathExists(backupPath)) {
-      log.warn("이전 주입 백업 발견, 복원 후 재주입:", backupPath);
-      // 레지스트리 기록이 없어도 백업 파일로 직접 복원
-      try {
-        const backupContent = await readFile(backupPath, "utf-8");
-        await writeFile(mainJsPath, backupContent, "utf-8");
-        await rm(backupPath, { force: true });
-        log.info("백업 파일로 main.js 복원 완료");
-      } catch (e) {
-        log.error("백업 복원 실패:", e);
-      }
-      // 레지스트리에도 기록이 있으면 함께 정리
-      await this.restore(gamePath);
+    // 이전 기록의 복원이 실패하면 원본 백업을 덮어쓰지 않음
+    const pending = (await this.loadRegistry()).some(
+      (r) => r.gamePath === gamePath,
+    );
+    if (pending && !(await this.restore(gamePath))) {
+      throw new Error("이전 치트 주입을 복원하지 못했습니다.");
     }
 
-    // 1. main.js 백업
-    const mainJsContent = await readFile(mainJsPath, "utf-8");
-    await writeFile(backupPath, mainJsContent, "utf-8");
+    // 레지스트리가 없는 구버전 백업도 복원
+    if (await pathExists(backupPath)) {
+      log.warn("이전 주입 백업 발견, 복원 후 재주입:", backupPath);
+      await copyFile(backupPath, mainJsPath);
+      await rm(backupPath);
+    }
+
+    const mainJsContent = await readFile(mainJsPath, "utf8");
+    const patched = this.patchMainJs(mainJsContent, version);
+    const names = ["cheat", "cheat-version-description.json"];
+    const injectedDirs = names.map((name) => join(gameRoot, name));
+    const replacedPaths: string[] = [];
+    for (const dest of injectedDirs) {
+      if (await pathExists(dest + BACKUP_SUFFIX)) {
+        throw new Error(
+          `기존 치트 백업을 먼저 확인해 주세요: ${dest + BACKUP_SUFFIX}`,
+        );
+      }
+      if (await pathExists(dest)) replacedPaths.push(dest);
+    }
+
+    // 바이너리 복사로 BOM과 인코딩을 포함한 원본 바이트 보존
+    await copyFile(mainJsPath, backupPath);
 
     try {
-      // 2. 번들 파일 복사 (cheat/, css/, js/, cheat-version-description.json)
-      const injectedDirs = await this.copyBundleFiles(version!, gameRoot);
-
-      // 3. 레지스트리에 기록
+      // 파일 변경 전에 기록해 중간 실패나 앱 재시작에도 복원 가능
       await this.addToRegistry({
         gamePath,
-        version: version!,
+        version,
         mainJsPath,
         mainJsBackupPath: backupPath,
         injectedDirs,
+        replacedPaths,
         timestamp: new Date().toISOString(),
       });
 
+      for (const dest of replacedPaths) {
+        await rename(dest, dest + BACKUP_SUFFIX);
+      }
+      await this.copyBundleFiles(version, gameRoot);
+      await writeFile(mainJsPath, patched, "utf8");
+
       log.info(`치트 플러그인 주입 완료: ${gamePath} (${version})`);
     } catch (error) {
-      // 주입 실패 시 백업 복원
       log.error("치트 주입 실패, 백업 복원:", error);
-      if (await pathExists(backupPath)) {
-        await writeFile(
-          mainJsPath,
-          await readFile(backupPath, "utf-8"),
-          "utf-8",
-        );
-        await rm(backupPath, { force: true });
+      if ((await this.loadRegistry()).some((r) => r.gamePath === gamePath)) {
+        await this.restore(gamePath);
+      } else {
+        await copyFile(backupPath, mainJsPath);
+        await rm(backupPath);
       }
       throw error;
     }
+  }
+
+  private patchMainJs(content: string, version: "mv" | "mz"): string {
+    const newline = content.includes("\r\n") ? "\r\n" : "\n";
+    // 이미 설치한 공식 로더는 중복 추가하지 않음
+    if (
+      version === "mv" &&
+      /PluginManager\s*\.\s*loadScript\s*\(\s*["']\.\.\/\.\.\/cheat\/init\/import\.js["']\s*\)/.test(
+        content,
+      )
+    ) {
+      return content;
+    }
+    if (
+      version === "mz" &&
+      /["'](?:\.\.\/\.\.\/)?cheat\/init\/import\.js["']/.test(content)
+    ) {
+      return content.replace(
+        /(["'])\.\.\/\.\.\/cheat\/init\/import\.js\1/,
+        '"cheat/init/import.js"',
+      );
+    }
+    const anchor =
+      version === "mv"
+        ? /^[\t ]*PluginManager\s*\.\s*setup\s*\(\s*\$plugins\s*\)\s*;/m
+        : /^[\t ]*(?:const|let|var)\s+scriptUrls\s*=\s*\[/m;
+    if (!anchor.test(content)) {
+      throw new Error(
+        `치트 로딩 코드를 추가할 위치를 찾을 수 없습니다 (${version}). 게임 원본은 변경하지 않습니다.`,
+      );
+    }
+    const loader =
+      version === "mv"
+        ? [
+            "// 치트 플러그인 로드",
+            'PluginManager._path = "js/plugins/";',
+            'PluginManager.loadScript("../../cheat/init/import.js");',
+          ].join(newline)
+        : '    "cheat/init/import.js",';
+    return content.replace(anchor, (match) => match + newline + loader);
   }
 
   /**
@@ -204,23 +264,24 @@ class CheatInjector {
     try {
       // main.js 복원
       if (await pathExists(record.mainJsBackupPath)) {
-        await writeFile(
-          record.mainJsPath,
-          await readFile(record.mainJsBackupPath, "utf-8"),
-          "utf-8",
-        );
-        await rm(record.mainJsBackupPath, { force: true });
+        await copyFile(record.mainJsBackupPath, record.mainJsPath);
         log.info(`main.js 복원 완료: ${record.mainJsPath}`);
       }
 
       // 주입한 디렉토리/파일 삭제
       for (const dir of record.injectedDirs) {
+        const replaced = record.replacedPaths?.includes(dir);
+        const backup = dir + BACKUP_SUFFIX;
+        // 백업 전 실패했거나 이미 복원한 항목은 원본 그대로 유지
+        if (replaced && !(await pathExists(backup))) continue;
         if (await pathExists(dir)) {
           await rm(dir, { recursive: true, force: true });
           log.info(`주입 디렉토리 삭제: ${dir}`);
         }
+        if (replaced) await rename(backup, dir);
       }
 
+      await rm(record.mainJsBackupPath, { force: true });
       // 레지스트리에서 제거
       await this.removeFromRegistry(gamePath);
 
@@ -252,23 +313,19 @@ class CheatInjector {
 
   /**
    * 번들 파일들을 게임 폴더에 복사
-   * mv/ 내부의 cheat/, css/, js/, *.json → www/
-   * mz/ 내부의 cheat/, css/, js/, *.json → 게임 루트
+   * v2의 cheat/ 및 버전 파일만 복사. 게임 js/와 설정 폴더는 유지
    */
   private async copyBundleFiles(
     version: "mv" | "mz",
     gameRoot: string,
-  ): Promise<string[]> {
+  ): Promise<void> {
     const bundleDir = this.getBundleDir(version);
     if (!(await pathExists(bundleDir))) {
       throw new Error(`치트 플러그인 번들을 찾을 수 없습니다: ${bundleDir}`);
     }
 
-    const injectedDirs: string[] = [];
     const entries = [
       { src: join(bundleDir, "cheat"), dest: join(gameRoot, "cheat") },
-      { src: join(bundleDir, "css"), dest: join(gameRoot, "css") },
-      { src: join(bundleDir, "js"), dest: join(gameRoot, "js") },
       {
         src: join(bundleDir, "cheat-version-description.json"),
         dest: join(gameRoot, "cheat-version-description.json"),
@@ -276,22 +333,12 @@ class CheatInjector {
     ];
 
     for (const { src, dest } of entries) {
-      if (!(await pathExists(src))) continue;
-
       if ((await stat(src)).isDirectory()) {
-        // 기존 디렉토리는 추적하지 않음 (js/ 등 게임 원본)
-        // 파일 덮어쓰기는 main.js 백업/복원으로 처리
-        const isNewDir = !(await pathExists(dest));
         await copyDirRecursive(src, dest);
-        if (isNewDir) {
-          injectedDirs.push(dest);
-        }
       } else {
         await copyFile(src, dest);
       }
     }
-
-    return injectedDirs;
   }
 
   /**
