@@ -6,7 +6,8 @@ import { copyImage, deleteImage, downloadImage } from "../utils/downloader.js";
 import { toAbsolutePath } from "../utils/image-path.js";
 import { wrapIpcHandler } from "../utils/ipc-wrapper.js";
 import { createLogger } from "../utils/logger.js";
-import { validatePath, validateUrl } from "../utils/validator.js";
+import { requireGame } from "../utils/require-game.js";
+import { validateUrl } from "../utils/validator.js";
 
 const log = createLogger("GameImages");
 
@@ -16,8 +17,8 @@ const log = createLogger("GameImages");
 export async function getGameImages(
   gamePath: string,
 ): Promise<IpcMainEventMap["gameImagesLoaded"]> {
-  // gamePath 유효성 검증
-  await validatePath(gamePath);
+  // 등록된 게임인지 확인
+  await requireGame(gamePath);
 
   const images = await db("gameImages")
     .where("game_path", gamePath)
@@ -145,7 +146,7 @@ export async function addGameImageFromUrl(
   url: string,
   afterPath: string | null,
 ): Promise<string[]> {
-  await validatePath(gamePath);
+  await requireGame(gamePath);
   validateUrl(url);
 
   const saved = await downloadImage(url, gamePath, "unique");
@@ -162,7 +163,7 @@ export async function addGameImagesFromFiles(
   filePaths: string[],
   afterPath: string | null,
 ): Promise<IpcMainEventMap["gameImagesAdded"]> {
-  await validatePath(gamePath);
+  await requireGame(gamePath);
 
   const saved: string[] = [];
   let failed = 0;
@@ -194,7 +195,7 @@ export async function deleteGameImage(
   gamePath: string,
   imagePath: string,
 ): Promise<void> {
-  await validatePath(gamePath);
+  await requireGame(gamePath);
 
   const rows = await loadImageRows(db, gamePath);
   const target = rows.find((row) => isSamePath(row.path, imagePath));
@@ -231,7 +232,7 @@ export async function setThumbnailFromImage(
   gamePath: string,
   imagePath: string,
 ): Promise<void> {
-  await validatePath(gamePath);
+  await requireGame(gamePath);
 
   const rows = await loadImageRows(db, gamePath);
   const target = rows.find((row) => isSamePath(row.path, imagePath));

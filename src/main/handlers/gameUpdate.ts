@@ -8,7 +8,8 @@ import { db } from "../db/db-manager.js";
 import { IpcRendererSend } from "../events.js";
 import { getOrCreateUserGameData } from "../services/user-game-data.js";
 import { copyImage, downloadImage } from "../utils/downloader.js";
-import { validatePath, validateUrl } from "../utils/validator.js";
+import { requireGame } from "../utils/require-game.js";
+import { validateUrl } from "../utils/validator.js";
 import { wrapIpcHandler } from "../utils/ipc-wrapper.js";
 import { createLogger } from "../utils/logger.js";
 import { deleteImageFileIfUnused } from "./gameImages.js";
@@ -28,8 +29,8 @@ export async function updateGameMetadata(
     memo?: string | null;
   },
 ): Promise<void> {
-  // 경로 유효성 검증
-  await validatePath(path);
+  // 등록된 게임인지 확인
+  await requireGame(path);
 
   const updates: Record<string, unknown> = {};
 
@@ -70,8 +71,8 @@ export async function updateRating(
   path: string,
   rating: number | null,
 ): Promise<void> {
-  // 경로 유효성 검증
-  await validatePath(path);
+  // 등록된 게임인지 확인
+  await requireGame(path);
 
   // 범위 검증
   if (rating !== null && (rating < 1 || rating > 5)) {
@@ -86,8 +87,8 @@ export async function updateRating(
  * 제작사 추가
  */
 export async function addMaker(path: string, name: string): Promise<void> {
-  // 경로 유효성 검증
-  await validatePath(path);
+  // 등록된 게임인지 확인
+  await requireGame(path);
 
   // 기존 제작사 확인
   const existingMaker = await db("makers").where("name", name).first();
@@ -124,8 +125,8 @@ export async function addMaker(path: string, name: string): Promise<void> {
  * 제작사 제거
  */
 export async function removeMaker(path: string, name: string): Promise<void> {
-  // 경로 유효성 검증
-  await validatePath(path);
+  // 등록된 게임인지 확인
+  await requireGame(path);
 
   // 제작사 ID 조회
   const maker = await db("makers").where("name", name).first();
@@ -143,8 +144,8 @@ export async function removeMaker(path: string, name: string): Promise<void> {
  * 카테고리 추가
  */
 export async function addCategory(path: string, name: string): Promise<void> {
-  // 경로 유효성 검증
-  await validatePath(path);
+  // 등록된 게임인지 확인
+  await requireGame(path);
 
   // 기존 카테고리 확인
   const existingCategory = await db("categories").where("name", name).first();
@@ -185,8 +186,8 @@ export async function removeCategory(
   path: string,
   name: string,
 ): Promise<void> {
-  // 경로 유효성 검증
-  await validatePath(path);
+  // 등록된 게임인지 확인
+  await requireGame(path);
 
   // 카테고리 ID 조회
   const category = await db("categories").where("name", name).first();
@@ -204,8 +205,8 @@ export async function removeCategory(
  * 태그 추가
  */
 export async function addTag(path: string, name: string): Promise<void> {
-  // 경로 유효성 검증
-  await validatePath(path);
+  // 등록된 게임인지 확인
+  await requireGame(path);
 
   // 기존 태그 확인
   const existingTag = await db("tags").where("name", name).first();
@@ -242,8 +243,8 @@ export async function addTag(path: string, name: string): Promise<void> {
  * 태그 제거
  */
 export async function removeTag(path: string, name: string): Promise<void> {
-  // 경로 유효성 검증
-  await validatePath(path);
+  // 등록된 게임인지 확인
+  await requireGame(path);
 
   // 태그 ID 조회
   const tag = await db("tags").where("name", name).first();
@@ -261,8 +262,8 @@ export async function setThumbnailFromUrl(
   path: string,
   url: string,
 ): Promise<string> {
-  // 경로 유효성 검증
-  await validatePath(path);
+  // 등록된 게임인지 확인
+  await requireGame(path);
   // URL 유효성 검증
   validateUrl(url);
 
@@ -279,8 +280,8 @@ export async function setThumbnailFromFile(
   path: string,
   sourceFilePath: string,
 ): Promise<string> {
-  // 경로 유효성 검증
-  await validatePath(path);
+  // 등록된 게임인지 확인
+  await requireGame(path);
 
   const filePath = await copyImage(sourceFilePath, path, "unique");
   await replaceThumbnail(path, filePath);
@@ -312,8 +313,8 @@ async function replaceThumbnail(
  * 썸네일 삭제 (DB null + 쓰이지 않는 파일 삭제)
  */
 export async function hideThumbnail(path: string): Promise<void> {
-  // 경로 유효성 검증
-  await validatePath(path);
+  // 등록된 게임인지 확인
+  await requireGame(path);
 
   await replaceThumbnail(path, null);
 }

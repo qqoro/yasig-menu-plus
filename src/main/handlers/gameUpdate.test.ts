@@ -108,6 +108,23 @@ describe("updateGameMetadata", () => {
     expect(game!.memo).toBe("메모 텍스트");
   });
 
+  it("폴더명에 점이 연속된 게임도 수정할 수 있다", async () => {
+    await seedGame(db, { path: "/games/제목...。...끝", memo: null });
+
+    await updateGameMetadata("/games/제목...。...끝", { memo: "메모" });
+
+    const game = await db("games")
+      .where("path", "/games/제목...。...끝")
+      .first();
+    expect(game!.memo).toBe("메모");
+  });
+
+  it("등록되지 않은 경로는 조용히 넘어가지 않고 거부한다", async () => {
+    await expect(
+      updateGameMetadata("/games/missing", { memo: "메모" }),
+    ).rejects.toThrow("게임을 찾을 수 없습니다.");
+  });
+
   it("빈 객체를 전달하면 DB가 변경되지 않는다", async () => {
     await seedGame(db, { path: "/games/c", title: "Unchanged" });
 
@@ -172,6 +189,15 @@ describe("updateRating", () => {
 // ========== addMaker / removeMaker ==========
 
 describe("addMaker / removeMaker", () => {
+  it("등록되지 않은 경로면 거부하고 제작사 행도 만들지 않는다", async () => {
+    await expect(addMaker("/games/missing", "GhostStudio")).rejects.toThrow(
+      "게임을 찾을 수 없습니다.",
+    );
+
+    const maker = await db("makers").where("name", "GhostStudio").first();
+    expect(maker).toBeUndefined();
+  });
+
   it("새 제작사를 추가하면 makers와 game_makers 레코드가 생성된다", async () => {
     await seedGame(db, { path: "/games/m1" });
 

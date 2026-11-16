@@ -10,7 +10,7 @@ import {
   optimizeImage,
 } from "../utils/downloader.js";
 import { toAbsolutePath, toRelativePath } from "../utils/image-path.js";
-import { validatePath } from "../utils/validator.js";
+import { requireGame } from "../utils/require-game.js";
 import { createLogger } from "../utils/logger.js";
 import { deleteImageFileIfUnused } from "./gameImages.js";
 
@@ -25,8 +25,8 @@ export async function downloadThumbnailHandler(
 ): Promise<IpcMainEventMap["thumbnailDone"]> {
   const { gamePath, url } = payload;
 
-  // gamePath 유효성 검증
-  await validatePath(gamePath);
+  // 등록된 게임인지 확인
+  await requireGame(gamePath);
 
   // 고유 이름으로 저장: 순번 파일(캐러셀 0번 이미지)을 덮어쓰지 않도록
   const filePath = await downloadImage(url, gamePath, "unique");
@@ -53,8 +53,8 @@ export async function deleteThumbnailHandler(
 ): Promise<void> {
   const { gamePath } = payload;
 
-  // gamePath 유효성 검증
-  await validatePath(gamePath);
+  // 등록된 게임인지 확인
+  await requireGame(gamePath);
 
   // DB에서 썸네일 경로 조회
   const game = await db("games").where("path", gamePath).first();

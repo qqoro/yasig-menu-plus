@@ -5,6 +5,7 @@ import { tmpdir } from "os";
 import { join } from "path";
 import {
   validateExecutableInGame,
+  validatePath,
   ValidationError as RealValidationError,
 } from "./validator.js";
 
@@ -12,14 +13,6 @@ import {
  * Validator 유틸리티 테스트
  * 실행: pnpm test
  */
-
-// ============================================
-// Path Traversal 검증 로직
-// ============================================
-function hasPathTraversal(path: string): boolean {
-  const normalized = path.replace(/\\/g, "/");
-  return normalized.includes("..");
-}
 
 // ============================================
 // URL 검증 로직
@@ -89,31 +82,37 @@ function generateThumbnailFilename(
 }
 
 // ============================================
-// Path Traversal 테스트
+// 경로 검증 테스트
 // ============================================
-describe("hasPathTraversal", () => {
-  const testCases: [string, boolean, string][] = [
-    // ===== 안전한 경로 =====
-    ["C:/Games/GameName", false, "일반 경로 (/)"],
-    ["C:\\Games\\GameName", false, "일반 경로 (\\)"],
-    ["/home/user/games/gamename", false, "Unix 경로"],
-    ["GameName", false, "상대 경로 (파일명만)"],
-    ["./GameName", false, "현재 디렉토리"],
-    ["../Games/GameName", true, "상위 디렉토리 - ../"],
-    ["..\\Games\\GameName", true, "상위 디렉토리 - ..\\"],
-    ["C:/Games/../GameName", true, "중간에 .. 포함"],
-    ["C:/Games/../../Windows", true, "여러 단계 상위"],
-    ["../", true, "..만 있음"],
-    ["..", true, "..만 있음 (슬래시 없음)"],
+describe("validatePath", () => {
+  let root: string;
 
-    // ===== 엣지 케이스 =====
-    ["", false, "빈 문자열"],
-    ["Game..Name", true, "..가 파일명 중간에 있어도 감지"],
-    ["C:/Games/Game...Name", true, "...도 .. 포함으로 감지"],
-  ];
+  beforeAll(async () => {
+    root = await mkdtemp(join(tmpdir(), "ymp-validate-path-"));
+  });
 
-  it.each(testCases)("%s → %s (%s)", (input, expected, _desc) => {
-    expect(hasPathTraversal(input)).toBe(expected);
+  afterAll(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it("빈 문자열은 거부해야 한다", async () => {
+    await expect(validatePath("  ")).rejects.toThrow("경로가 비어있습니다.");
+  });
+
+  // 이슈 #16: 폴더명에 점이 연속되면 상위 폴더 접근으로 오인해 거부하던 문제
+  it("폴더명에 점이 연속된 실제 폴더는 통과해야 한다", async () => {
+    // Windows는 끝의 마침표를 잘라내므로 마침표로 끝나지 않는 이름을 쓴다
+    const dir = join(root, "제목...。...끝");
+    await mkdir(dir);
+    await expect(
+      validatePath(dir, { mustExist: true }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("mustExist면 없는 경로는 거부해야 한다", async () => {
+    await expect(
+      validatePath(join(root, "missing"), { mustExist: true }),
+    ).rejects.toThrow("존재하지 않는 경로입니다.");
   });
 });
 

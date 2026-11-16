@@ -1,7 +1,7 @@
 /**
  * 입력값 검증 유틸리티
  *
- * 보안: Path Traversal, 잘못된 입력 등을 방지
+ * 보안: 폴더 밖 경로, 잘못된 입력 등을 방지
  */
 
 import { stat, access } from "fs/promises";
@@ -18,15 +18,6 @@ export class ValidationError extends Error {
 }
 
 /**
- * 경로가 상위 디렉토리 접근을 포함하는지 확인 (Path Traversal 방지)
- */
-function hasPathTraversal(path: string): boolean {
-  // 윈도우 경로 구분자도 처리
-  const normalized = path.replace(/\\/g, "/");
-  return normalized.includes("..");
-}
-
-/**
  * 경로 존재 여부 비동기 확인
  */
 async function pathExists(p: string): Promise<boolean> {
@@ -40,6 +31,10 @@ async function pathExists(p: string): Promise<boolean> {
 
 /**
  * 경로 유효성 검증
+ *
+ * ".." 같은 문자열 검사는 하지 않는다. 절대 경로를 그대로 받으므로 막아 주는 것이 없고,
+ * "제목..." 같은 정상 폴더명만 거부하게 된다. 게임 경로는 requireGame()으로,
+ * 특정 폴더 안이어야 하는 경로는 validateExecutableInGame()처럼 resolve 후 포함 여부로 검사한다.
  * @throws {ValidationError} 경로가 유효하지 않은 경우
  */
 export async function validatePath(
@@ -48,11 +43,6 @@ export async function validatePath(
 ): Promise<void> {
   if (typeof path !== "string" || path.trim() === "") {
     throw new ValidationError("경로가 비어있습니다.");
-  }
-
-  // Path Traversal 방지
-  if (hasPathTraversal(path)) {
-    throw new ValidationError("경로에 상위 디렉토리 접근이 포함되어 있습니다.");
   }
 
   // 존재 여부 확인 (옵션)
