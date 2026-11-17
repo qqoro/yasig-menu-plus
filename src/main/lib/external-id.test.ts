@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   extractCienId,
+  extractFanzaId,
   extractDlsiteId,
   extractExternalId,
   extractExternalIdFromPath,
@@ -10,6 +11,53 @@ import {
   extractVndbId,
   hasExternalId,
 } from "./external-id.js";
+
+describe("extractFanzaId", () => {
+  it.each([
+    ["[FANZA-maker_d_123]", "maker_d_123"],
+    ["[FANZA-d_game]", "d_game"],
+    ["[d_216826] https://example.com", "d_216826"],
+  ])("상품 코드 전체와 별도 텍스트를 유지: %s", (input, expected) => {
+    expect(extractFanzaId(input)).toBe(expected);
+  });
+  it.each([
+    ["[d_216826] 게임", "d_216826"],
+    ["D_216826", "d_216826"],
+    ["[FANZA-debo_0158] 게임", "debo_0158"],
+    ["[FANZA]debo_0158", "debo_0158"],
+    ["FANZA_cveaa_wws4zq2j", "cveaa_wws4zq2j"],
+    ["FANZAdebo_0158", "debo_0158"],
+    ["FANZA-debo_0158_v2", "debo_0158_v2"],
+    [
+      "https://www.dmm.co.jp/dc/doujin/-/detail/=/cid=d_216826/?a=1",
+      "d_216826",
+    ],
+    ["https://dlsoft.dmm.co.jp/detail/DEBO_0158/?a=1", "debo_0158"],
+  ])("%s → %s", (text, id) => expect(extractFanzaId(text)).toBe(id));
+
+  it.each([
+    "xd_216826",
+    "d_216826abc",
+    "d-216826",
+    "debo_0158",
+    "xFANZA-debo_0158",
+    "FANZA-123_456",
+    "FANZA-debo_",
+    "https://evil-dmm.co.jp/dc/doujin/-/detail/=/cid=d_216826/",
+    "https://dlsoft.dmm.co.jp.example.com/detail/debo_0158/",
+    "https://www.dmm.co.jp/unrelated/d_216826/",
+  ])("인식 제외: %s", (text) => expect(extractFanzaId(text)).toBeUndefined());
+
+  it.each([
+    ["GC123 FANZA-debo_0158", "getchu"],
+    ["FANZA-debo_0158 ITCH-maker.game", "fanza"],
+    ["ITCH-maker.game CE123-456", "itch"],
+    ["D:/RJ01234567/[d_216826] 게임", "fanza"],
+    ["D:/[d_216826]/v562", "fanza"],
+  ])("우선순위: %s", (text, provider) => {
+    expect(extractExternalIdFromPath(text)?.provider).toBe(provider);
+  });
+});
 
 describe("extractDlsiteId", () => {
   it.each([

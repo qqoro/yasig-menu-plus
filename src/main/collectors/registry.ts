@@ -9,6 +9,7 @@ import { toAbsolutePath } from "../utils/image-path.js";
 import { CienCollector } from "./cien-collector.js";
 import { DLSiteCollector } from "./dlsite-collector.js";
 import { GetchuCollector } from "./getchu-collector.js";
+import { FanzaCollector } from "./fanza-collector.js";
 import { GoogleCollector } from "./google-collector.js";
 import { ItchCollector } from "./itch-collector.js";
 import { SteamCollector } from "./steam-collector.js";
@@ -33,7 +34,7 @@ export interface CollectorResult {
   rating: number | null;
   /** 사이트 외부 리뷰 수 (games.externalReviewCount). 없으면 null */
   reviewCount: number | null;
-  /** 사이트 다운로드/판매 수 (games.downloadCount). DLSite만 제공, 없으면 null */
+  /** 사이트 다운로드/판매 수 (games.downloadCount). 제공하지 않으면 null */
   downloadCount: number | null;
   /** 제작사 목록 (makers 테이블 → gameMakers) */
   makers: string[];
@@ -271,8 +272,9 @@ export const PROVIDER_COLLECTORS: Record<string, Collector> = {
   dlsite: DLSiteCollector,
   steam: SteamCollector,
   getchu: GetchuCollector,
-  cien: CienCollector,
+  fanza: FanzaCollector,
   itch: ItchCollector,
+  cien: CienCollector,
   vndb: VndbCollector,
 };
 

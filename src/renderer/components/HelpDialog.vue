@@ -55,11 +55,12 @@ const mouseInteractions = [
 
 // 콜렉터 정보
 const collectors = [
-  { prefix: "ST", description: "Steam" },
   { prefix: "RJ, BJ, VJ", description: "DLSite" },
+  { prefix: "ST", description: "Steam" },
   { prefix: "GC, GETCHU", description: "Getchu" },
-  { prefix: "CE, CIEN", description: "Ci-en" },
+  { prefix: "d_, FANZA", description: "FANZA" },
   { prefix: "ITCH", description: "itch.io" },
+  { prefix: "CE, CIEN", description: "Ci-en" },
   { prefix: "v, vn", description: "VNDB" },
 ];
 </script>

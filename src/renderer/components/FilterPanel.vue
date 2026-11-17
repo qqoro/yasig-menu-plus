@@ -67,8 +67,9 @@ const PROVIDER_OPTIONS = [
   { value: "dlsite", label: "DLSite" },
   { value: "steam", label: "Steam" },
   { value: "getchu", label: "Getchu" },
-  { value: "cien", label: "Ci-en" },
+  { value: "fanza", label: "FANZA" },
   { value: "itch", label: "itch.io" },
+  { value: "cien", label: "Ci-en" },
   { value: "vndb", label: "VNDB" },
 ] as const;
 
@@ -218,7 +219,7 @@ function cycleExternalId(): void {
   }
 }
 
-// 제공자 필터 사이클 (전체 → DLSite → Steam → Getchu → Ci-en → itch.io → VNDB → 전체)
+// 제공자 필터 사이클 (전체 → DLSite → Steam → Getchu → FANZA → itch.io → Ci-en → VNDB → 전체)
 function cycleProvider(): void {
   const [selected] = filters.value.providers;
   const index = PROVIDER_OPTIONS.findIndex((o) => o.value === selected);

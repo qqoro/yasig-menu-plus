@@ -36,7 +36,9 @@ vi.mock("../utils/downloader.js", () => ({
 }));
 
 // 컬렉터 getId 규칙만 흉내 낸 registry (네트워크 의존 제거)
-vi.mock("../collectors/registry.js", () => {
+vi.mock("../collectors/registry.js", async () => {
+  const { FanzaCollector } = await import("../collectors/fanza-collector.js");
+  const fanza = { ...FanzaCollector, fetchInfo: vi.fn() };
   const dlsite = {
     name: "DLSite",
     getId: async (t: string) => /[RBV]J\d{6,8}/i.exec(t)?.[0],
@@ -65,7 +67,7 @@ vi.mock("../collectors/registry.js", () => {
       return `https://${creator}.itch.io/${slug}`;
     },
   };
-  const PROVIDER_COLLECTORS = { dlsite, steam, itch };
+  const PROVIDER_COLLECTORS = { dlsite, steam, fanza, itch };
   return {
     PROVIDER_COLLECTORS,
     getCollectorUrl: (provider: string | null, id: string | null) =>
@@ -115,6 +117,23 @@ beforeEach(() => {
 });
 
 describe("checkGameList", () => {
+  it("FANZA 코드와 URL을 보유 상품에 연결", async () => {
+    await seedGame(db, {
+      path: "D:/FANZA-debo_0158",
+      provider: "fanza",
+      externalId: "debo_0158",
+    });
+    const { rows } = await checkGameList(
+      "FANZA-DEBO_0158\nhttps://dlsoft.dmm.co.jp/detail/debo_0158/",
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      status: "owned",
+      code: "FANZA-debo_0158",
+      url: "https://dlsoft.dmm.co.jp/detail/debo_0158/",
+      occurrences: 2,
+    });
+  });
   it("보유/미보유 판정과 표시용 코드·URL을 돌려준다", async () => {
     await seedGame(db, {
       path: "D:\\Games\\RJ01089692 사라",
@@ -230,6 +249,18 @@ function collected(overrides: Record<string, unknown> = {}) {
 }
 
 describe("fetchListCheckPreview", () => {
+  it("FANZA 미리보기의 평가 수와 판매 수를 전달", async () => {
+    vi.mocked(PROVIDER_COLLECTORS.fanza.fetchInfo).mockResolvedValue(
+      collected({
+        provider: "fanza",
+        externalId: "d_216826",
+        reviewCount: 22,
+        downloadCount: 6058,
+      }),
+    );
+    const result = await fetchListCheckPreview("fanza", "d_216826");
+    expect(result.info).toMatchObject({ reviewCount: 22, downloadCount: 6058 });
+  });
   it("컬렉터 조회 한 번으로 대표 이미지·샘플 이미지·정보를 돌려준다", async () => {
     vi.mocked(PROVIDER_COLLECTORS.dlsite.fetchInfo).mockResolvedValue(
       collected(),

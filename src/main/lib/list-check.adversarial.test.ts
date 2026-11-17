@@ -21,6 +21,8 @@ vi.mock("steam-user", () => ({ default: class {} }));
 import { CienCollector } from "../collectors/cien-collector.js";
 import { DLSiteCollector } from "../collectors/dlsite-collector.js";
 import { GetchuCollector } from "../collectors/getchu-collector.js";
+import { FanzaCollector } from "../collectors/fanza-collector.js";
+import { ItchCollector } from "../collectors/itch-collector.js";
 import { SteamCollector } from "../collectors/steam-collector.js";
 import { formatExternalCode } from "./export-format.js";
 import {
@@ -35,8 +37,28 @@ const extractors: CodeExtractor[] = [
   { provider: "dlsite", getId: DLSiteCollector.getId },
   { provider: "steam", getId: SteamCollector.getId },
   { provider: "getchu", getId: GetchuCollector.getId },
+  { provider: "fanza", getId: FanzaCollector.getId },
+  { provider: "itch", getId: ItchCollector.getId },
   { provider: "cien", getId: CienCollector.getId },
 ];
+
+describe("FANZA 목록 왕복", () => {
+  it.each([
+    ["d_216826", "https://www.dmm.co.jp/dc/doujin/-/detail/=/cid=d_216826/"],
+    ["debo_0158", "https://dlsoft.dmm.co.jp/detail/debo_0158/"],
+  ])("내보낸 코드와 URL이 같은 보유 상품을 찾음: %s", async (id, url) => {
+    const lib = [game({ provider: "fanza", externalId: id })];
+    for (const input of [formatExternalCode("fanza", id), url]) {
+      const rows = await buildListCheckRows(input, lib, extractors);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        status: "owned",
+        provider: "fanza",
+        externalId: id,
+      });
+    }
+  });
+});
 
 function game(overrides: Partial<ListCheckLibraryGame>): ListCheckLibraryGame {
   return {

@@ -287,6 +287,28 @@ describe("Google 검색 흐름", () => {
   });
 
   describe("검색 횟수", () => {
+    it("FANZA 오류 페이지는 저장하거나 브라우저를 실행하지 않음", async () => {
+      const { FanzaCollector } =
+        await import("../collectors/fanza-collector.js");
+      const path = "/games/[d_216826]";
+      await seedGame(testDb, { path, title: "테스트 게임" });
+      harness.findCollector.mockResolvedValue({
+        collector: FanzaCollector,
+        id: "d_216826",
+      });
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response("<h1>로그인</h1>"),
+      );
+      expect(
+        await handlers.runCollectorHandler(event, { gamePath: path }),
+      ).toMatchObject({ success: false });
+      expect(harness.saveInfo).not.toHaveBeenCalled();
+      expect(harness.launchOptions).toEqual([]);
+      expect(
+        (await testDb("games").where({ path }).first())?.isLoadedInfo,
+      ).toBeFalsy();
+    });
+
     it("게임 하나당 Google 검색 페이지를 한 번만 연다", async () => {
       useGooglePrimary("alpha-folder");
 

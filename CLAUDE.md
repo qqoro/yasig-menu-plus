@@ -120,6 +120,8 @@ yasig-menu-plus/
 │   │   │   ├── gameUpdate.ts      # Game metadata updates
 │   │   │   ├── gameImages.ts      # Game images (carousel) management
 │   │   │   ├── collector.ts       # Collector execution
+│   │   │   ├── sync.ts            # Full sync job (scan → collect → translate), run end-to-end in main
+│   │   │   ├── exportGameList.ts  # Library export to TSV
 │   │   │   ├── thumbnail.ts       # Thumbnail download/delete
 │   │   │   ├── translation.ts     # Title translation
 │   │   │   ├── rename.ts          # Metadata-based bulk file rename
@@ -135,7 +137,7 @@ yasig-menu-plus/
 │   │   │   ├── mcp.ts             # MCP 서버 상태 조회
 │   │   │   ├── dialog.ts          # Folder/file selection dialogs
 │   │   │   └── windows.ts         # Window control
-│   │   ├── collectors/    # Game info collection (registry + dlsite/steam/getchu/cien/google)
+│   │   ├── collectors/    # Game info collection (registry + dlsite/steam/getchu/fanza/itch/cien/vndb/google)
 │   │   ├── mcp/           # AI 연동: 내장 MCP 서버 (127.0.0.1, Streamable HTTP)
 │   │   │   ├── server.ts         # http 서버 생명주기, Host/Origin 검사, 상태
 │   │   │   ├── register-tools.ts # McpServer 생성 + 툴 등록
@@ -148,11 +150,11 @@ yasig-menu-plus/
 │   │   │   ├── fingerprint.ts     # SHA-256 hash for game identification
 │   │   │   ├── scan-logic.ts      # Folder scan & executable detection
 │   │   │   ├── search-prefix.ts   # Search filter parsing (tag:, circle:, etc.)
-│   │   │   ├── external-id.ts     # External work ID extraction (RJ/ST/GC/CE/VNDB codes, store URLs)
+│   │   │   ├── external-id.ts     # External work ID extraction (RJ/ST/GC/FANZA/ITCH/CE/VNDB codes, store URLs)
 │   │   │   ├── rename-template.ts # Rename template parsing ({title}, {externalId}, ...)
 │   │   │   ├── scan-diff.ts       # Diffing scan results against the DB
 │   │   │   └── normalize-path.ts  # Path normalization
-│   │   ├── utils/         # Cross-cutting utils (logger, downloader, validator, ipc-wrapper, image-path)
+│   │   ├── utils/         # Cross-cutting utils (logger, downloader, validator, ipc-wrapper, image-path, polite-fetch, require-game, broadcast)
 │   │   └── static/        # Static files (icons)
 │   └── renderer/          # Vue frontend
 │       ├── main.ts        # Vue entry point
@@ -187,6 +189,13 @@ Type-safe IPC is defined in `src/main/events.ts` with all events and payloads:
 All IPC handlers are in `src/main/handlers/`, dynamically imported in `main.ts`.
 
 **Every `invoke` handler must be wrapped in `wrapIpcHandler(channel, fn)`** (`src/main/utils/ipc-wrapper.ts`) before being passed to `ipcMain.handle`. The wrapper logs the error with its stack trace and re-throws, and warns when a handler takes 3s or more. It deliberately does not log per-call: channels like `detectRpgMaker` fire once per visible game, which would drown the debug level. Domain-level logging belongs in the handler itself.
+
+**Handlers that take a game path validate it with `requireGame(path)`** (`src/main/utils/require-game.ts`): it checks that the path is a registered row in `games`, not what the string looks like. String-shape checks (rejecting `..` and the like) wrongly blocked real folders named `...` (#16); an unregistered path now fails with one clear error instead of silently updating 0 rows — this matters for MCP, which passes arbitrary strings.
+
+**Main → renderer state pushes use `broadcast(channel, payload)`** (`src/main/utils/broadcast.ts`), which sends to every live window rather than `event.sender`, so a renderer reload keeps receiving updates. State that must survive a reload lives in the main process and is exposed as a snapshot getter plus a change event:
+
+- **Background jobs** (`services/job-registry.ts`): full sync / collect-all / translate-all. Only one job runs at a time — `startJob` returns `{ started: false, reason: "busy" }` otherwise. The renderer reads `getJobStatus` and listens to `jobStatusChanged` / `jobFinished`; `useJobEvents` (mounted once in `App.vue`) owns the progress toasts, bot-check dialog, and cache invalidation so they appear on any screen
+- **Running games** (`ProcessMonitor`): `getRunningGames` + `runningGamesChanged`, read via `useRunningGames`. Launching a game that is already running is refused
 
 ### 2. Frontend Routing (Vue Router)
 
@@ -238,12 +247,15 @@ query.orderByRaw("created_at IS NULL, created_at DESC");
 Collectors in `src/main/collectors/` fetch game info from external sites:
 
 - **registry.ts**: Registers all collectors and runs by priority
-- Each collector searches by game title → returns `CollectorResult` (thumbnailUrl, images, title, publishDate, makers, categories, tags, externalId, provider)
-- Uses **puppeteer-core** + **chrome-launcher**
-- **External ID recognition** (`src/main/lib/external-id.ts`): the single source of ID rules for collector matching, the scan's non-game-content check, and list check. Codes: `RJ`/`BJ`/`VJ` (DLSite), `ST`/`steam` (Steam), `GC`/`GETCHU` (Getchu), `CE`/`CIEN`/`CI-EN` (Ci-en), `v`/`vn` (VNDB), plus store URLs (Steam, Getchu, Ci-en, VNDB). Only `-_[]()` may sit between prefix and digits, and a letter/digit touching either end rejects the match (`Latest12345`, `GC12ABCD`); VNDB keeps its own stricter rule (no separators, game folder name only). Collector `getId` functions just delegate here — change rules in this module, not in the collectors
+- Code-based collectors return `CollectorResult` (thumbnailUrl, images, title, publishDate, rating, reviewCount, downloadCount, makers, categories, tags, externalId, provider); Google provides title-based fallback
+- **All collector HTTP goes through `politeFetch`** (`src/main/utils/polite-fetch.ts`), never bare `fetch`. It caps requests per host over a sliding window (`HOST_LIMITS`: DLsite 80/60s against a measured 100/60s Cloudflare limit, VNDB 180/5min against the official 200) and on 429 pauses that whole host for `Retry-After`, then retries. Add a host to `HOST_LIMITS` only with a measured or documented limit; unlisted hosts are sent unthrottled
+- FANZA uses `politeFetch` with the verified link-preview User-Agent, no cookies/browser/API key. Separate parsers handle doujin and commercial PC HTML. Ratings use `ratingCount`, doujin total sales populate `downloadCount`, and commercial PC sales remain null
+- **External ID recognition** (`src/main/lib/external-id.ts`): the single source of ID rules for collector matching, the scan's non-game-content check, and list check. Codes: `RJ`/`BJ`/`VJ` (DLSite), `ST`/`steam` (Steam), `GC`/`GETCHU` (Getchu), `CE`/`CIEN`/`CI-EN` (Ci-en), `v`/`vn` (VNDB), `ITCH-<maker>.<slug>` (itch.io — the store URL's `maker.itch.io/slug` joined with `.` because folder names cannot hold `/`), FANZA (see below), plus store URLs (Steam, Getchu, FANZA, itch.io, Ci-en, VNDB). Only `-_[]()` may sit between prefix and digits, and a letter/digit touching either end rejects the match (`Latest12345`, `GC12ABCD`); VNDB keeps its own stricter rule (no separators, game folder name only). Collector `getId` functions just delegate here — change rules in this module, not in the collectors
 - **Path-based matching** (`extractExternalIdFromPath`): walks from the game folder up to its ancestors, so a game unpacked inside an `RJ…` folder still collects from the parent's code, and the nearest code wins. VNDB is tried last, on the game folder name only
+- **FANZA IDs**: `d_216826` for doujin; `FANZA-debo_0158`, `[FANZA]debo_0158`, or `FANZA_cveaa_wws4zq2j` for commercial PC games. Normalize to lowercase; bare commercial IDs are not recognized. Keep the literal `d_`. Separate versions with brackets/space (`[FANZA-debo_0158] v2`), since underscores can belong to IDs. Both official storefront detail URLs are accepted for list comparison. Export retains doujin codes and adds `FANZA-` to commercial codes for round-trip recognition
+- **Same-folder provider priority**: DLsite → Steam → Getchu → FANZA → itch.io → Ci-en → VNDB. Keep `EXTERNAL_ID_EXTRACTORS` and `PROVIDER_COLLECTORS` in this order
 - **2-stage fallback strategy**:
-  1. Stage 1: The path's external ID picks the collector (DLSite, Steam, Getchu, Ci-en, VNDB)
+  1. Stage 1: The path's external ID picks the collector (DLsite, Steam, Getchu, FANZA, itch.io, Ci-en, VNDB)
   2. Stage 2: If none, GoogleCollector runs as fallback (can be disabled via `enableGoogleCollector`)
 
 ### 5. Build Process
@@ -291,6 +303,7 @@ Centralized query key management in `src/renderer/queryKeys.ts`:
 - `queryKeys.libraryPaths.all` / `disabledLibraryPaths.all` / `offlineLibraryPaths.all` — library path lists
 - `queryKeys.excludedExecutables.all` — excluded executables list
 - `queryKeys.settings.all` — unified settings
+- `queryKeys.jobStatus.all` / `queryKeys.runningGames.all` — main-process state snapshots, updated by events rather than refetched
 - Always use these keys in composables to ensure consistent cache invalidation
 
 ### 9. Renderer IPC Type Safety
@@ -305,12 +318,13 @@ Centralized query key management in `src/renderer/queryKeys.ts`:
 
 `src/main/services/` contains business logic separated from IPC handlers:
 
-- **ProcessMonitor**: Tracks game process lifecycle and records play time
-- **AutoUpdater**: Wraps electron-updater for in-app updates
+- **ProcessMonitor**: Tracks game process lifecycle, records play time, and holds the running-games list
+- **job-registry**: Single-slot background job state (sync / collect / translate), see §1
+- **AutoUpdater**: Wraps electron-updater — `autoDownload` and `autoInstallOnAppQuit` are on, so a new version downloads in the background and installs on the restart button or on app quit
 - **ChangelogService**: Fetches release notes from GitHub
 - **translator / google-translator / translation-manager**: Title translation pipeline
 - **user-game-data**: Maps user game data between DB and application layer
-- **cheat-injector**: Injects/restores RPG Maker MV/MZ cheat plugin ([paramonos plugin](https://github.com/paramonos/RPG-Maker-MV-MZ-Cheat-UI-Plugin)) — backs up `main.js` then copies bundled assets from `src/main/cheat/mv|mz`
+- **cheat-injector**: Injects/restores RPG Maker MV/MZ cheat plugin ([paramonos plugin](https://github.com/paramonos/RPG-Maker-MV-MZ-Cheat-UI-Plugin)) — v2 bundle: backs up the original `main.js`, adds only the plugin's official loader to it (preserving each game's own startup code), then copies the bundle from `src/main/cheat/mv|mz` (MV → `www/`, MZ → game root). Existing cheat files are backed up and restored if injection fails
 
 ### 11. Folder Scanning (Worker Thread)
 
@@ -360,6 +374,7 @@ Tests are colocated (`*.test.ts` next to the module) and run against a **real in
   - Core: `useGames`, `useGameDetail`, `useSettings`, `useAllSettings`, `useWindow`, `useTheme`
   - Search: `useSearch`, `useAutocomplete`, `useRandomSelect`
   - Collector: `useCollector`, `useAllInOneRefresh`
+  - Jobs: `useJobStatus`, `useJobEvents` (mount once in `App.vue`), `useRunningGames`
   - Media: `useGameImages`, `useCleanThumbnails`, `useConvertImagesToWebp`, `useMigrateThumbnails`
   - Translation: `useTranslation`, `useTranslationSettings`
   - Features: `usePlayTime`, `useDashboard`, `useDuplicates`, `useListCheck`, `useRename`, `useCheat`, `useChangelog`, `useAutoUpdate`

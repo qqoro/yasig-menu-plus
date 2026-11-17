@@ -8,14 +8,14 @@ const isNewCard = useIsNewCard();
 // 콜렉터 정보
 const collectors = [
   {
-    prefix: "ST, steam",
-    description: "Steam",
-    example: "ST1234560 Game Title, steam_1234560",
-  },
-  {
     prefix: "RJ, BJ, VJ",
     description: "DLSite",
     example: "RJ01234567 Game Title, [RJ]01234567",
+  },
+  {
+    prefix: "ST, steam",
+    description: "Steam",
+    example: "ST1234560 Game Title, steam_1234560",
   },
   {
     prefix: "GC, GETCHU",
@@ -23,15 +23,21 @@ const collectors = [
     example: "GC1234567 Game Title, GETCHU-1234567",
   },
   {
-    prefix: "CE, CIEN",
-    description: "Ci-en",
-    example: "CE123-456 Creator Title (크리에이터 번호-글 번호)",
+    prefix: "d_, FANZA",
+    description: "FANZA (동인 / 다운로드 PC 게임)",
+    example: "[d_216826] 게임명, [FANZA-debo_0158] 게임명",
+    note: "동인은 d_숫자, PC 게임은 FANZA 접두어가 필요합니다. [FANZA]debo_0158도 인식합니다. 상품 코드 안의 _는 유지하고, 버전은 [FANZA-debo_0158] v2처럼 괄호나 공백으로 분리하세요.",
   },
   {
     prefix: "ITCH",
     description: "itch.io",
     example: "ITCH-maker.some-game Game Title, [ITCH]maker.some-game",
     note: "제작자.슬러그 형식 — 상점 주소 maker.itch.io/some-game의 두 부분을 .으로 이어 씁니다.",
+  },
+  {
+    prefix: "CE, CIEN",
+    description: "Ci-en",
+    example: "CE123-456 Creator Title (크리에이터 번호-글 번호)",
   },
   {
     prefix: "v, vn",
@@ -67,10 +73,13 @@ const collectors = [
       <CardContent>
         <p class="text-muted-foreground mb-3 text-sm">
           폴더명이나 파일명에 아래 접두어가 포함되면 해당 사이트에서 정보를
-          자동으로 수집합니다. 접두어와 숫자 사이에는 - _ [ ] ( ) 만 쓸 수 있고,
-          앞뒤에 영문이나 숫자가 붙어 있으면 인식하지 않습니다. 게임 폴더에
-          코드가 없으면 상위 폴더의 코드를 쓰며, 게임에 가까운 폴더의 코드를
-          우선합니다.
+          자동으로 수집합니다. 일반 접두어 뒤에는 - _ [ ] ( ) 구분자를 쓸 수
+          있고, 앞뒤에 영문이나 숫자가 붙어 있으면 인식하지 않습니다. 게임
+          폴더에 코드가 없으면 상위 폴더의 코드를 쓰며, 게임에 가까운 폴더의
+          코드를 우선합니다. 같은 폴더에 여러 사이트 코드가 있으면 DLsite →
+          Steam → Getchu → FANZA → itch.io → Ci-en 순서로 선택합니다. VNDB는
+          다른 사이트 코드를 모두 찾지 못했을 때만 게임 폴더명에서 인식합니다.
+          FANZA 동인의 d_는 그대로 써야 합니다.
         </p>
         <div class="flex flex-col gap-3">
           <div

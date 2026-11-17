@@ -1,5 +1,5 @@
 /**
- * 외부 작품 ID 추출 (DLsite / Steam / Getchu / Ci-en / itch.io / VNDB)
+ * 외부 작품 ID 추출 (DLsite / Steam / Getchu / FANZA / itch.io / Ci-en / VNDB)
  *
  * 컬렉터 매칭, 스캔의 비게임 콘텐츠 판별, 목록 대조가 같은 규칙을 쓰도록 한곳에 모은 순수 모듈.
  * Worker Thread에서도 import하므로 fs/DB/Electron 의존성을 두지 않는다.
@@ -12,7 +12,7 @@
  */
 
 export type ExternalIdProvider =
-  "dlsite" | "steam" | "getchu" | "cien" | "itch" | "vndb";
+  "dlsite" | "steam" | "getchu" | "fanza" | "cien" | "itch" | "vndb";
 
 export interface ExternalIdMatch {
   provider: ExternalIdProvider;
@@ -42,6 +42,12 @@ const GETCHU_CODE = new RegExp(
   "i",
 );
 const GETCHU_URL = /getchu\.com\/(?:soft\.phtml\?id=|item\/)(\d+)/i;
+
+const FANZA_DOUJIN_CODE = new RegExp(String.raw`${LEAD}(d_\d+)${TRAIL}`, "i");
+const FANZA_PC_CODE = new RegExp(
+  String.raw`${LEAD}FANZA${SEP}([a-z][a-z0-9]*_[a-z0-9]+(?:_[a-z0-9]+)*)${TRAIL}`,
+  "i",
+);
 
 const CIEN_CODE = new RegExp(
   String.raw`${LEAD}(?:CE|CIEN|CI-EN)${SEP}(\d+-\d+|(?:creator)?\d+article\d+)${TRAIL}`,
@@ -100,6 +106,37 @@ export function extractGetchuId(text: string): string | undefined {
   return GETCHU_URL.exec(text)?.[1] ?? GETCHU_CODE.exec(text)?.[1];
 }
 
+/** FANZA 상품 코드 — 동인은 d_숫자, PC 게임은 FANZA 접두어 필수 */
+export function extractFanzaId(text: string): string | undefined {
+  const urls = text.match(/https?:\/\/[^\s<>"'[\]]+/gi);
+  if (urls) {
+    for (const candidate of urls) {
+      try {
+        const url = new URL(candidate);
+        if (url.port || url.username || url.password) continue;
+        const match =
+          url.hostname === "www.dmm.co.jp"
+            ? /^\/dc\/doujin\/-\/detail\/=\/cid=(d_\d+)\/?$/i.exec(url.pathname)
+            : url.hostname === "dlsoft.dmm.co.jp"
+              ? /^\/detail\/([a-z][a-z0-9]*_[a-z0-9]+(?:_[a-z0-9]+)*)\/?$/i.exec(
+                  url.pathname,
+                )
+              : null;
+        if (match) return match[1].toLowerCase();
+      } catch {
+        // 잘못된 URL 안의 d_코드를 폴더명 코드로 다시 인식하지 않음
+      }
+    }
+  }
+  // URL 내부 코드를 다시 읽지 않되, 별도 텍스트의 상품 코드는 인식
+  const remaining = text.replace(/https?:\/\/[^\s<>"'[\]]+/gi, " ");
+  const pc = FANZA_PC_CODE.exec(remaining);
+  const doujin = FANZA_DOUJIN_CODE.exec(remaining);
+  // PC 코드 내부의 _d_숫자를 동인 코드로 잘라 읽지 않음
+  const match = pc && (!doujin || pc.index <= doujin.index) ? pc : doujin;
+  return match?.[1].toLowerCase();
+}
+
 /** Ci-en 크리에이터-글 ID ("123-456" 형태로 반환) */
 export function extractCienId(text: string): string | undefined {
   const url = CIEN_URL.exec(text);
@@ -139,8 +176,9 @@ export const EXTERNAL_ID_EXTRACTORS: ReadonlyArray<{
   { provider: "dlsite", extract: extractDlsiteId },
   { provider: "steam", extract: extractSteamId },
   { provider: "getchu", extract: extractGetchuId },
-  { provider: "cien", extract: extractCienId },
+  { provider: "fanza", extract: extractFanzaId },
   { provider: "itch", extract: extractItchId },
+  { provider: "cien", extract: extractCienId },
   { provider: "vndb", extract: extractVndbId },
 ];
 

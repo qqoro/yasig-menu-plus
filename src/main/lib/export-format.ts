@@ -72,6 +72,9 @@ export function formatExternalCode(
   provider: string | null | undefined,
   externalId: string,
 ): string {
+  if (provider === "fanza") {
+    return /^d_\d+$/i.test(externalId) ? externalId : `FANZA-${externalId}`;
+  }
   const prefix = provider ? PROVIDER_ID_PREFIX[provider] : undefined;
   return prefix ? `${prefix}${externalId}` : externalId;
 }
