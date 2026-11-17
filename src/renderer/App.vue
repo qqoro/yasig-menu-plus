@@ -185,16 +185,12 @@ onMounted(async () => {
           },
         });
       } else {
-        // 일반: 자동 다운로드→설치
-        toast.info(`새 버전 v${data.version}을 사용할 수 있습니다`, {
-          description: "설치하기를 누르면 자동으로 다운로드 후 재시작합니다",
+        // 새 버전을 백그라운드에서 다운로드
+        toast.info(`새 버전 v${data.version}을 다운로드합니다`, {
+          id: "update-download",
+          description:
+            "완료되면 재시작하여 적용하거나 앱 종료 시 설치할 수 있습니다",
           duration: Infinity,
-          action: {
-            label: "설치하기",
-            onClick: async () => {
-              await window.api.invoke("downloadUpdate");
-            },
-          },
         });
         toast(`업데이트 내역 보기`, {
           id: "changelog-hint",
@@ -223,19 +219,24 @@ onMounted(async () => {
     },
   );
 
-  // 다운로드 완료 시 자동 설치 (일반 버전만)
+  // 다운로드 완료 후 사용자가 재시작하거나 앱을 종료할 때 설치
   window.api.on("updateDownloaded", (data: { version: string }) => {
     toast.dismiss("update-download");
-    toast.success(`v${data.version} 다운로드 완료! 앱을 재시작합니다.`, {
-      duration: 2000,
+    toast.success(`v${data.version} 다운로드 완료`, {
+      description: "앱 종료 시 자동으로 설치됩니다",
+      duration: Infinity,
+      action: {
+        label: "지금 재시작",
+        onClick: async () => {
+          await window.api.invoke("installUpdate");
+        },
+      },
     });
-    setTimeout(() => {
-      window.api.invoke("installUpdate");
-    }, 2000);
   });
 
   // 업데이트 오류
   window.api.on("updateError", (data: { error: string }) => {
+    toast.dismiss("update-download");
     toast.error("업데이트 오류", {
       description: data.error,
     });

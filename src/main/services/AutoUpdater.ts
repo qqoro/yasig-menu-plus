@@ -24,8 +24,9 @@ export class AutoUpdater {
 
   constructor() {
     this.isPortable = this.checkPortable();
-    // 자동 다운로드 비활성화 (수동으로 제어)
-    autoUpdater.autoDownload = false;
+    // 새 버전은 미리 다운로드하고, 일반 종료 시에도 자동으로 설치
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true;
     this.setupEvents();
   }
 

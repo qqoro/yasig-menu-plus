@@ -40,7 +40,7 @@ const isPortable = ref(false);
 // 이벤트 리스너 맵
 type EventHandlers = {
   updateChecking: () => void;
-  updateAvailable: (info: UpdateInfo) => void;
+  updateAvailable: (info: UpdateInfo & { isPortable: boolean }) => void;
   updateNotAvailable: () => void;
   updateDownloadProgress: (p: DownloadProgress) => void;
   updateDownloaded: (info: { version: string }) => void;
@@ -82,9 +82,12 @@ export function useAutoUpdate() {
     updateChecking: () => {
       status.value = "checking";
     },
-    updateAvailable: (info: UpdateInfo) => {
-      status.value = "available";
+    updateAvailable: (info) => {
+      isPortable.value = info.isPortable;
+      status.value = info.isPortable ? "available" : "downloading";
       updateInfo.value = info;
+      progress.value = null;
+      error.value = null;
     },
     updateNotAvailable: () => {
       status.value = "not-available";
